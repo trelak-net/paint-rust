@@ -15,6 +15,7 @@ fn identity_adjustments_preserve_every_channel_and_cancellation_stops_work() {
         Effect::Saturation(1.0),
         Effect::BoxBlur(0),
         Effect::Pixelate(1),
+        Effect::Sharpen(0.0),
     ] {
         assert_eq!(
             effects::render(&source, 2, 1, None, effect, &AtomicBool::new(false)).unwrap(),
@@ -151,4 +152,48 @@ fn malformed_effect_buffers_and_cancelled_new_effects_produce_no_output() {
     for effect in [Effect::Pixelate(8), Effect::Posterize(4)] {
         assert!(effects::render(&[[0; 4]], 1, 1, None, effect, &AtomicBool::new(true)).is_none());
     }
+}
+
+#[test]
+fn sharpening_increases_local_contrast_without_changing_alpha() {
+    let source = [[80, 80, 80, 255], [120, 120, 120, 255], [80, 80, 80, 255]];
+    let output = effects::render(
+        &source,
+        3,
+        1,
+        None,
+        Effect::Sharpen(1.0),
+        &AtomicBool::new(false),
+    )
+    .unwrap();
+    assert_eq!(
+        output,
+        [[67, 67, 67, 255], [147, 147, 147, 255], [67, 67, 67, 255]]
+    );
+}
+
+#[test]
+fn sharpening_preserves_unselected_pixels_and_transparent_color_values() {
+    let source = [[0, 0, 255, 0], [128, 80, 50, 123], [255, 0, 255, 0]];
+    let selection = Selection::elliptical(1, 0, 1, 1);
+    let output = effects::render(
+        &source,
+        3,
+        1,
+        Some(selection),
+        Effect::Sharpen(3.0),
+        &AtomicBool::new(false),
+    )
+    .unwrap();
+    assert_eq!(output, source);
+    let output = effects::render(
+        &source,
+        3,
+        1,
+        None,
+        Effect::Sharpen(3.0),
+        &AtomicBool::new(false),
+    )
+    .unwrap();
+    assert_eq!(output, source);
 }

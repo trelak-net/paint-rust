@@ -21,7 +21,7 @@ Development roadmap
 [x] Brightness/contrast, saturation, grayscale, sepia and box blur previews.
 [x] Linear and radial gradients.
 [x] Pixelation and posterization with cancellable previews.
-[ ] Further effects and effect organization.
+[x] Sharpening and separate menus for adjustments and spatial effects.
 [x] Background recovery snapshots and interrupted-session recovery.
 [x] Background open/save/export/import/recovery with guarded completion.
 [x] Background geometry computation with history-preserving publication.

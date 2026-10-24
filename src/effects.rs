@@ -11,6 +11,7 @@ pub enum Effect {
     BoxBlur(u32),
     Pixelate(u32),
     Posterize(u8),
+    Sharpen(f32),
 }
 impl Effect {
     pub fn name(self) -> &'static str {
@@ -23,6 +24,7 @@ impl Effect {
             Self::BoxBlur(_) => "Box blur",
             Self::Pixelate(_) => "Pixelate",
             Self::Posterize(_) => "Posterize",
+            Self::Sharpen(_) => "Sharpen",
         }
     }
 }
@@ -56,6 +58,7 @@ pub fn render(
         Effect::BoxBlur(radius) if radius > 0 => {
             blur(source, width, height, radius.min(64), cancel)?
         }
+        Effect::Sharpen(amount) if amount > 0.0 => blur(source, width, height, 1, cancel)?,
         Effect::Pixelate(size) if size > 1 => {
             pixelate(source, width, height, size.min(128), cancel)?
         }
@@ -72,6 +75,9 @@ pub fn render(
                 continue;
             }
             let p = source[i];
+            if matches!(effect, Effect::Sharpen(_)) {
+                output[i][3] = p[3];
+            }
             let luminance =
                 0.2126 * f64::from(p[0]) + 0.7152 * f64::from(p[1]) + 0.0722 * f64::from(p[2]);
             for (c, channel) in p[..3].iter().enumerate() {
@@ -92,6 +98,15 @@ pub fn render(
                     }
                     Effect::Grayscale => luminance,
                     Effect::Sepia => luminance * [1.13, 1.0, 0.8][c],
+                    Effect::Sharpen(amount) => {
+                        if p[3] == 0 {
+                            f64::from(*channel)
+                        } else {
+                            f64::from(*channel)
+                                + f64::from(amount.clamp(0.0, 3.0))
+                                    * (f64::from(*channel) - f64::from(output[i][c]))
+                        }
+                    }
                     Effect::Posterize(levels) => {
                         let steps = f64::from(levels.clamp(2, 32) - 1);
                         (f64::from(*channel) * steps / 255.0).round() * 255.0 / steps

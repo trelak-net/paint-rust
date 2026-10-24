@@ -57,6 +57,7 @@ Features
 - Invert RGB while preserving alpha.
 - Preview brightness/contrast, saturation, grayscale, sepia and alpha-aware box blur.
 - Pixelate with alpha-aware block averages or posterize individual color channels.
+- Sharpen local RGB contrast while preserving alpha and the active selection.
 - Draw lines and outlined/filled rectangles or ellipses with cancellable previews.
 - Select a rectangular or elliptical area, limit edits to it, delete pixels or crop all layers.
 - Add, subtract or intersect selections; combined areas use a blue mask overlay.
@@ -367,3 +368,10 @@ output is clipped to the existing canvas. Smooth sampling uses premultiplied-alp
 bilinear interpolation in encoded RGB; nearest-neighbor is also available. Apply
 creates one undo entry and clears the old selection when pixels changed. Undo
 restores pixels and selection. Identity and empty-selection transforms are no-ops.
+
+Sharpen validation: 116 Rust tests pass. Sharpen applies an adjustable unsharp
+mask using a 3x3 alpha-aware box reference. It preserves source alpha and hidden
+RGB in fully transparent pixels. Zero amount is an exact no-op. Color operations
+are grouped under Adjustments; blur, sharpening and pixelation are under Effects.
+The entire layers panel scrolls so properties/history remain reachable in smaller
+windows with long layer lists.

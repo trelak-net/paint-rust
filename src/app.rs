@@ -1469,6 +1469,9 @@ impl Editor {
                                     .add(egui::Slider::new(size, 1..=128).text("Block size (px)"))
                                     .changed();
                             }
+                            Effect::Sharpen(amount) => {
+                                changed |= ui.add(egui::Slider::new(amount, 0.0..=3.0).text("Amount")).changed();
+                            }
                             Effect::Posterize(levels) => {
                                 changed |= ui
                                     .add(
@@ -1828,25 +1831,39 @@ impl Editor {
                         ui.close();
                     }
                 });
-                ui.menu_button("Adjustments", |ui| {
-                    for effect in [
-                        Effect::BrightnessContrast {
-                            brightness: 0,
-                            contrast: 0,
-                        },
-                        Effect::Saturation(1.0),
-                        Effect::Grayscale,
-                        Effect::Sepia,
-                        Effect::BoxBlur(2),
-                        Effect::Pixelate(8),
-                        Effect::Posterize(4),
-                    ] {
-                        if ui.button(effect.name()).clicked() {
-                            self.begin_effect(ctx, effect);
-                            ui.close();
+                let effect_groups: [(&str, &[Effect]); 2] = [
+                    (
+                        "Adjustments",
+                        &[
+                            Effect::BrightnessContrast {
+                                brightness: 0,
+                                contrast: 0,
+                            },
+                            Effect::Saturation(1.0),
+                            Effect::Grayscale,
+                            Effect::Sepia,
+                            Effect::Posterize(4),
+                        ],
+                    ),
+                    (
+                        "Effects",
+                        &[
+                            Effect::BoxBlur(2),
+                            Effect::Sharpen(1.0),
+                            Effect::Pixelate(8),
+                        ],
+                    ),
+                ];
+                for (title, effects) in effect_groups {
+                    ui.menu_button(title, |ui| {
+                        for &effect in effects {
+                            if ui.button(effect.name()).clicked() {
+                                self.begin_effect(ctx, effect);
+                                ui.close();
+                            }
                         }
-                    }
-                });
+                    });
+                }
                 if ui.add(Icon::Invert.button("Invert colors")).clicked() {
                     self.finish_stroke();
                     self.document.invert();
