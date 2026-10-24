@@ -1,4 +1,5 @@
 mod file_operations;
+mod transform_handles;
 use crate::icons::Icon;
 use eframe::egui::{self, Color32, Key, Pos2, Rect, Sense, TextureHandle, TextureOptions, Vec2};
 use file_operations::{FileJob, Outcome};
@@ -95,6 +96,7 @@ pub struct Editor {
     resize_dialog: Option<ResizeDialog>,
     text_dialog: Option<TextDialog>,
     effect_dialog: Option<EffectDialog>,
+    transform_drag: Option<transform_handles::TransformDrag>,
     new_width: u32,
     new_height: u32,
     transparent: bool,
@@ -169,6 +171,7 @@ impl Editor {
             resize_dialog: None,
             text_dialog: None,
             effect_dialog: None,
+            transform_drag: None,
             new_width: 960,
             new_height: 640,
             transparent: false,
@@ -493,6 +496,7 @@ impl Editor {
     }
 
     fn begin_effect(&mut self, ctx: &egui::Context, effect: Effect) {
+        self.transform_drag = None;
         self.finish_stroke();
         let preview = crate::preview::EffectPreview::new(
             ctx.clone(),
@@ -900,6 +904,7 @@ impl Editor {
                         );
                     }
                 }
+                self.transform_handles(ui, rect, &painter);
                 if response.hovered()
                     && !self.panning
                     && matches!(self.tool, Tool::Brush | Tool::Eraser)
@@ -1444,6 +1449,7 @@ impl Editor {
                                 changed |= ui.checkbox(&mut parameters.copy, "Keep source pixels").changed();
                                 changed |= ui.checkbox(&mut parameters.smooth, "Smooth sampling").changed();
                                 ui.small("Transforms around the selection center. Pixels outside the canvas are clipped.");
+                                ui.small("Drag the box to move, corners to scale, or the blue circle to rotate. Shift constrains movement, preserves scale ratio, or snaps rotation.");
                             }
                             Effect::BrightnessContrast {
                                 brightness,
@@ -3120,5 +3126,52 @@ mod tests {
                 assert_eq!(editor.document.selection(), Some(selection.clone()));
             }
         }
+    }
+    #[test]
+    fn transform_box_drag_updates_preview_without_drawing_a_brush_stroke() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.begin_effect(&ctx, Effect::FreeTransform(Default::default()));
+        frame(&mut editor, &ctx, vec![]);
+        frame(&mut editor, &ctx, vec![]);
+        let point = editor.canvas_viewport.min + Vec2::new(60.0, 500.0);
+        frame(
+            &mut editor,
+            &ctx,
+            vec![egui::Event::PointerMoved(point), pointer(point, true)],
+        );
+        assert!(editor.transform_drag.is_some());
+        let end = point + Vec2::new(30.0, 20.0);
+        frame(
+            &mut editor,
+            &ctx,
+            vec![egui::Event::PointerMoved(end), pointer(end, false)],
+        );
+        assert!(editor.transform_drag.is_none());
+        let Effect::FreeTransform(parameters) = editor.effect_dialog.as_ref().unwrap().effect
+        else {
+            panic!("wrong preview")
+        };
+        assert_eq!((parameters.offset_x, parameters.offset_y), (30.0, 20.0));
+        assert!(!editor.document.can_undo());
+        frame(
+            &mut editor,
+            &ctx,
+            vec![egui::Event::Key {
+                key: Key::Escape,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers::NONE,
+            }],
+        );
+        assert!(!editor.document.dirty());
+        assert!(
+            editor
+                .document
+                .pixels()
+                .iter()
+                .all(|pixel| *pixel == [255; 4])
+        );
     }
 }

@@ -129,8 +129,7 @@ is session-local and is not stored in project files.
 Current boundaries
 ------------------
 This is an initial application, not a complete graphics suite. Pressure-sensitive
-input is not implemented yet. Free transforms currently use numeric controls;
-on-canvas transformation handles remain planned.
+input is not implemented yet. Free transforms provide numeric controls and on-canvas handles.
 File decoding/encoding, recovery copies, effect previews and image/canvas resizing,
 rotation, mirroring and layer compositing run in background workers. Fill still runs on the UI thread;
 large operations can pause the interface. Canvas updates upload the full
@@ -375,3 +374,11 @@ RGB in fully transparent pixels. Zero amount is an exact no-op. Color operations
 are grouped under Adjustments; blur, sharpening and pixelation are under Effects.
 The entire layers panel scrolls so properties/history remain reachable in smaller
 windows with long layer lists.
+
+Transform handle validation: 119 Rust tests pass. Drag inside the transform box
+to translate, a corner to scale, or the blue control to rotate. Shift constrains
+translation to one axis, preserves the current scale ratio, or snaps rotation to
+15-degree steps. The rotation control sits inside the box so edge selections can
+reach it. Preview requests coalesce during dragging, and canvas gestures cannot
+paint while the transform dialog is active. Numeric controls remain available for
+small or clipped transform boxes.
