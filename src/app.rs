@@ -3,7 +3,7 @@ use eframe::egui::{self, Color32, Key, Pos2, Rect, Sense, TextureHandle, Texture
 use paint_rust::effects::Effect;
 use paint_rust::transform::Orientation;
 use paint_rust::{
-    document::{BlendMode, Document, Selection, Shape, ShapeStyle},
+    document::{BlendMode, Document, GradientStyle, Selection, Shape, ShapeStyle},
     files,
 };
 use std::path::PathBuf;
@@ -20,6 +20,7 @@ enum Tool {
     Select,
     Text,
     Move,
+    Gradient,
 }
 
 #[derive(Clone, Copy)]
@@ -59,6 +60,8 @@ pub struct Editor {
     texture_dirty: bool,
     tool: Tool,
     color: Color32,
+    secondary_color: Color32,
+    radial_gradient: bool,
     brush_size: f32,
     shape_filled: bool,
     move_selection_only: bool,
@@ -102,6 +105,8 @@ impl Editor {
             texture_dirty: true,
             tool: Tool::Brush,
             color: Color32::from_rgb(42, 113, 224),
+            secondary_color: Color32::WHITE,
+            radial_gradient: false,
             brush_size: 12.0,
             shape_filled: false,
             move_selection_only: false,
@@ -405,6 +410,8 @@ impl Editor {
                 if i.key_pressed(Key::F) {
                     self.tool = Tool::Fill;
                 }
+                if i.key_pressed(Key::G) { self.tool=Tool::Gradient; }
+                if i.key_pressed(Key::X) { std::mem::swap(&mut self.color,&mut self.secondary_color); }
                 if i.key_pressed(Key::M) { self.tool=Tool::Move; }
                 if i.key_pressed(Key::T) { self.tool = Tool::Text; }
                 if i.key_pressed(Key::S) {
@@ -591,6 +598,7 @@ impl Editor {
                         let origin = (origin - rect.min) / self.zoom;
                         self.shape_origin = Some((origin.x, origin.y));
                         match self.tool {
+                            Tool::Gradient => self.document.begin("Gradient"),
                             Tool::Move => self.document.begin(if self.move_selection_only {
                                 "Move selection"
                             } else {
@@ -674,6 +682,18 @@ impl Editor {
                                 color: self.color.to_srgba_unmultiplied(),
                                 width: self.brush_size,
                                 filled: self.shape_filled,
+                            },
+                        );
+                        self.texture_dirty = true;
+                    }
+                    if self.tool == Tool::Gradient {
+                        self.document.preview_gradient(
+                            self.shape_origin.unwrap_or(point),
+                            point,
+                            GradientStyle {
+                                start: self.color.to_srgba_unmultiplied(),
+                                end: self.secondary_color.to_srgba_unmultiplied(),
+                                radial: self.radial_gradient,
                             },
                         );
                         self.texture_dirty = true;
@@ -1355,6 +1375,7 @@ impl Editor {
                         for (tool, icon, label, shortcut) in [
                             (Tool::Select, Icon::Select, "Select area", "S"),
                             (Tool::Move, Icon::Move, "Move", "M"),
+                            (Tool::Gradient, Icon::Gradient, "Gradient", "G"),
                             (Tool::Text, Icon::Text, "Text", "T"),
                             (Tool::Brush, Icon::Brush, "Brush", "B"),
                             (Tool::Eraser, Icon::Eraser, "Eraser", "E"),
@@ -1378,6 +1399,9 @@ impl Editor {
                                 self.tool = tool;
                             }
                         }
+                        if self.tool == Tool::Gradient {
+                            ui.checkbox(&mut self.radial_gradient, "Radial gradient");
+                        }
                         if self.tool == Tool::Move {
                             ui.checkbox(&mut self.move_selection_only, "Move selection only");
                             ui.small("Ctrl: copy pixels. Shift: constrain direction.");
@@ -1391,7 +1415,17 @@ impl Editor {
                         }
                         ui.separator();
                         ui.heading("Color");
-                        ui.color_edit_button_srgba(&mut self.color);
+                        ui.horizontal(|ui| {
+                            ui.label("Primary");
+                            ui.color_edit_button_srgba(&mut self.color);
+                        });
+                        ui.horizontal(|ui| {
+                            ui.label("Secondary");
+                            ui.color_edit_button_srgba(&mut self.secondary_color);
+                        });
+                        if ui.button("Swap colors    X").clicked() {
+                            std::mem::swap(&mut self.color, &mut self.secondary_color);
+                        }
                         ui.horizontal_wrapped(|ui| {
                             for color in [
                                 Color32::BLACK,

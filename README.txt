@@ -52,6 +52,7 @@ F: flood fill                I: color picker
 L: line                      R: rectangle
 O: ellipse                   S: rectangular selection
 T: text                      M: move pixels/selection
+G: gradient                  X: swap primary/secondary colors
 Ctrl+A: select all           Ctrl+Shift+A: deselect
 Delete: clear selected pixels (or the whole active layer without a selection)
 Ctrl+Shift+X: crop all layers to the selection
@@ -196,3 +197,9 @@ destinations cannot smear the input. Ctrl copies instead of clearing the source;
 Shift constrains direction. Selection-only movement does not dirty image pixels.
 Pixels outside the canvas are clipped. Escape and undo restore the prior pixels
 and selection; zero-distance movement is an exact no-op.
+
+Gradient validation: 57 tests pass. Linear and radial gradients interpolate
+premultiplied RGBA between the primary and secondary colors, then composite over
+the original active layer. Previews replace earlier drag results, respect the
+selection and cancel without history. Gradient calculations are currently on the
+UI thread and use encoded RGB interpolation.

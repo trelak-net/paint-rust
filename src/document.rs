@@ -18,6 +18,12 @@ pub struct ShapeStyle {
     pub filled: bool,
 }
 
+pub struct GradientStyle {
+    pub start: Pixel,
+    pub end: Pixel,
+    pub radial: bool,
+}
+
 pub const MAX_PIXELS: usize = 4096 * 4096;
 const HISTORY_BYTES: usize = 128 * 1024 * 1024;
 
@@ -692,6 +698,53 @@ impl Document {
         self.active = before.active;
         self.layers[self.active].pixels = Arc::new(pixels);
         Ok(())
+    }
+
+    pub fn preview_gradient(&mut self, from: (f32, f32), to: (f32, f32), style: GradientStyle) {
+        let before = self
+            .pending
+            .as_ref()
+            .expect("Begin a gradient transaction first");
+        self.layers = before.layers.clone();
+        self.active = before.active;
+        let selection = self.selection;
+        let output = Arc::make_mut(&mut self.layers[self.active].pixels);
+        let (dx, dy) = (f64::from(to.0 - from.0), f64::from(to.1 - from.1));
+        let distance = dx * dx + dy * dy;
+        for y in 0..self.height {
+            for x in 0..self.width {
+                if !selected(selection, x as usize, y as usize) {
+                    continue;
+                }
+                let (px, py) = (
+                    f64::from(x) + 0.5 - f64::from(from.0),
+                    f64::from(y) + 0.5 - f64::from(from.1),
+                );
+                let t = if distance <= f64::EPSILON {
+                    0.0
+                } else if style.radial {
+                    (px * px + py * py).sqrt() / distance.sqrt()
+                } else {
+                    (px * dx + py * dy) / distance
+                };
+                let t = t.clamp(0.0, 1.0);
+                let a = f64::from(style.start[3]) * (1.0 - t);
+                let b = f64::from(style.end[3]) * t;
+                let mut color = [0; 4];
+                let alpha = a + b;
+                if alpha > 0.0 {
+                    for (c, channel) in color[..3].iter_mut().enumerate() {
+                        *channel = ((f64::from(style.start[c]) * a + f64::from(style.end[c]) * b)
+                            / alpha)
+                            .round()
+                            .clamp(0.0, 255.0) as u8;
+                    }
+                    color[3] = alpha.round().clamp(0.0, 255.0) as u8;
+                }
+                let i = y as usize * self.width as usize + x as usize;
+                output[i] = blend(output[i], color, 255);
+            }
+        }
     }
 
     pub fn preview_move(&mut self, dx: i32, dy: i32, copy: bool, selection_only: bool) {

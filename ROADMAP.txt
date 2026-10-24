@@ -13,7 +13,8 @@ Development roadmap
 [ ] Additional selection shapes, boolean operations and free transforms.
 [x] Eight layer blend modes with project persistence.
 [x] Brightness/contrast, saturation, grayscale, sepia and box blur previews.
-[ ] Additional effects and gradient tools.
+[x] Linear and radial gradients.
+[ ] Additional effects.
 [ ] Background processing, recovery and large-document performance.
 [ ] Desktop integration, accessibility, packaging and release validation.
 
