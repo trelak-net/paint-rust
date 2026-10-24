@@ -1,0 +1,19 @@
+src/eq.rs
+// Copyright 2014-2020 Optimal Computing (NZ) Ltd.
+// Licensed under the MIT license.  See LICENSE for details.
+
+src/lib.rs
+// Copyright 2014-2020 Optimal Computing (NZ) Ltd.
+// Licensed under the MIT license.  See LICENSE for details.
+
+src/ratio.rs
+// Copyright 2014-2020 Optimal Computing (NZ) Ltd.
+// Licensed under the MIT license.  See LICENSE for details.
+
+src/ulps.rs
+// Copyright 2014-2020 Optimal Computing (NZ) Ltd.
+// Licensed under the MIT license.  See LICENSE for details.
+
+src/ulps_eq.rs
+// Copyright 2014-2020 Optimal Computing (NZ) Ltd.
+// Licensed under the MIT license.  See LICENSE for details.

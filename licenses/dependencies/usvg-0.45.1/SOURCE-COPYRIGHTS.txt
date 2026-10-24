@@ -1,0 +1,119 @@
+src/lib.rs
+// Copyright 2018 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/main.rs
+// Copyright 2018 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/parser/clippath.rs
+// Copyright 2018 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/parser/converter.rs
+// Copyright 2018 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/parser/filter.rs
+// Copyright 2022 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/parser/image.rs
+// Copyright 2018 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/parser/marker.rs
+// Copyright 2018 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/parser/mask.rs
+// Copyright 2018 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/parser/mod.rs
+// Copyright 2018 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/parser/options.rs
+// Copyright 2018 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/parser/paint_server.rs
+// Copyright 2018 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/parser/shapes.rs
+// Copyright 2018 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/parser/style.rs
+// Copyright 2018 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/parser/svgtree/mod.rs
+// Copyright 2021 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/parser/svgtree/names.rs
+// Copyright 2019 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/parser/svgtree/parse.rs
+// Copyright 2021 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/parser/svgtree/text.rs
+// Copyright 2021 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/parser/switch.rs
+// Copyright 2018 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/parser/text.rs
+// Copyright 2019 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/parser/units.rs
+// Copyright 2019 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/parser/use_node.rs
+// Copyright 2019 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/text/colr.rs
+// Copyright 2024 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/text/flatten.rs
+// Copyright 2022 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/text/layout.rs
+// Copyright 2022 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/text/mod.rs
+// Copyright 2024 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/tree/filter.rs
+// Copyright 2018 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/tree/geom.rs
+// Copyright 2018 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/tree/mod.rs
+// Copyright 2019 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/tree/text.rs
+// Copyright 2018 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/writer.rs
+// Copyright 2023 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT

@@ -1,0 +1,86 @@
+src/dash.rs
+// Copyright 2014 Google Inc.
+// Copyright 2020 Yevhenii Reizner
+//
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+src/f32x2_t.rs
+// Copyright 2020 Yevhenii Reizner
+//
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+src/f32x4_t.rs
+// Copyright 2020 Yevhenii Reizner
+//
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+src/floating_point.rs
+// Copyright 2006 The Android Open Source Project
+// Copyright 2020 Yevhenii Reizner
+//
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+src/lib.rs
+// Copyright 2006 The Android Open Source Project
+// Copyright 2020 Yevhenii Reizner
+//
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+src/path.rs
+// Copyright 2006 The Android Open Source Project
+// Copyright 2020 Yevhenii Reizner
+//
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+src/path_builder.rs
+// Copyright 2006 The Android Open Source Project
+// Copyright 2020 Yevhenii Reizner
+//
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+src/path_geometry.rs
+// Copyright 2006 The Android Open Source Project
+// Copyright 2020 Yevhenii Reizner
+//
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+src/rect.rs
+// Copyright 2020 Yevhenii Reizner
+//
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+src/scalar.rs
+// Copyright 2006 The Android Open Source Project
+// Copyright 2020 Yevhenii Reizner
+//
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+src/size.rs
+// Copyright 2020 Yevhenii Reizner
+//
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+src/stroker.rs
+// Copyright 2008 The Android Open Source Project
+// Copyright 2020 Yevhenii Reizner
+//
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+src/transform.rs
+// Copyright 2006 The Android Open Source Project
+// Copyright 2020 Yevhenii Reizner
+//
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.

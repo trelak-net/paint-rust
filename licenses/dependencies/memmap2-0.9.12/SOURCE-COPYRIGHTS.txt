@@ -1,0 +1,89 @@
+src/lib.rs
+/// Populate (prefault) page tables for a mapping.
+    ///
+    /// For a file mapping, this causes read-ahead on the file. This will help to reduce blocking on page faults later.
+    ///
+    /// This option corresponds to the `MAP_POPULATE` flag on Linux. It has no effect on Windows.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use memmap2::MmapOptions;
+    /// use std::fs::File;
+    ///
+    /// # fn main() -> std::io::Result<()> {
+    /// let file = File::open("LICENSE-MIT")?;
+    ///
+    /// let mmap = unsafe {
+    ///     MmapOptions::new().populate().map(&file)?
+    /// };
+    ///
+    /// assert_eq!(&b"Copyright"[..], &mmap[..9]);
+    /// # Ok(())
+    /// # }
+    /// ```
+
+/// Do not reserve swap space for the memory map.
+    ///
+    /// By default, platforms may reserve swap space for memory maps.
+    /// This guarantees that a write to the mapped memory will succeed, even if physical memory is exhausted.
+    /// Otherwise, the write to memory could fail (on Linux with a segfault).
+    ///
+    /// This option requests that no swap space will be allocated for the memory map,
+    /// which can be useful for extremely large maps that are only written to sparsely.
+    ///
+    /// This option is currently supported on Linux, Android, Apple platforms (macOS, iOS, visionOS, etc.), NetBSD, Solaris and Illumos.
+    /// On those platforms, this option corresponds to the `MAP_NORESERVE` flag.
+    /// On Linux, this option is ignored if [`vm.overcommit_memory`](https://www.kernel.org/doc/Documentation/vm/overcommit-accounting) is set to 2.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use memmap2::MmapOptions;
+    /// use std::fs::File;
+    ///
+    /// # fn main() -> std::io::Result<()> {
+    /// let file = File::open("LICENSE-MIT")?;
+    ///
+    /// let mmap = unsafe {
+    ///     MmapOptions::new().no_reserve_swap().map_copy(&file)?
+    /// };
+    ///
+    /// assert_eq!(&b"Copyright"[..], &mmap[..9]);
+    /// # Ok(())
+    /// # }
+    /// ```
+
+/// Do not probe the file handle for the widest supported protection
+    /// level when creating the mapping.
+    ///
+    /// This option only has an effect on Windows. There, by default,
+    /// creating a mapping issues up to two extra `CreateFileMappingW` calls
+    /// to discover whether the handle supports write and/or execute access,
+    /// so that the underlying section is created with the widest protection
+    /// the handle supports and the mapping can later be transitioned, e.g.
+    /// with [`Mmap::make_mut()`].
+    ///
+    /// With this option set, the section and view are created with exactly
+    /// the protection the mapping type requires (e.g. `PAGE_READONLY` and
+    /// `FILE_MAP_READ` for [`map()`][MmapOptions::map]). This guarantees a
+    /// read-only mapping never creates a writable section on the file, but
+    /// transitioning the returned mapping to a wider protection will fail.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use memmap2::MmapOptions;
+    /// use std::fs::File;
+    ///
+    /// # fn main() -> std::io::Result<()> {
+    /// let file = File::open("LICENSE-MIT")?;
+    ///
+    /// let mmap = unsafe {
+    ///     MmapOptions::new().no_probe_handle().map(&file)?
+    /// };
+    ///
+    /// assert_eq!(&b"Copyright"[..], &mmap[..9]);
+    /// # Ok(())
+    /// # }
+    /// ```

@@ -1,0 +1,2 @@
+src/parse.rs
+// parse the copyright

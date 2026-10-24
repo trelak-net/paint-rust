@@ -1,0 +1,87 @@
+examples/custom_href_resolver.rs
+// Copyright 2022 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+examples/draw_bboxes.rs
+// Copyright 2017 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+examples/minimal.rs
+// Copyright 2017 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/clip.rs
+// Copyright 2019 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/filter/box_blur.rs
+// Copyright 2020 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/filter/color_matrix.rs
+// Copyright 2020 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/filter/component_transfer.rs
+// Copyright 2020 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/filter/composite.rs
+// Copyright 2020 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/filter/convolve_matrix.rs
+// Copyright 2020 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/filter/displacement_map.rs
+// Copyright 2020 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/filter/iir_blur.rs
+// Copyright 2020 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/filter/lighting.rs
+// Copyright 2020 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/filter/mod.rs
+// Copyright 2018 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/filter/morphology.rs
+// Copyright 2020 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/filter/turbulence.rs
+// Copyright 2020 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/geom.rs
+// Copyright 2023 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/image.rs
+// Copyright 2018 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/lib.rs
+// Copyright 2017 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/main.rs
+// Copyright 2020 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/mask.rs
+// Copyright 2019 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/path.rs
+// Copyright 2019 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/render.rs
+// Copyright 2018 the Resvg Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT

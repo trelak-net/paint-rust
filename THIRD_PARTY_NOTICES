@@ -22,7 +22,26 @@ System fonts are loaded from the host and are not copied into this repository.
 
 Rust dependencies
 -----------------
-Cargo.lock records exact dependency versions. Dependencies retain their upstream
-licenses and notices. This file currently records artwork and bundled fonts;
-it is not a complete binary-distribution license inventory. A distributable
-package must additionally include the required notices for its resolved libraries.
+The Linux inventory in licenses/dependencies/INDEX.json records the active normal
+and build dependencies, declared license expressions, authors, source locations
+and checksums of collected notices. Each package has its own notice directory.
+Pinned upstream notices supplement crates that omit license texts from their
+published package. Their source revisions and checksums are recorded in
+licenses/upstream/SOURCES.json. Source comment attributions are preserved where
+present, including SPDX copyright headers.
+
+The Rust standard library notices are included in
+licenses/dependencies/rust/COPYRIGHT-library.html. The index records the compiler
+version used to collect them. Native system libraries are supplied by the host;
+they are not bundled by the user-local installer.
+
+Regenerate after changing Cargo.lock or the compiler:
+    python3 scripts/dependency_notices.py
+Verify before packaging:
+    python3 scripts/dependency_notices.py --check
+These commands use the local Cargo cache with locked, offline resolution. The
+inventory covers x86_64-unknown-linux-gnu by default; a different target requires
+regeneration with --target and review of that target's native dependencies.
+The installer includes this entire licenses directory. Collection preserves
+upstream notices; it does not certify license compatibility or cover libraries
+added by an external packaging system.

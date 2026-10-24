@@ -382,3 +382,12 @@ translation to one axis, preserves the current scale ratio, or snaps rotation to
 reach it. Preview requests coalesce during dragging, and canvas gestures cannot
 paint while the transform dialog is active. Numeric controls remain available for
 small or clipped transform boxes.
+
+Dependency notices
+------------------
+The Linux distribution includes an indexed copy of active Cargo dependency
+notices and Rust standard library notices. Before packaging, run:
+    python3 scripts/dependency_notices.py --check
+After updating dependencies or the compiler, regenerate with the same command
+without --check and review the changed licenses. See THIRD_PARTY_NOTICES for
+scope, provenance and other-target limitations.

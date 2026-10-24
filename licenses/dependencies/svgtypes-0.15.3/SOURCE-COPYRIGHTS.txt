@@ -1,0 +1,83 @@
+src/angle.rs
+// Copyright 2018 the SVG Types Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/aspect_ratio.rs
+// Copyright 2018 the SVG Types Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/color.rs
+// Copyright 2021 the SVG Types Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/colors.rs
+// Copyright 2021 the SVG Types Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/directional_position.rs
+// Copyright 2023 the SVG Types Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/enable_background.rs
+// Copyright 2021 the SVG Types Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/error.rs
+// Copyright 2018 the SVG Types Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/filter_functions.rs
+// Copyright 2021 the SVG Types Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/font.rs
+// Copyright 2024 the SVG Types Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/funciri.rs
+// Copyright 2021 the SVG Types Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/length.rs
+// Copyright 2018 the SVG Types Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/lib.rs
+// Copyright 2018 the SVG Types Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/number.rs
+// Copyright 2018 the SVG Types Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/paint.rs
+// Copyright 2018 the SVG Types Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/paint_order.rs
+// Copyright 2022 the SVG Types Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/path.rs
+// Copyright 2021 the SVG Types Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/points.rs
+// Copyright 2021 the SVG Types Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/stream.rs
+// Copyright 2018 the SVG Types Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/transform.rs
+// Copyright 2021 the SVG Types Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/transform_origin.rs
+// Copyright 2023 the SVG Types Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+src/viewbox.rs
+// Copyright 2018 the SVG Types Authors
+// SPDX-License-Identifier: Apache-2.0 OR MIT

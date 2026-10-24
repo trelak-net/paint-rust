@@ -1,0 +1,6 @@
+src/desktop/usb.rs
+// Copyright (C) 2024-2025 GNOME Foundation
+//
+// Authors:
+//     Hubert Figuière <hub@figuiere.net>
+//
