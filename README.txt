@@ -188,12 +188,12 @@ Escape restores the previous selection. Brush, eraser, fill, shapes, invert and
 delete respect rectangular bounds. Crop affects every layer and restores geometry
 and the selection on undo. Selections are session-local, not project data.
 
-Geometry validation: 34 tests pass. Image resizing offers nearest-neighbor and
-premultiplied-alpha bilinear sampling. Canvas expansion is transparent; anchor
+Geometry validation: 34 tests pass. Image resizing offers nearest-neighbor sampling,
+premultiplied-alpha area reduction and bilinear enlargement. Canvas expansion is transparent; anchor
 selection controls cropping/placement. Rotation and mirroring preserve exact pixel
 values. Geometry changes affect every layer and clear the selection; undo restores
 its previous bounds. Resampling currently interpolates encoded RGB values rather
-than linear-light colors, and bilinear downsampling is not an area filter.
+than linear-light colors, and mixed-axis resizing (one dimension growing, one shrinking) uses bilinear sampling.
 
 Clipboard validation: 39 tests pass, including injected clipboard failures, native
 cut/paste input events, selected-region copying and one-step paste undo. Cut only
@@ -287,3 +287,9 @@ earlier edits and the saved revision. Failed jobs leave the document unchanged.
 Unchanged results retain selection and history. Geometry jobs currently block
 editing and close requests, but keep the window repainting; cancellation remains
 to be implemented. The installer has four additional Python checks.
+
+Area reduction validation: 83 Rust tests pass. Smooth reduction with neither axis
+growing integrates pixel coverage across each destination footprint. Fractional
+edge coverage is weighted and colors use premultiplied alpha to prevent invisible
+RGB from bleeding into the result. Nearest-neighbor remains available. Filtering
+uses encoded RGB, not linear-light color.

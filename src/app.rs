@@ -998,7 +998,8 @@ impl Editor {
                         });
                     ui.label("New canvas area is transparent on every layer.");
                 } else {
-                    ui.checkbox(&mut dialog.smooth, "Smooth resampling (bilinear)");
+                    ui.checkbox(&mut dialog.smooth, "Smooth resampling");
+                    ui.small("Area averaging when reducing; bilinear when enlarging.");
                 }
                 ui.horizontal(|ui| {
                     if ui.button("Apply").clicked() {

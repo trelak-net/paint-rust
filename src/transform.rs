@@ -53,6 +53,9 @@ pub fn canvas(source: &[Pixel], old: (u32, u32), new: (u32, u32), anchor: usize)
 }
 
 pub fn resize(source: &[Pixel], old: (u32, u32), new: (u32, u32), smooth: bool) -> Vec<Pixel> {
+    if smooth && new.0 <= old.0 && new.1 <= old.1 && new != old {
+        return downsample_area(source, old, new);
+    }
     let mut output = vec![[0; 4]; new.0 as usize * new.1 as usize];
     for y in 0..new.1 {
         for x in 0..new.0 {
@@ -90,6 +93,42 @@ pub fn resize(source: &[Pixel], old: (u32, u32), new: (u32, u32), smooth: bool) 
                     dst[c] = (rgba[c] / rgba[3]).round().clamp(0.0, 255.0) as u8;
                 }
                 dst[3] = rgba[3].round().clamp(0.0, 255.0) as u8;
+            }
+        }
+    }
+    output
+}
+
+fn downsample_area(source: &[Pixel], old: (u32, u32), new: (u32, u32)) -> Vec<Pixel> {
+    let mut output = vec![[0; 4]; new.0 as usize * new.1 as usize];
+    let scale_x = f64::from(old.0) / f64::from(new.0);
+    let scale_y = f64::from(old.1) / f64::from(new.1);
+    for y in 0..new.1 {
+        let top = f64::from(y) * scale_y;
+        let bottom = f64::from(y + 1) * scale_y;
+        for x in 0..new.0 {
+            let left = f64::from(x) * scale_x;
+            let right = f64::from(x + 1) * scale_x;
+            let mut sum = [0.0; 4];
+            for sy in top.floor() as u32..(bottom.ceil() as u32).min(old.1) {
+                let weight_y = (bottom.min(f64::from(sy + 1)) - top.max(f64::from(sy))).max(0.0);
+                for sx in left.floor() as u32..(right.ceil() as u32).min(old.0) {
+                    let weight_x =
+                        (right.min(f64::from(sx + 1)) - left.max(f64::from(sx))).max(0.0);
+                    let pixel = source[sy as usize * old.0 as usize + sx as usize];
+                    let alpha = f64::from(pixel[3]) * weight_x * weight_y;
+                    sum[3] += alpha;
+                    for c in 0..3 {
+                        sum[c] += f64::from(pixel[c]) * alpha;
+                    }
+                }
+            }
+            if sum[3] > 0.0 {
+                let pixel = &mut output[y as usize * new.0 as usize + x as usize];
+                for c in 0..3 {
+                    pixel[c] = (sum[c] / sum[3]).round().clamp(0.0, 255.0) as u8;
+                }
+                pixel[3] = (sum[3] / (scale_x * scale_y)).round().clamp(0.0, 255.0) as u8;
             }
         }
     }

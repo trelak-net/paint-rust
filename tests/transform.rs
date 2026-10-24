@@ -141,3 +141,39 @@ fn unchanged_background_geometry_preserves_selection_and_pending_edit_is_rejecte
     assert_eq!((doc.width, doc.height), (2, 2));
     assert!(doc.editing());
 }
+
+#[test]
+fn area_reduction_keeps_thin_features_that_center_sampling_misses() {
+    let mut pixels = vec![[0, 0, 0, 255]; 9];
+    pixels[0] = [255; 4];
+    let mut doc = Document::from_pixels(3, 3, pixels).unwrap();
+    doc.resize_image(1, 1, true).unwrap();
+    assert_eq!(doc.pixels(), &[[28, 28, 28, 255]]);
+    doc.undo();
+    doc.resize_image(1, 1, false).unwrap();
+    assert_eq!(doc.pixels(), &[[0, 0, 0, 255]]);
+}
+
+#[test]
+fn area_reduction_weights_fractional_coverage_and_transparent_colors() {
+    let mut doc = Document::from_pixels(
+        3,
+        1,
+        vec![[255, 0, 0, 255], [0, 255, 0, 0], [0, 0, 255, 255]],
+    )
+    .unwrap();
+    doc.resize_image(2, 1, true).unwrap();
+    assert_eq!(doc.pixels(), &[[255, 0, 0, 170], [0, 0, 255, 170]]);
+    doc.undo();
+    doc.resize_image(1, 1, true).unwrap();
+    assert_eq!(doc.pixels(), &[[128, 0, 128, 170]]);
+}
+
+#[test]
+fn area_reduction_preserves_uniform_color_for_non_integer_scales() {
+    for (old, new) in [((7, 5), (3, 2)), ((17, 11), (4, 7)), ((8, 3), (8, 1))] {
+        let mut doc = Document::new(old.0, old.1, [12, 90, 234, 137]).unwrap();
+        doc.resize_image(new.0, new.1, true).unwrap();
+        assert!(doc.pixels().iter().all(|p| *p == [12, 90, 234, 137]));
+    }
+}
