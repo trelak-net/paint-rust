@@ -125,7 +125,7 @@ Current boundaries
 This is an initial application, not a complete graphics suite. Pressure-sensitive
 input, selection boolean operations and free transforms are not implemented yet.
 File decoding/encoding, recovery copies, effect previews and image/canvas resizing,
-rotation and mirroring run in background workers. Compositing and fill still run on the UI thread;
+rotation, mirroring and layer compositing run in background workers. Fill still runs on the UI thread;
 large operations can pause the interface. Canvas updates upload the full
 image texture. Metadata, orientation tags and embedded color profiles are not
 preserved or interpreted. PNG is the only raster export format. A user-local Linux installation helper is available; there is no signed
@@ -224,8 +224,8 @@ Adjustment validation: 51 tests pass. A dedicated preview worker coalesces reque
 cancels obsolete calculations and publishes only the latest generation. Apply is
 disabled until that generation is ready. Cancel/Escape restores original pixels.
 Effects use a frozen active-layer buffer and respect the selection. The blur uses
-a separable box kernel and premultiplied alpha. Full layer compositing and texture
-upload still happen on the UI thread; this is not yet the final performance path.
+a separable box kernel and premultiplied alpha. Layer compositing now runs in a background worker; texture upload remains on the
+UI thread and still transfers the full image.
 
 Move validation: 54 tests pass. Move uses a frozen source region, so overlapping
 destinations cannot smear the input. Ctrl copies instead of clearing the source;
@@ -309,3 +309,10 @@ Keyboard movement validation: 89 Rust tests pass. The Move tool accepts arrow
 keys for pixel nudging and uses the selection-only toggle for bounds movement.
 Each pixel-changing nudge is undoable; selection-only movement remains clean.
 Text fields keep their own arrow-key handling.
+
+Canvas worker validation: 91 Rust tests pass. Compositing and conversion to display
+colors run on a dedicated worker with coalesced requests and cancellation checks.
+Generation checks discard stale results. The canvas displays the last completed
+preview while a new one is computed; results from an older image size are hidden.
+Texture upload remains on the UI thread. A native release smoke test confirmed
+canvas display and the net.trelak.PaintRust window class.

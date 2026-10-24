@@ -211,3 +211,16 @@ fn import_clips_at_selection_origin_and_rejects_invalid_input_atomically() {
     assert!(!doc.dirty());
     assert_eq!(doc.layers().len(), 1);
 }
+
+#[test]
+fn cancellable_composite_matches_normal_rendering_and_honors_cancellation() {
+    use std::sync::atomic::AtomicBool;
+    let mut doc = Document::new(3, 3, [20, 40, 60, 120]).unwrap();
+    doc.add_layer(true);
+    doc.set_layer_style("Top".into(), 100, paint_rust::document::BlendMode::Screen);
+    assert_eq!(
+        doc.composite_cancellable(&AtomicBool::new(false)).unwrap(),
+        doc.composite()
+    );
+    assert!(doc.composite_cancellable(&AtomicBool::new(true)).is_none());
+}

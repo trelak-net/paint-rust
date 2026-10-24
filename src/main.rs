@@ -1,5 +1,6 @@
 mod app;
 mod appearance;
+mod canvas_renderer;
 mod clipboard;
 mod icons;
 mod preview;

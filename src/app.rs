@@ -63,6 +63,7 @@ pub struct Editor {
     after_save: Option<Action>,
     document: Document,
     texture: Option<TextureHandle>,
+    canvas_renderer: crate::canvas_renderer::CanvasRenderer,
     texture_dirty: bool,
     tool: Tool,
     color: Color32,
@@ -132,6 +133,7 @@ impl Editor {
             after_save: None,
             document: Document::new(960, 640, [255; 4]).unwrap(),
             texture: None,
+            canvas_renderer: crate::canvas_renderer::CanvasRenderer::new(ctx.clone()),
             texture_dirty: true,
             tool: Tool::Brush,
             color: Color32::from_rgb(42, 113, 224),
@@ -589,18 +591,7 @@ impl Editor {
     }
 
     fn canvas(&mut self, ui: &mut egui::Ui) {
-        if self.texture_dirty {
-            let bytes: Vec<u8> = self
-                .document
-                .composite()
-                .iter()
-                .flatten()
-                .copied()
-                .collect();
-            let image = egui::ColorImage::from_rgba_unmultiplied(
-                [self.document.width as usize, self.document.height as usize],
-                &bytes,
-            );
+        if let Some(image) = self.canvas_renderer.poll() {
             if let Some(texture) = &mut self.texture {
                 texture.set(image, TextureOptions::NEAREST);
             } else {
@@ -610,6 +601,9 @@ impl Editor {
                     TextureOptions::NEAREST,
                 ));
             }
+        }
+        if self.texture_dirty {
+            self.canvas_renderer.request(&self.document);
             self.texture_dirty = false;
         }
         let viewport = ui.available_rect_before_wrap();
@@ -678,7 +672,10 @@ impl Editor {
                         }
                     }
                 }
-                if let Some(texture) = &self.texture {
+                if let Some(texture) = &self.texture
+                    && texture.size()
+                        == [self.document.width as usize, self.document.height as usize]
+                {
                     painter.image(
                         texture.id(),
                         rect,
@@ -1618,6 +1615,9 @@ impl Editor {
                     self.document.height,
                     self.zoom * 100.0
                 ));
+                if self.canvas_renderer.pending {
+                    ui.spinner().on_hover_text("Updating canvas preview");
+                }
                 ui.separator();
                 ui.label(&self.status);
             });

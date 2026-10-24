@@ -608,19 +608,36 @@ impl Document {
         self.commit();
     }
     pub fn composite(&self) -> Vec<Pixel> {
+        self.composite_cancellable(&std::sync::atomic::AtomicBool::new(false))
+            .expect("uncancelled composite")
+    }
+
+    pub fn composite_cancellable(
+        &self,
+        cancel: &std::sync::atomic::AtomicBool,
+    ) -> Option<Vec<Pixel>> {
+        use std::sync::atomic::Ordering;
+        if cancel.load(Ordering::Relaxed) {
+            return None;
+        }
         let mut pixels = vec![[0; 4]; self.width as usize * self.height as usize];
         let mut first = true;
         for layer in self.layers.iter().filter(|l| l.visible && l.opacity != 0) {
-            if first && layer.opacity == 255 {
-                pixels.copy_from_slice(&layer.pixels);
-            } else {
-                for (dst, src) in pixels.iter_mut().zip(layer.pixels.iter()) {
-                    *dst = blend_layer(*dst, *src, layer.opacity, layer.blend_mode);
+            for (output, source) in pixels.chunks_mut(4096).zip(layer.pixels.chunks(4096)) {
+                if cancel.load(Ordering::Relaxed) {
+                    return None;
+                }
+                if first && layer.opacity == 255 {
+                    output.copy_from_slice(source);
+                } else {
+                    for (dst, src) in output.iter_mut().zip(source) {
+                        *dst = blend_layer(*dst, *src, layer.opacity, layer.blend_mode);
+                    }
                 }
             }
             first = false;
         }
-        pixels
+        Some(pixels)
     }
     pub fn is_flat_raster(&self) -> bool {
         self.layers.len() == 1 && self.layers[0].visible && self.layers[0].opacity == 255
