@@ -427,6 +427,50 @@ impl Editor {
         if ctx.wants_keyboard_input() {
             return;
         }
+        if self.tool == Tool::Move && !self.document.editing() && self.last_point.is_none() {
+            let modifiers = ctx.input(|i| i.modifiers);
+            if !modifiers.alt {
+                let delta = ctx.input_mut(|i| {
+                    let mut delta = (0, 0);
+                    for (key, dx, dy) in [
+                        (Key::ArrowLeft, -1, 0),
+                        (Key::ArrowRight, 1, 0),
+                        (Key::ArrowUp, 0, -1),
+                        (Key::ArrowDown, 0, 1),
+                    ] {
+                        if i.consume_key(modifiers, key) {
+                            delta.0 += dx;
+                            delta.1 += dy;
+                        }
+                    }
+                    delta
+                });
+                if delta != (0, 0) {
+                    let step = if modifiers.shift { 10 } else { 1 };
+                    self.document.begin(if self.move_selection_only {
+                        "Nudge selection"
+                    } else if modifiers.command {
+                        "Copy pixels"
+                    } else {
+                        "Nudge pixels"
+                    });
+                    self.document.preview_move(
+                        delta.0 * step,
+                        delta.1 * step,
+                        modifiers.command,
+                        self.move_selection_only,
+                    );
+                    let changed = self.document.commit();
+                    self.texture_dirty |= changed;
+                    self.status = if self.move_selection_only {
+                        "Moved selection bounds".into()
+                    } else {
+                        "Moved selected pixels".into()
+                    };
+                    return;
+                }
+            }
+        }
         let command = ctx.input_mut(|i| {
             if i.events.iter().any(|event| matches!(event,egui::Event::Copy)) { Some(11)
             } else if i.events.iter().any(|event| matches!(event,egui::Event::Cut)) { Some(12)
@@ -1624,7 +1668,8 @@ impl Editor {
                         }
                         if self.tool == Tool::Move {
                             ui.checkbox(&mut self.move_selection_only, "Move selection only");
-                            ui.small("Ctrl: copy pixels. Shift: constrain direction.");
+                            ui.small("Drag: Shift constrains direction; Ctrl copies pixels.");
+                            ui.small("Arrows: move 1 px. Shift+arrows: move 10 px.");
                         }
                         if matches!(self.tool, Tool::Rectangle | Tool::Ellipse) {
                             ui.checkbox(&mut self.shape_filled, "Filled shape");
@@ -2405,5 +2450,60 @@ mod tests {
         assert_eq!((selected.width, selected.height), (100, 80));
         assert!(!editor.document.dirty());
         assert!(!editor.document.can_undo());
+    }
+    #[test]
+    fn arrow_nudges_move_copy_and_selection_bounds_with_undo() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.document = Document::new(20, 5, [0; 4]).unwrap();
+        editor.document.begin("Seed");
+        editor.document.fill(0, 0, [200, 50, 30, 255]);
+        editor.document.commit();
+        editor.document.set_selection(Some(Selection {
+            ellipse: None,
+            x: 1,
+            y: 1,
+            width: 1,
+            height: 1,
+        }));
+        editor.document.mark_saved();
+        editor.tool = Tool::Move;
+        let key = |modifiers| egui::Event::Key {
+            key: Key::ArrowRight,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers,
+        };
+        frame(&mut editor, &ctx, vec![]);
+        frame(&mut editor, &ctx, vec![key(egui::Modifiers::NONE)]);
+        assert_eq!(editor.document.selection().unwrap().x, 2);
+        assert_eq!(editor.document.pixels()[21], [0; 4]);
+        editor.document.undo();
+        assert_eq!(editor.document.selection().unwrap().x, 1);
+        assert!(!editor.document.dirty());
+        editor.move_selection_only = true;
+        let input = egui::RawInput {
+            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1180.0, 800.0))),
+            focused: true,
+            modifiers: egui::Modifiers::SHIFT,
+            events: vec![key(egui::Modifiers::SHIFT)],
+            ..Default::default()
+        };
+        let _ = ctx.run(input, |ctx| editor.show(ctx));
+        assert_eq!(editor.document.selection().unwrap().x, 11);
+        assert!(!editor.document.dirty());
+        editor.move_selection_only = false;
+        let input = egui::RawInput {
+            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1180.0, 800.0))),
+            focused: true,
+            modifiers: egui::Modifiers::COMMAND,
+            events: vec![key(egui::Modifiers::COMMAND)],
+            ..Default::default()
+        };
+        let _ = ctx.run(input, |ctx| editor.show(ctx));
+        assert_eq!(editor.document.selection().unwrap().x, 12);
+        assert_eq!(editor.document.pixels()[31], [200, 50, 30, 255]);
+        assert_eq!(editor.document.pixels()[32], [200, 50, 30, 255]);
     }
 }

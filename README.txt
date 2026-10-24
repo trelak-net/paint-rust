@@ -85,6 +85,7 @@ L: line                      R: rectangle
 O: ellipse                   S: rectangular selection
 T: text                      M: move pixels/selection
 G: gradient                  X: swap primary/secondary colors
+Move tool: arrows move 1 px; Shift+arrows move 10 px; Ctrl+arrows copy pixels
 Ctrl+A: select all           Ctrl+Shift+A: deselect
 Delete: clear selected pixels (or the whole active layer without a selection)
 Ctrl+Shift+X: crop all layers to the selection
@@ -303,3 +304,8 @@ pixels and the ellipse's original geometry when clipped at canvas edges. Undo
 and cancellation restore the prior selection. Crop uses its rectangular bounding
 box. Selection edges use pixel-center coverage without feathering. Rapid pointer
 release gestures are finalized even before the UI recognizes a drag threshold.
+
+Keyboard movement validation: 89 Rust tests pass. The Move tool accepts arrow
+keys for pixel nudging and uses the selection-only toggle for bounds movement.
+Each pixel-changing nudge is undoable; selection-only movement remains clean.
+Text fields keep their own arrow-key handling.
