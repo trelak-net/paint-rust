@@ -425,6 +425,31 @@ impl Editor {
         self.texture_dirty = true;
     }
 
+    fn navigate_history(&mut self, steps: usize, redo: bool) {
+        if self.file_job.is_some() || self.text_dialog.is_some() || self.effect_dialog.is_some() {
+            return;
+        }
+        self.finish_stroke();
+        let available = if redo {
+            self.document.redo_history().count()
+        } else {
+            self.document.history().count()
+        };
+        let count = steps.min(available);
+        for _ in 0..count {
+            if redo {
+                self.document.redo();
+            } else {
+                self.document.undo();
+            }
+        }
+        self.texture_dirty |= count > 0;
+        self.status = format!(
+            "{} {count} operation(s)",
+            if redo { "Redone" } else { "Undone" }
+        );
+    }
+
     fn shortcuts(&mut self, ctx: &egui::Context) {
         if ctx.wants_keyboard_input() {
             return;
@@ -1864,6 +1889,49 @@ impl Editor {
                 if !layer.visible {
                     ui.small("The active layer is hidden.");
                 }
+                ui.separator();
+                egui::CollapsingHeader::new("History").show(ui, |ui| {
+                    ui.small(format!(
+                        "{:.1} MiB retained",
+                        self.document.history_bytes() as f64 / (1024.0 * 1024.0)
+                    ));
+                    let undo: Vec<String> = self.document.history().map(str::to_owned).collect();
+                    let redo: Vec<String> =
+                        self.document.redo_history().map(str::to_owned).collect();
+                    let mut chosen = None;
+                    egui::ScrollArea::vertical()
+                        .id_salt("history-list")
+                        .max_height(160.0)
+                        .show(ui, |ui| {
+                            if undo.is_empty() && redo.is_empty() {
+                                ui.label("No edits yet");
+                            }
+                            for (index, label) in redo.iter().enumerate() {
+                                if ui
+                                    .button(format!("Redo {label}"))
+                                    .on_hover_text(format!("Redo {} operation(s)", index + 1))
+                                    .clicked()
+                                {
+                                    chosen = Some((index + 1, true));
+                                }
+                            }
+                            if !undo.is_empty() && !redo.is_empty() {
+                                ui.separator();
+                            }
+                            for (index, label) in undo.iter().enumerate() {
+                                if ui
+                                    .button(format!("Undo {label}"))
+                                    .on_hover_text(format!("Undo {} operation(s)", index + 1))
+                                    .clicked()
+                                {
+                                    chosen = Some((index + 1, false));
+                                }
+                            }
+                        });
+                    if let Some((steps, redo)) = chosen {
+                        self.navigate_history(steps, redo);
+                    }
+                });
             });
         egui::CentralPanel::default()
             .frame(
@@ -2554,5 +2622,31 @@ mod tests {
         assert!(editor.path.is_none());
         assert_eq!(std::fs::read(&path).unwrap(), b"previous data");
         assert_eq!(editor.status, "Cancelled: save project");
+    }
+    #[test]
+    fn history_navigation_restores_saved_revision_and_redoes_in_order() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.document = Document::new(3, 2, [10, 20, 30, 255]).unwrap();
+        editor.document.invert();
+        editor.document.mark_saved();
+        editor.document.add_layer(false);
+        editor.document.set_layer_properties("Detail".into(), 100);
+        editor.navigate_history(2, false);
+        assert!(!editor.document.dirty());
+        assert_eq!(editor.document.layers().len(), 1);
+        assert_eq!(
+            editor.document.redo_history().collect::<Vec<_>>(),
+            ["Add layer", "Layer properties"]
+        );
+        editor.navigate_history(2, true);
+        assert!(editor.document.dirty());
+        assert_eq!(editor.document.layers()[1].name, "Detail");
+        assert_eq!(editor.document.layers()[1].opacity, 100);
+        editor.navigate_history(usize::MAX, false);
+        assert_eq!(editor.document.pixels(), &[[10, 20, 30, 255]; 6]);
+        assert!(!editor.document.can_undo());
+        editor.document.invert();
+        assert!(!editor.document.can_redo());
     }
 }

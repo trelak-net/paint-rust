@@ -664,6 +664,13 @@ impl Document {
     pub fn history(&self) -> impl Iterator<Item = &str> {
         self.undo.iter().rev().map(|s| s.label.as_str())
     }
+    pub fn redo_history(&self) -> impl Iterator<Item = &str> {
+        self.redo
+            .iter()
+            .rev()
+            .map(|snapshot| snapshot.label.as_str())
+    }
+
     pub fn history_bytes(&self) -> usize {
         let mut buffers = HashSet::new();
         self.undo

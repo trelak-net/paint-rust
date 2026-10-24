@@ -64,6 +64,7 @@ Features
 - Zoom from 10% to 400%, fit the canvas, and navigate with scrollbars.
 - Use Ctrl+wheel or a pinch gesture to zoom around the pointer; middle-drag to pan.
 - Undo/redo complete strokes and edits; cancel a stroke with Escape.
+- Expand History in the layer panel to undo or redo multiple operations at once.
 - Open PNG, JPEG, BMP and WebP; export a flattened RGBA PNG.
 - Add, duplicate, reorder, hide and delete layers; edit names, opacity and blend mode.
 - Flatten the visible image into one layer, with undo restoring every original layer.
@@ -324,3 +325,9 @@ output. A cancelled Save-before-Close/New/Open returns to the unsaved-changes
 choice. If replacement has already completed, the operation reports success.
 Cancellation is cooperative; an in-progress encoder or filesystem call can take
 time to reach its next checkpoint.
+
+History panel validation: 95 Rust tests pass. The panel lists retained undo and
+redo operations in traversal order and reports retained pixel-buffer memory.
+Choosing an entry traverses every operation through that entry. Saved revisions
+remain recognizable, and new edits invalidate the redo branch. History is bounded
+by the existing memory budget, so evicted operations are unavailable.
