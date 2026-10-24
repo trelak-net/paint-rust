@@ -731,7 +731,9 @@ impl Editor {
                 ));
             }
         }
-        if self.texture_dirty {
+        // Let an in-flight stroke preview finish; cancelling it every pointer
+        // frame can starve large composites and repeatedly clone the pixel buffer.
+        if self.texture_dirty && !(self.document.editing() && self.canvas_renderer.pending) {
             self.canvas_renderer.request(&self.document);
             self.texture_dirty = false;
         }
@@ -2306,6 +2308,29 @@ mod tests {
             pressed,
             modifiers: egui::Modifiers::NONE,
         }
+    }
+
+    #[test]
+    fn active_stroke_keeps_pending_preview_and_requests_latest_when_finished() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.document.begin("Stroke");
+        editor
+            .document
+            .stroke((1.0, 1.0), (5.0, 5.0), 2.0, [0; 4], false);
+        // Model a worker that has not completed at the next UI frame.
+        editor.canvas_renderer.pending = true;
+        editor.texture_dirty = true;
+        let _ = ctx.run(egui::RawInput::default(), |ctx| {
+            egui::CentralPanel::default().show(ctx, |ui| editor.canvas(ui));
+        });
+        assert!(editor.texture_dirty);
+        editor.document.commit();
+        let _ = ctx.run(egui::RawInput::default(), |ctx| {
+            egui::CentralPanel::default().show(ctx, |ui| editor.canvas(ui));
+        });
+        assert!(!editor.texture_dirty);
+        assert!(editor.canvas_renderer.pending);
     }
 
     #[test]

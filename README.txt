@@ -419,3 +419,19 @@ result is published. Flattening composites visible layers before changing the
 layer stack; cancellation during compositing leaves the original stack intact.
 Validation: 124 Rust tests and strict Clippy pass, including background publication,
 selection preservation, undo restoration and pre-cancelled document operations.
+
+Large-image preview scheduling and measurements
+----------------------------------------------
+During an active stroke, a pending canvas composite is allowed to complete before
+the next snapshot is requested. This avoids continuously cancelling slow previews
+and copying a whole shared layer buffer on every pointer frame. Finishing a stroke
+requests its latest state immediately.
+Run CPU measurements with:
+    cargo run --release --locked --example performance -- 4096
+On the development machine, four 4096 x 4096 layers with three Multiply blends
+took about 1.1 seconds to composite. A brush frame sharing a renderer snapshot
+took about 23 ms, while the following frame without a new snapshot took less than
+0.01 ms. These are CPU measurements, not GUI frame-rate guarantees. Full-texture
+uploads and full-image compositing remain; tiled rendering is not implemented.
+Validation: 125 Rust tests and strict Clippy pass, including preview scheduling
+while a stroke is active and publication after it ends.
