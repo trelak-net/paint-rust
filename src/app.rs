@@ -1343,8 +1343,8 @@ impl Editor {
                 .resizable(false)
                 .anchor(egui::Align2::CENTER_CENTER, Vec2::ZERO)
                 .show(ctx, |ui| {
-                    ui.label("Name");
-                    ui.text_edit_singleline(&mut name);
+                    let label = ui.label("Name");
+                    ui.text_edit_singleline(&mut name).labelled_by(label.id);
                     ui.add(egui::Slider::new(&mut opacity, 0..=255).text("Opacity"));
                     egui::ComboBox::from_label("Blend mode")
                         .selected_text(mode.name())
@@ -1383,13 +1383,14 @@ impl Editor {
             .anchor(egui::Align2::CENTER_CENTER, Vec2::ZERO)
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
-                    ui.label("Width");
+                    let label = ui.label("Width");
                     if ui
                         .add(
                             egui::DragValue::new(&mut dialog.width)
                                 .range(1..=16384)
                                 .suffix(" px"),
                         )
+                        .labelled_by(label.id)
                         .changed()
                         && dialog.lock_ratio
                     {
@@ -1399,13 +1400,14 @@ impl Editor {
                     }
                 });
                 ui.horizontal(|ui| {
-                    ui.label("Height");
+                    let label = ui.label("Height");
                     if ui
                         .add(
                             egui::DragValue::new(&mut dialog.height)
                                 .range(1..=16384)
                                 .suffix(" px"),
                         )
+                        .labelled_by(label.id)
                         .changed()
                         && dialog.lock_ratio
                     {
@@ -1489,11 +1491,14 @@ impl Editor {
                     .resizable(true)
                     .default_width(320.0)
                     .show(ctx, |ui| {
-                        let response = ui.add(
-                            egui::TextEdit::multiline(&mut dialog.content)
-                                .desired_rows(4)
-                                .char_limit(4096),
-                        );
+                        let label = ui.label("Text content");
+                        let response = ui
+                            .add(
+                                egui::TextEdit::multiline(&mut dialog.content)
+                                    .desired_rows(4)
+                                    .char_limit(4096),
+                            )
+                            .labelled_by(label.id);
                         if dialog.focus {
                             response.request_focus();
                             dialog.focus = false;
@@ -1502,7 +1507,11 @@ impl Editor {
                         changed |= ui
                             .add(egui::Slider::new(&mut dialog.size, 4.0..=256.0).text("Size (px)"))
                             .changed();
-                        changed |= ui.color_edit_button_srgba(&mut dialog.color).changed();
+                        let label = ui.label("Text color");
+                        changed |= ui
+                            .color_edit_button_srgba(&mut dialog.color)
+                            .labelled_by(label.id)
+                            .changed();
                         if changed {
                             dialog.preview.request_text(crate::preview::TextInput {
                                 font: dialog.font.clone(),
@@ -1567,10 +1576,10 @@ impl Editor {
                                         .custom_formatter(|v, _| format!("{:.0}%", v * 100.0)).text(label)).changed();
                                 }
                                 ui.horizontal(|ui| {
-                                    ui.label("Offset X");
-                                    changed |= ui.add(egui::DragValue::new(&mut parameters.offset_x).range(-16384.0..=16384.0).suffix(" px")).changed();
-                                    ui.label("Y");
-                                    changed |= ui.add(egui::DragValue::new(&mut parameters.offset_y).range(-16384.0..=16384.0).suffix(" px")).changed();
+                                    let label = ui.label("Offset X");
+                                    changed |= ui.add(egui::DragValue::new(&mut parameters.offset_x).range(-16384.0..=16384.0).suffix(" px")).labelled_by(label.id).changed();
+                                    let label = ui.label("Offset Y");
+                                    changed |= ui.add(egui::DragValue::new(&mut parameters.offset_y).range(-16384.0..=16384.0).suffix(" px")).labelled_by(label.id).changed();
                                 });
                                 changed |= ui.checkbox(&mut parameters.flip_x, "Flip horizontally").changed();
                                 changed |= ui.checkbox(&mut parameters.flip_y, "Flip vertically").changed();
@@ -1708,20 +1717,22 @@ impl Editor {
                 .anchor(egui::Align2::CENTER_CENTER, Vec2::ZERO)
                 .show(ctx, |ui| {
                     ui.horizontal(|ui| {
-                        ui.label("Width");
+                        let label = ui.label("Width");
                         ui.add(
                             egui::DragValue::new(&mut self.new_width)
                                 .range(1..=4096)
                                 .suffix(" px"),
-                        );
+                        )
+                        .labelled_by(label.id);
                     });
                     ui.horizontal(|ui| {
-                        ui.label("Height");
+                        let label = ui.label("Height");
                         ui.add(
                             egui::DragValue::new(&mut self.new_height)
                                 .range(1..=4096)
                                 .suffix(" px"),
-                        );
+                        )
+                        .labelled_by(label.id);
                     });
                     ui.checkbox(&mut self.transparent, "Transparent background");
                     ui.horizontal(|ui| {
@@ -1841,11 +1852,15 @@ impl Editor {
             .and_then(|p| p.file_name())
             .map(|s| s.to_string_lossy().into_owned())
             .unwrap_or_else(|| "Untitled".into());
-        ctx.send_viewport_cmd(egui::ViewportCommand::Title(format!(
+        let title = format!(
             "{}{} — Paint Rust",
             name,
             if self.document.dirty() { " *" } else { "" }
-        )));
+        );
+        ctx.accesskit_node_builder(egui::accesskit_root_id(), |node| {
+            node.set_label(title.clone())
+        });
+        ctx.send_viewport_cmd(egui::ViewportCommand::Title(title));
         egui::TopBottomPanel::top("toolbar").show(ctx, |ui| {
             if !enabled || self.gesture_preview.is_some() {
                 ui.disable();
@@ -2037,12 +2052,15 @@ impl Editor {
                 }
             });
             ui.horizontal(|ui| {
-                ui.label("Brush size");
-                ui.add(egui::Slider::new(&mut self.brush_size, 1.0..=128.0).suffix(" px"));
+                ui.add(
+                    egui::Slider::new(&mut self.brush_size, 1.0..=128.0)
+                        .suffix(" px")
+                        .text("Brush size"),
+                );
                 ui.separator();
-                ui.label("Zoom");
                 ui.add(
                     egui::Slider::new(&mut self.zoom, 0.1..=4.0)
+                        .text("Zoom")
                         .logarithmic(true)
                         .custom_formatter(|v, _| format!("{:.0}%", v * 100.0)),
                 );
@@ -2602,6 +2620,18 @@ mod tests {
             .platform_output
             .accesskit_update
             .expect("accessibility tree");
+        for (_, node) in &tree.nodes {
+            if matches!(
+                node.role(),
+                egui::accesskit::Role::Slider | egui::accesskit::Role::SpinButton
+            ) {
+                assert!(
+                    node.label().is_some() || !node.labelled_by().is_empty(),
+                    "Unlabelled numeric control: {:?}",
+                    node.role()
+                );
+            }
+        }
         let labels: Vec<_> = tree
             .nodes
             .iter()
@@ -2613,6 +2643,7 @@ mod tests {
                 .any(|label| label.starts_with("Image canvas,")),
             "{labels:?}"
         );
+        assert!(labels.contains(&"Untitled — Paint Rust"));
         assert!(
             labels.contains(&"Set primary color to #000000"),
             "{labels:?}"

@@ -507,22 +507,29 @@ stale-base protection and regional/full compositing parity for all blend modes.
 
 Runtime accessibility audit status
 ----------------------------------
-The system screen-reader audit and related AT-SPI runtime fixes are intentionally
-deferred until all other roadmap tasks are complete. They do not block other
-implementation or distribution-validation work. The existing native bridge and
-accessibility labels remain in place, and the headless accessibility-tree test
-passes. The runtime audit encountered the following environment issue:
-in an isolated dbus-run-session, automatic org.a11y.Bus activation
-failed with Permission denied. Starting its launcher directly allowed the bus to
-start, but org.a11y.atspi.Registry activation then failed because the isolated
-session could not activate org.freedesktop.systemd1. AccessKit's Unix adapter
-0.17.2 panicked in its accessibility worker on that registry error, and the editor
-was not discoverable through AT-SPI. This does not establish behavior in a working
-accessible desktop session. Repeat the runtime audit with a functioning AT-SPI
-registry before claiming screen-reader workflow support.
-The normal desktop release starts successfully with the net.trelak.PaintRust
-window class. The final non-accessibility validation passes 169 Rust tests, strict
-Clippy, six installer/package tests and the dependency-notice consistency check.
+The runtime audit was performed after the other roadmap tasks. Manually starting
+at-spi2-registryd on the isolated accessibility bus resolved the previous registry
+activation failure; the application exposes 77 accessible nodes without an
+AccessKit worker panic. The audit identified missing labels on numeric controls.
+Brush size, zoom, image dimensions, transform offsets, layer names and text inputs
+now have explicit labels; the accessible main window also has its document title.
+
+Verified through native AT-SPI actions: New, labelled Width/Height controls, Create,
+Add layer, Undo, Layer properties and Cancel. The canvas, palette and layer
+visibility controls retain their existing labels. This does not establish full
+screen-reader workflow support or spoken announcements.
+
+The remaining audit is blocked at the native Open file chooser in an isolated
+D-Bus session. Nautilus reports that org.gnome.Mutter.ServiceChannel has no owner,
+and the portal cannot obtain the desktop window list. No accessible file chooser
+appeared during the bounded check. Complete open/save and spoken-feedback testing
+in a full desktop session with a functioning portal and accessibility registry.
+The user's desktop accessibility settings were not changed. This limitation does
+not establish a file-picker failure in a normal desktop session.
+
+The normal native release starts successfully with net.trelak.PaintRust window
+class. Validation passes 169 Rust tests, strict Clippy, six installer/package tests
+and the dependency-notice consistency check.
 
 Shared history buffers
 ----------------------

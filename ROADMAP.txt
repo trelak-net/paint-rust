@@ -42,12 +42,13 @@ Development roadmap
 [x] Compress temporary history streams losslessly to reduce storage volume.
 [x] Share unchanged buffers across disk history states.
 [x] Native Linux release archive, checksums and isolated installation validation.
-[ ] Deferred until all other roadmap tasks are complete: resolve AT-SPI runtime
-    integration issues and perform the full screen-reader workflow audit.
+[x] Isolated AT-SPI registry setup, control labels and native action checks.
+[ ] Final screen-reader workflow audit: complete native open/save and spoken-feedback
+    checks in a full desktop session; the isolated portal lacks Mutter services.
 
-The AT-SPI runtime audit is intentionally deferred and does not block other
-implementation or distribution-validation work. Existing accessibility labels and
-the native bridge remain in place; full screen-reader support is not yet verified.
+The final screen-reader workflow audit remains last and does not block other
+implementation or distribution-validation work. Native AT-SPI action checks pass;
+full screen-reader support is not yet verified.
 
 Each completed increment receives regression checks and its own commit. Keep the
 source and artwork self-contained; preserve project files and unsaved user edits.
