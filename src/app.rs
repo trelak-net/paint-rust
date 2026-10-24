@@ -788,6 +788,16 @@ impl Editor {
                 let size =
                     Vec2::new(self.document.width as f32, self.document.height as f32) * self.zoom;
                 let (rect, response) = ui.allocate_exact_size(size, Sense::click_and_drag());
+                response.widget_info(|| {
+                    egui::WidgetInfo::labeled(
+                        egui::WidgetType::Image,
+                        response.enabled(),
+                        format!(
+                            "Image canvas, {} by {} pixels",
+                            self.document.width, self.document.height
+                        ),
+                    )
+                });
                 let clip = rect.intersect(ui.clip_rect());
                 let painter = ui.painter().with_clip_rect(clip);
                 painter.rect_filled(rect, 0.0, Color32::from_gray(210));
@@ -1989,12 +1999,12 @@ impl Editor {
                         ui.separator();
                         ui.heading("Color");
                         ui.horizontal(|ui| {
-                            ui.label("Primary");
-                            ui.color_edit_button_srgba(&mut self.color);
+                            let label = ui.label("Primary");
+                            ui.color_edit_button_srgba(&mut self.color).labelled_by(label.id);
                         });
                         ui.horizontal(|ui| {
-                            ui.label("Secondary");
-                            ui.color_edit_button_srgba(&mut self.secondary_color);
+                            let label = ui.label("Secondary");
+                            ui.color_edit_button_srgba(&mut self.secondary_color).labelled_by(label.id);
                         });
                         if ui.button("Swap colors    X").clicked() {
                             std::mem::swap(&mut self.color, &mut self.secondary_color);
@@ -2009,7 +2019,10 @@ impl Editor {
                                 Color32::from_rgb(42, 113, 224),
                                 Color32::from_rgb(153, 90, 210),
                             ] {
-                                if ui.add(egui::Button::new("  ").fill(color)).clicked() {
+                                let label = format!("Set primary color to #{:02X}{:02X}{:02X}", color.r(), color.g(), color.b());
+                                let response = ui.add(egui::Button::new("  ").fill(color));
+                                response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, response.enabled(), &label));
+                                if response.on_hover_text(label).clicked() {
                                     self.color = color;
                                 }
                             }
@@ -2137,11 +2150,17 @@ impl Editor {
                                     let mut visible = layer.visible;
                                     let name = layer.name.clone();
                                     ui.horizontal(|ui| {
-                                        if ui
-                                            .checkbox(&mut visible, "")
-                                            .on_hover_text("Layer visibility")
-                                            .changed()
-                                        {
+                                        let visibility = ui.checkbox(&mut visible, "");
+                                        let label = format!("Show layer {name}");
+                                        visibility.widget_info(|| {
+                                            egui::WidgetInfo::selected(
+                                                egui::WidgetType::Checkbox,
+                                                visibility.enabled(),
+                                                visible,
+                                                &label,
+                                            )
+                                        });
+                                        if visibility.on_hover_text(label).changed() {
                                             self.document.set_visibility(index, visible);
                                             self.texture_dirty = true;
                                         }
@@ -2297,6 +2316,43 @@ mod tests {
             pressed,
             modifiers: egui::Modifiers::NONE,
         }
+    }
+
+    #[test]
+    fn accessibility_tree_exposes_canvas_palette_and_layer_controls() {
+        let ctx = egui::Context::default();
+        ctx.enable_accesskit();
+        let mut editor = Editor::blank(&ctx);
+        let output = ctx.run(
+            egui::RawInput {
+                screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1180.0, 1000.0))),
+                ..Default::default()
+            },
+            |ctx| editor.show(ctx),
+        );
+        let tree = output
+            .platform_output
+            .accesskit_update
+            .expect("accessibility tree");
+        let labels: Vec<_> = tree
+            .nodes
+            .iter()
+            .filter_map(|(_, node)| node.label())
+            .collect();
+        assert!(
+            labels
+                .iter()
+                .any(|label| label.starts_with("Image canvas,")),
+            "{labels:?}"
+        );
+        assert!(
+            labels.contains(&"Set primary color to #000000"),
+            "{labels:?}"
+        );
+        assert!(
+            labels.iter().any(|label| label.starts_with("Show layer ")),
+            "{labels:?}"
+        );
     }
 
     #[test]

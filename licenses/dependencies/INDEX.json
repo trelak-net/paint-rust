@@ -1,6 +1,6 @@
 {
   "target": "x86_64-unknown-linux-gnu",
-  "cargo_lock_sha256": "9f77b2cbdcb0a7eb8d8358d7fc7b7866a23d95d72146d64f827291b3b5015402",
+  "cargo_lock_sha256": "6ec33fc6346b804e6122baadbbc6e748a515596c10eb097749f7e01e58371293",
   "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1",
   "rust_library_notice_sha256": "5647be074c8edf7339fd863055923a8fc80bc5610a8d4661ec3b767b9d392c27",
   "packages": [
@@ -31,6 +31,171 @@
       "files": {
         "LICENSE": "a6cba85bc92e0cff7a450b1d873c0eaa2e9fc96bf472df0247a26bec77bf3ff9",
         "SOURCE-COPYRIGHTS.txt": "b3bdb1633e1b890dd976fbbf1836b938f86bbd3eb1c20ca2ce51fd8547e17e51"
+      }
+    },
+    {
+      "name": "accesskit",
+      "version": "0.21.1",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "The AccessKit contributors"
+      ],
+      "repository": "https://github.com/AccessKit/accesskit",
+      "source": "https://crates.io/crates/accesskit/0.21.1",
+      "upstream_notices": [
+        {
+          "path": "upstream/accesskit-0.21.1/LICENSE-APACHE",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/0b6901a8c8e6fb1cb5a2dc7c19dc7bee1cc5ad09/LICENSE-APACHE",
+          "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+        },
+        {
+          "path": "upstream/accesskit-0.21.1/LICENSE-MIT",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/0b6901a8c8e6fb1cb5a2dc7c19dc7bee1cc5ad09/LICENSE-MIT",
+          "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+        },
+        {
+          "path": "upstream/accesskit-0.21.1/LICENSE.chromium",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/0b6901a8c8e6fb1cb5a2dc7c19dc7bee1cc5ad09/LICENSE.chromium",
+          "sha256": "845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308"
+        }
+      ],
+      "files": {
+        "SOURCE-COPYRIGHTS.txt": "4d457cbd828714b61bcf7aea65a451db69169aac091bd031c7a8138bf2459dc6",
+        "upstream/LICENSE-APACHE": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "upstream/LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+        "upstream/LICENSE.chromium": "845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308"
+      }
+    },
+    {
+      "name": "accesskit_atspi_common",
+      "version": "0.14.2",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "The AccessKit contributors"
+      ],
+      "repository": "https://github.com/AccessKit/accesskit",
+      "source": "https://crates.io/crates/accesskit_atspi_common/0.14.2",
+      "upstream_notices": [
+        {
+          "path": "upstream/accesskit_atspi_common-0.14.2/LICENSE-APACHE",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/5801c4a49ff9b2c9ec3f77b3c31272d0da4c5cd3/LICENSE-APACHE",
+          "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+        },
+        {
+          "path": "upstream/accesskit_atspi_common-0.14.2/LICENSE-MIT",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/5801c4a49ff9b2c9ec3f77b3c31272d0da4c5cd3/LICENSE-MIT",
+          "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+        },
+        {
+          "path": "upstream/accesskit_atspi_common-0.14.2/LICENSE.chromium",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/5801c4a49ff9b2c9ec3f77b3c31272d0da4c5cd3/LICENSE.chromium",
+          "sha256": "845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308"
+        }
+      ],
+      "files": {
+        "SOURCE-COPYRIGHTS.txt": "133dd30d6636ce67b4c5b37929b2fa6d9af5ae821e04a041cbde01550b35107f",
+        "upstream/LICENSE-APACHE": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "upstream/LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+        "upstream/LICENSE.chromium": "845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308"
+      }
+    },
+    {
+      "name": "accesskit_consumer",
+      "version": "0.31.0",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "The AccessKit contributors"
+      ],
+      "repository": "https://github.com/AccessKit/accesskit",
+      "source": "https://crates.io/crates/accesskit_consumer/0.31.0",
+      "upstream_notices": [
+        {
+          "path": "upstream/accesskit_consumer-0.31.0/LICENSE-APACHE",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/5801c4a49ff9b2c9ec3f77b3c31272d0da4c5cd3/LICENSE-APACHE",
+          "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+        },
+        {
+          "path": "upstream/accesskit_consumer-0.31.0/LICENSE-MIT",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/5801c4a49ff9b2c9ec3f77b3c31272d0da4c5cd3/LICENSE-MIT",
+          "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+        },
+        {
+          "path": "upstream/accesskit_consumer-0.31.0/LICENSE.chromium",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/5801c4a49ff9b2c9ec3f77b3c31272d0da4c5cd3/LICENSE.chromium",
+          "sha256": "845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308"
+        }
+      ],
+      "files": {
+        "SOURCE-COPYRIGHTS.txt": "2edac384755b9062caf2bb890310eb5b1910429e1c191013566c099eeeb4efd2",
+        "upstream/LICENSE-APACHE": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "upstream/LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+        "upstream/LICENSE.chromium": "845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308"
+      }
+    },
+    {
+      "name": "accesskit_unix",
+      "version": "0.17.2",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "The AccessKit contributors"
+      ],
+      "repository": "https://github.com/AccessKit/accesskit",
+      "source": "https://crates.io/crates/accesskit_unix/0.17.2",
+      "upstream_notices": [
+        {
+          "path": "upstream/accesskit_unix-0.17.2/LICENSE-APACHE",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/5801c4a49ff9b2c9ec3f77b3c31272d0da4c5cd3/LICENSE-APACHE",
+          "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+        },
+        {
+          "path": "upstream/accesskit_unix-0.17.2/LICENSE-MIT",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/5801c4a49ff9b2c9ec3f77b3c31272d0da4c5cd3/LICENSE-MIT",
+          "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+        },
+        {
+          "path": "upstream/accesskit_unix-0.17.2/LICENSE.chromium",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/5801c4a49ff9b2c9ec3f77b3c31272d0da4c5cd3/LICENSE.chromium",
+          "sha256": "845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308"
+        }
+      ],
+      "files": {
+        "SOURCE-COPYRIGHTS.txt": "70d752b9a04240861f2298517d84aed5997a09085726ad0a38264abf7bb909ef",
+        "upstream/LICENSE-APACHE": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "upstream/LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+        "upstream/LICENSE.chromium": "845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308"
+      }
+    },
+    {
+      "name": "accesskit_winit",
+      "version": "0.29.2",
+      "license": "Apache-2.0",
+      "authors": [
+        "The AccessKit contributors"
+      ],
+      "repository": "https://github.com/AccessKit/accesskit",
+      "source": "https://crates.io/crates/accesskit_winit/0.29.2",
+      "upstream_notices": [
+        {
+          "path": "upstream/accesskit_winit-0.29.2/LICENSE-APACHE",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/5801c4a49ff9b2c9ec3f77b3c31272d0da4c5cd3/LICENSE-APACHE",
+          "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+        },
+        {
+          "path": "upstream/accesskit_winit-0.29.2/LICENSE-MIT",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/5801c4a49ff9b2c9ec3f77b3c31272d0da4c5cd3/LICENSE-MIT",
+          "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+        },
+        {
+          "path": "upstream/accesskit_winit-0.29.2/LICENSE.chromium",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/5801c4a49ff9b2c9ec3f77b3c31272d0da4c5cd3/LICENSE.chromium",
+          "sha256": "845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308"
+        }
+      ],
+      "files": {
+        "SOURCE-COPYRIGHTS.txt": "65aaccadfb921bae703a9c5b73cd2450de871a82cbdf6ca89a89cbff3290ee3e",
+        "upstream/LICENSE-APACHE": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "upstream/LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+        "upstream/LICENSE.chromium": "845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308"
       }
     },
     {
@@ -335,6 +500,75 @@
         "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
         "LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
         "LICENSE-THIRD-PARTY": "6226d0632e2e1a80c23597e964da9812ae193c535fe058154afb034e94167aa5"
+      }
+    },
+    {
+      "name": "atspi",
+      "version": "0.25.0",
+      "license": "Apache-2.0 OR MIT",
+      "authors": [
+        "Alberto Tirla <albertotirla@gmail.com>",
+        "DataTriny <datatriny@gmail.com>",
+        "Luuk van der Duim <luukvanderduim@gmail.com>",
+        "Michael Connor Buchan <mikey@blindcomputing.org>",
+        "Tait Hoyem <tait@tait.tech>"
+      ],
+      "repository": "https://github.com/odilia-app/atspi",
+      "source": "https://crates.io/crates/atspi/0.25.0",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE2.txt": "50e6751797c50dedd75ef1b8a0d9e42f5f8472e9fbce91f34718e9f97b0c780a",
+        "LICENSE-MIT.txt": "a94bf521d21b7db984c8b141b6f9341bbedbe24e617c1a55d952f8ef613ef1cd"
+      }
+    },
+    {
+      "name": "atspi-common",
+      "version": "0.9.0",
+      "license": "Apache-2.0 OR MIT",
+      "authors": [],
+      "repository": "https://github.com/odilia-app/atspi",
+      "source": "https://crates.io/crates/atspi-common/0.9.0",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE2.txt": "50e6751797c50dedd75ef1b8a0d9e42f5f8472e9fbce91f34718e9f97b0c780a",
+        "LICENSE-MIT.txt": "a94bf521d21b7db984c8b141b6f9341bbedbe24e617c1a55d952f8ef613ef1cd"
+      }
+    },
+    {
+      "name": "atspi-connection",
+      "version": "0.9.0",
+      "license": "Apache-2.0 OR MIT",
+      "authors": [],
+      "repository": "https://github.com/odilia-app/atspi/",
+      "source": "https://crates.io/crates/atspi-connection/0.9.0",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE2.txt": "50e6751797c50dedd75ef1b8a0d9e42f5f8472e9fbce91f34718e9f97b0c780a",
+        "LICENSE-MIT.txt": "a94bf521d21b7db984c8b141b6f9341bbedbe24e617c1a55d952f8ef613ef1cd"
+      }
+    },
+    {
+      "name": "atspi-proxies",
+      "version": "0.9.0",
+      "license": "Apache-2.0 OR MIT",
+      "authors": [],
+      "repository": "https://github.com/odilia-app/atspi",
+      "source": "https://crates.io/crates/atspi-proxies/0.9.0",
+      "upstream_notices": [
+        {
+          "path": "upstream/atspi-proxies-0.9.0/LICENSE-APACHE2.txt",
+          "source": "https://raw.githubusercontent.com/odilia-app/atspi/ef2b4d1b41a9d53a9bb5b484661d712e0d1964e7/LICENSE-APACHE2.txt",
+          "sha256": "50e6751797c50dedd75ef1b8a0d9e42f5f8472e9fbce91f34718e9f97b0c780a"
+        },
+        {
+          "path": "upstream/atspi-proxies-0.9.0/LICENSE-MIT.txt",
+          "source": "https://raw.githubusercontent.com/odilia-app/atspi/ef2b4d1b41a9d53a9bb5b484661d712e0d1964e7/LICENSE-MIT.txt",
+          "sha256": "a94bf521d21b7db984c8b141b6f9341bbedbe24e617c1a55d952f8ef613ef1cd"
+        }
+      ],
+      "files": {
+        "upstream/LICENSE-APACHE2.txt": "50e6751797c50dedd75ef1b8a0d9e42f5f8472e9fbce91f34718e9f97b0c780a",
+        "upstream/LICENSE-MIT.txt": "a94bf521d21b7db984c8b141b6f9341bbedbe24e617c1a55d952f8ef613ef1cd"
       }
     },
     {
@@ -1166,6 +1400,20 @@
       }
     },
     {
+      "name": "foldhash",
+      "version": "0.1.5",
+      "license": "Zlib",
+      "authors": [
+        "Orson Peters <orsonpeters@gmail.com>"
+      ],
+      "repository": "https://github.com/orlp/foldhash",
+      "source": "https://crates.io/crates/foldhash/0.1.5",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE": "b1181a40b2a7b25cf66fd01481713bc1005df082c53ef73e851e55071b102744"
+      }
+    },
+    {
       "name": "form_urlencoded",
       "version": "1.2.2",
       "license": "MIT OR Apache-2.0",
@@ -1431,6 +1679,21 @@
       "upstream_notices": [],
       "files": {
         "LICENSE": "a4445427440043e8ce6fadf7a43fb906cb0d7f6c573a560a9f142cf9f9bf8ff4"
+      }
+    },
+    {
+      "name": "hashbrown",
+      "version": "0.15.5",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "Amanieu d'Antras <amanieu@gmail.com>"
+      ],
+      "repository": "https://github.com/rust-lang/hashbrown",
+      "source": "https://crates.io/crates/hashbrown/0.15.5",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "LICENSE-MIT": "ff8f68cb076caf8cefe7a6430d4ac086ce6af2ca8ce2c4e5a2004d4552ef52a2"
       }
     },
     {
@@ -3626,6 +3889,35 @@
       }
     },
     {
+      "name": "zbus-lockstep",
+      "version": "0.5.2",
+      "license": "MIT",
+      "authors": [
+        "Luuk van der Duim <luukvanderduim@gmail.com>",
+        "Tait Hoyem<tait@tait.tech>"
+      ],
+      "repository": "https://github.com/luukvanderduim/zbus-lockstep",
+      "source": "https://crates.io/crates/zbus-lockstep/0.5.2",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      }
+    },
+    {
+      "name": "zbus-lockstep-macros",
+      "version": "0.5.2",
+      "license": "MIT",
+      "authors": [
+        "Luuk van der Duim <luukvanderduim@gmail.com>"
+      ],
+      "repository": "https://github.com/luukvanderduim/zbus-lockstep",
+      "source": "https://crates.io/crates/zbus-lockstep-macros/0.5.2",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      }
+    },
+    {
       "name": "zbus_macros",
       "version": "5.19.0",
       "license": "MIT",
@@ -3649,6 +3941,20 @@
       ],
       "repository": "https://github.com/z-galaxy/zbus/",
       "source": "https://crates.io/crates/zbus_names/4.3.5",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE": "260e4ff3fc493695880c90774283eb1e3d018f898fabe655bbd52dd2cbd2fcad"
+      }
+    },
+    {
+      "name": "zbus_xml",
+      "version": "5.2.1",
+      "license": "MIT",
+      "authors": [
+        "Zeeshan Ali Khan <zeeshanak@gnome.org>"
+      ],
+      "repository": "https://github.com/z-galaxy/zbus/",
+      "source": "https://crates.io/crates/zbus_xml/5.2.1",
       "upstream_notices": [],
       "files": {
         "LICENSE": "260e4ff3fc493695880c90774283eb1e3d018f898fabe655bbd52dd2cbd2fcad"

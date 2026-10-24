@@ -391,3 +391,13 @@ notices and Rust standard library notices. Before packaging, run:
 After updating dependencies or the compiler, regenerate with the same command
 without --check and review the changed licenses. See THIRD_PARTY_NOTICES for
 scope, provenance and other-target limitations.
+
+Accessibility
+-------------
+AccessKit publishes the native accessibility tree, including Linux AT-SPI
+integration. Palette swatches, layer visibility controls and the canvas have
+explicit labels; primary and secondary color controls reference their labels.
+A regression test checks the emitted tree. The drawing surface still requires
+pointer input for painting, and a complete screen-reader workflow audit remains
+to be performed.
+Validation: 120 Rust tests, strict Clippy and the dependency-notice check pass.
