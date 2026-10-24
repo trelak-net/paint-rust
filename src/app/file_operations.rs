@@ -32,9 +32,12 @@ impl Editor {
         if self.file_job.is_some() || self.document.editing() {
             return;
         }
+        self.history_storage_paused = false;
         let mut document = self.document.clone();
-        self.start_file_job("store undo history", move || {
-            document.store_history();
+        self.start_cancellable_file_job("store undo history", move |cancel| {
+            if !document.store_history_cancellable(cancel) {
+                return Err(files::CANCELLED.into());
+            }
             Ok(Outcome::History(Box::new(document), 0, false))
         });
     }
@@ -52,9 +55,9 @@ impl Editor {
                     return Err(files::CANCELLED.into());
                 }
                 let changed = if redo {
-                    document.redo()
+                    document.redo_cancellable(cancel)
                 } else {
-                    document.undo()
+                    document.undo_cancellable(cancel)
                 };
                 if !changed {
                     break;
@@ -192,6 +195,7 @@ impl Editor {
                     });
             }
             Ok(Outcome::Opened(document, path)) => {
+                self.history_storage_paused = false;
                 self.document = *document;
                 self.path = Some(path);
                 self.texture_dirty = true;
@@ -202,6 +206,7 @@ impl Editor {
                 self.clear_recovery();
             }
             Ok(Outcome::Recovered(mut document, index)) => {
+                self.history_storage_paused = false;
                 document.mark_unsaved();
                 self.clear_recovery();
                 self.document = *document;
@@ -307,7 +312,12 @@ impl Editor {
                 );
             }
             Err(error) => {
-                self.status = if error == files::CANCELLED {
+                if error == files::CANCELLED && operation == "store undo history" {
+                    self.history_storage_paused = true;
+                }
+                self.status = if self.history_storage_paused && operation == "store undo history" {
+                    "Undo storage paused; history remains in RAM. Resume in History.".into()
+                } else if error == files::CANCELLED {
                     format!("Cancelled: {operation}")
                 } else {
                     format!("Could not {operation}: {error}")

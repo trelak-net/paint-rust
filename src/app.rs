@@ -64,6 +64,7 @@ struct EffectDialog {
 pub struct Editor {
     context: egui::Context,
     file_job: Option<FileJob>,
+    history_storage_paused: bool,
     after_save: Option<Action>,
     document: Document,
     texture: Option<TextureHandle>,
@@ -140,6 +141,7 @@ impl Editor {
         Self {
             context: ctx.clone(),
             file_job: None,
+            history_storage_paused: false,
             after_save: None,
             document: Document::new(960, 640, [255; 4]).unwrap(),
             texture: None,
@@ -1731,6 +1733,7 @@ impl Editor {
                             ) {
                                 Ok(document) => {
                                     self.document = document;
+                                    self.history_storage_paused = false;
                                     self.path = None;
                                     self.texture_dirty = true;
                                     self.zoom = 1.0;
@@ -2343,8 +2346,12 @@ impl Editor {
                                 self.document.history_bytes() as f64 / (1024.0 * 1024.0),
                                 self.document.history_disk_bytes() as f64 / (1024.0 * 1024.0)
                             ));
-                            if self.document.history_error().is_some()
-                                && ui.button("Retry history storage").clicked()
+                            if self.history_storage_paused {
+                                ui.small("History storage paused; undo remains in RAM.");
+                            }
+                            if (self.history_storage_paused
+                                || self.document.history_error().is_some())
+                                && ui.button("Resume history storage").clicked()
                             {
                                 self.store_history_async();
                             }
@@ -2420,6 +2427,7 @@ impl Editor {
         if enabled
             && !self.allow_close
             && !self.document.editing()
+            && !self.history_storage_paused
             && self.document.history_error().is_none()
             && self.document.history_needs_storage()
         {
@@ -3623,7 +3631,19 @@ mod tests {
         }
         assert!(editor.document.history_needs_storage());
         assert_eq!(editor.document.history_disk_bytes(), 0);
+        let (release, wait) = std::sync::mpsc::channel();
+        editor.start_cancellable_file_job("store undo history", move |_| {
+            wait.recv().unwrap();
+            Err(files::CANCELLED.into())
+        });
+        release.send(()).unwrap();
+        wait_for_files(&mut editor, &ctx);
+        assert!(editor.history_storage_paused);
+        frame(&mut editor, &ctx, vec![]);
+        assert!(editor.file_job.is_none());
+        assert!(editor.document.history_needs_storage());
         editor.store_history_async();
+        assert!(!editor.history_storage_paused);
         assert!(editor.file_job.is_some());
         assert_eq!(editor.document.history_disk_bytes(), 0);
         wait_for_files(&mut editor, &ctx);

@@ -38,7 +38,7 @@ Development roadmap
 [x] Cancellable background flood fill, flattening, color inversion and pixel deletion.
 [x] Large-image CPU measurements and non-starving active-stroke previews.
 [x] Retain undo beyond the RAM budget using private temporary files.
-[x] Store and restore disk-backed history outside the UI thread.
+[x] Cancellable storage and restoration of disk-backed history outside the UI thread.
 [x] Compress temporary history streams losslessly to reduce storage volume.
 [x] Share unchanged buffers across disk history states.
 [x] Native Linux release archive, checksums and isolated installation validation.

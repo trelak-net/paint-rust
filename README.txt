@@ -675,3 +675,16 @@ Validation: 167 Rust tests and strict Clippy pass, including failed writes, a
 blocked clipboard with responsive UI, cancellation before cut deletion, cut/paste
 history, and regional/full compositing parity for every blend mode. Tests use
 in-memory clipboard backends and do not replace the desktop clipboard contents.
+
+Cancellable history I/O
+-----------------------
+History compression, decompression and checksumming now check cancellation in
+64 KiB chunks and between shared buffers. Navigation checks before publication;
+cancelling a partial multi-layer load leaves the current image and history intact.
+Cancelling automatic history storage pauses it instead of immediately restarting
+the same job. Undo remains in RAM above the usual soft budget until Resume history
+storage is selected in the History panel. Opening or creating another document
+resets the pause. Native file synchronization calls may still delay cancellation.
+Validation: 169 Rust tests and strict Clippy pass, including cancellation after
+one stored buffer, temporary-file release, unchanged navigation and pause/resume
+behavior. Existing compressed corruption and shared-buffer tests remain passing.

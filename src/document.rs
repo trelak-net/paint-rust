@@ -886,6 +886,10 @@ impl Document {
         self.spill_history(HISTORY_BYTES, history::temporary_file);
     }
 
+    pub fn store_history_cancellable(&mut self, cancel: &std::sync::atomic::AtomicBool) -> bool {
+        self.spill_history_cancellable(HISTORY_BYTES, history::temporary_file, cancel)
+    }
+
     fn trim_history(&mut self) {
         if !self.deferred_history {
             self.store_history();
@@ -895,8 +899,20 @@ impl Document {
     fn spill_history(
         &mut self,
         budget: usize,
-        mut create: impl FnMut() -> std::io::Result<std::fs::File>,
+        create: impl FnMut() -> std::io::Result<std::fs::File>,
     ) {
+        self.spill_history_cancellable(budget, create, &std::sync::atomic::AtomicBool::new(false));
+    }
+
+    fn spill_history_cancellable(
+        &mut self,
+        budget: usize,
+        mut create: impl FnMut() -> std::io::Result<std::fs::File>,
+        cancel: &std::sync::atomic::AtomicBool,
+    ) -> bool {
+        if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+            return false;
+        }
         self.history_error = None;
         while self.history_bytes() > budget {
             let entry = self
@@ -907,13 +923,17 @@ impl Document {
             let Some(entry) = entry else {
                 break;
             };
-            if let Err(error) = entry.spill(&mut self.history_pool, &mut create) {
+            if let Err(error) = entry.spill(&mut self.history_pool, &mut create, cancel) {
+                if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+                    return false;
+                }
                 self.history_error = Some(format!(
                     "Could not store undo history: {error}. History remains in RAM above its normal limit."
                 ));
                 break;
             }
         }
+        !cancel.load(std::sync::atomic::Ordering::Relaxed)
     }
 
     pub fn cancel(&mut self) {
@@ -927,14 +947,24 @@ impl Document {
     }
 
     pub fn undo(&mut self) -> bool {
-        self.navigate_history(false)
+        self.undo_cancellable(&std::sync::atomic::AtomicBool::new(false))
     }
 
     pub fn redo(&mut self) -> bool {
-        self.navigate_history(true)
+        self.redo_cancellable(&std::sync::atomic::AtomicBool::new(false))
     }
 
-    fn navigate_history(&mut self, redo: bool) -> bool {
+    pub fn undo_cancellable(&mut self, cancel: &std::sync::atomic::AtomicBool) -> bool {
+        self.navigate_history(false, cancel)
+    }
+    pub fn redo_cancellable(&mut self, cancel: &std::sync::atomic::AtomicBool) -> bool {
+        self.navigate_history(true, cancel)
+    }
+
+    fn navigate_history(&mut self, redo: bool, cancel: &std::sync::atomic::AtomicBool) -> bool {
+        if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+            return false;
+        }
         let entry = if redo {
             self.redo.last_mut()
         } else {
@@ -945,15 +975,21 @@ impl Document {
             return false;
         };
         // Load and validate before touching the current document or either stack.
-        let target = match entry.load(&mut self.history_pool) {
+        let target = match entry.load(&mut self.history_pool, cancel) {
             Ok(target) => target,
             Err(error) => {
+                if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+                    return false;
+                }
                 self.history_error = Some(format!(
                     "Could not restore undo history: {error}. The image and history were kept unchanged."
                 ));
                 return false;
             }
         };
+        if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+            return false;
+        }
         self.cancel();
         let current = Snapshot {
             width: std::mem::replace(&mut self.width, target.width),

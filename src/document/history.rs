@@ -6,7 +6,10 @@ use std::{
     fs::File,
     hash::{Hash, Hasher},
     io::{self, Read, Seek, SeekFrom, Write},
-    sync::{Arc, Mutex, Weak},
+    sync::{
+        Arc, Mutex, Weak,
+        atomic::{AtomicBool, Ordering},
+    },
 };
 
 /// Use the application cache instead of /tmp, which commonly lives on tmpfs.
@@ -91,26 +94,50 @@ struct Blob {
     decoded_mask: Mutex<Weak<Vec<u8>>>,
 }
 
+fn check_cancel(cancel: &AtomicBool) -> io::Result<()> {
+    if cancel.load(Ordering::Relaxed) {
+        Err(io::Error::other(crate::files::CANCELLED))
+    } else {
+        Ok(())
+    }
+}
+
+fn checksum(data: &[u8], cancel: &AtomicBool) -> io::Result<u64> {
+    let mut hash = DefaultHasher::new();
+    data.len().hash(&mut hash);
+    for chunk in data.chunks(64 * 1024) {
+        check_cancel(cancel)?;
+        hash.write(chunk);
+    }
+    check_cancel(cancel)?;
+    Ok(hash.finish())
+}
+
 impl Blob {
-    fn write(data: &[u8], file: File) -> io::Result<Arc<Self>> {
+    fn write(data: &[u8], file: File, cancel: &AtomicBool) -> io::Result<Arc<Self>> {
+        check_cancel(cancel)?;
         let mut encoder = ZlibEncoder::new(file, Compression::fast());
-        encoder.write_all(data)?;
+        for chunk in data.chunks(64 * 1024) {
+            check_cancel(cancel)?;
+            encoder.write_all(chunk)?;
+        }
+        check_cancel(cancel)?;
         let mut file = encoder.finish()?;
         file.flush()?;
         file.sync_data()?;
-        let mut checksum = DefaultHasher::new();
-        data.hash(&mut checksum);
+        let checksum = checksum(data, cancel)?;
         Ok(Arc::new(Self {
             bytes: file.metadata()?.len(),
             file: Mutex::new(file),
             decoded_bytes: data.len(),
-            checksum: checksum.finish(),
+            checksum,
             decoded_pixels: Mutex::new(Weak::new()),
             decoded_mask: Mutex::new(Weak::new()),
         }))
     }
 
-    fn read(&self, output: &mut [u8]) -> io::Result<()> {
+    fn read(&self, output: &mut [u8], cancel: &AtomicBool) -> io::Result<()> {
+        check_cancel(cancel)?;
         if output.len() != self.decoded_bytes {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
@@ -129,16 +156,18 @@ impl Blob {
         }
         file.seek(SeekFrom::Start(0))?;
         let mut decoder = ZlibDecoder::new(&mut *file);
-        decoder.read_exact(output)?;
+        for chunk in output.chunks_mut(64 * 1024) {
+            check_cancel(cancel)?;
+            decoder.read_exact(chunk)?;
+        }
+        check_cancel(cancel)?;
         if decoder.read(&mut [0u8; 1])? != 0 || decoder.total_in() != self.bytes {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 "Unexpected trailing history data",
             ));
         }
-        let mut checksum = DefaultHasher::new();
-        output.hash(&mut checksum);
-        if checksum.finish() != self.checksum {
+        if checksum(output, cancel)? != self.checksum {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 "Temporary history checksum mismatch",
@@ -180,17 +209,20 @@ impl Entry {
         &mut self,
         pool: &mut Pool,
         mut create: impl FnMut() -> io::Result<File>,
+        cancel: &AtomicBool,
     ) -> io::Result<()> {
+        check_cancel(cancel)?;
         let Self::Memory(snapshot) = self else {
             return Ok(());
         };
         pool.prune();
         let mut layers = Vec::with_capacity(snapshot.layers.len());
         for layer in &snapshot.layers {
+            check_cancel(cancel)?;
             let blob = if let Some(blob) = cached(&pool.pixels, &layer.pixels) {
                 blob
             } else {
-                let blob = Blob::write(layer.pixels.as_flattened(), create()?)?;
+                let blob = Blob::write(layer.pixels.as_flattened(), create()?, cancel)?;
                 *blob.decoded_pixels.lock().expect("new history buffer") =
                     Arc::downgrade(&layer.pixels);
                 register(&mut pool.pixels, &layer.pixels, &blob);
@@ -202,7 +234,7 @@ impl Entry {
             Some(if let Some(blob) = cached(&pool.masks, &mask.pixels) {
                 blob
             } else {
-                let blob = Blob::write(&mask.pixels, create()?)?;
+                let blob = Blob::write(&mask.pixels, create()?, cancel)?;
                 *blob.decoded_mask.lock().expect("new history mask") = Arc::downgrade(&mask.pixels);
                 register(&mut pool.masks, &mask.pixels, &blob);
                 blob
@@ -210,6 +242,7 @@ impl Entry {
         } else {
             None
         };
+        check_cancel(cancel)?;
         // No original buffers are released until every required file is durable.
         let mut metadata = snapshot.clone();
         for layer in &mut metadata.layers {
@@ -226,13 +259,15 @@ impl Entry {
         Ok(())
     }
 
-    pub(super) fn load(&mut self, pool: &mut Pool) -> io::Result<Snapshot> {
+    pub(super) fn load(&mut self, pool: &mut Pool, cancel: &AtomicBool) -> io::Result<Snapshot> {
+        check_cancel(cancel)?;
         let Self::Disk(stored) = self else {
             return Ok(self.memory().expect("memory entry").clone());
         };
         pool.prune();
         let mut snapshot = stored.metadata.clone();
         for (layer, blob) in snapshot.layers.iter_mut().zip(&stored.layers) {
+            check_cancel(cancel)?;
             let mut cached = blob
                 .decoded_pixels
                 .lock()
@@ -241,7 +276,7 @@ impl Entry {
                 pixels
             } else {
                 let mut pixels = vec![[0; 4]; snapshot.width as usize * snapshot.height as usize];
-                blob.read(pixels.as_flattened_mut())?;
+                blob.read(pixels.as_flattened_mut(), cancel)?;
                 let pixels = Arc::new(pixels);
                 *cached = Arc::downgrade(&pixels);
                 pixels
@@ -258,7 +293,7 @@ impl Entry {
                 pixels
             } else {
                 let mut pixels = vec![0; blob.decoded_bytes];
-                blob.read(&mut pixels)?;
+                blob.read(&mut pixels, cancel)?;
                 let pixels = Arc::new(pixels);
                 *cached = Arc::downgrade(&pixels);
                 pixels
@@ -271,6 +306,7 @@ impl Entry {
                 .expect("stored selection mask")
                 .pixels = pixels;
         }
+        check_cancel(cancel)?;
         Ok(snapshot)
     }
 }
@@ -323,6 +359,58 @@ mod tests {
     }
 
     #[test]
+    fn cancellation_after_one_buffer_retains_snapshot_and_releases_files() {
+        let mut doc = Document::new(8, 8, [255; 4]).unwrap();
+        doc.add_layer(false);
+        doc.invert();
+        let mut entry = doc.undo.pop_back().unwrap();
+        let cancel = AtomicBool::new(false);
+        let mut calls = 0;
+        let result = entry.spill(
+            &mut doc.history_pool,
+            || {
+                calls += 1;
+                if calls == 2 {
+                    cancel.store(true, Ordering::Relaxed);
+                }
+                tempfile::tempfile()
+            },
+            &cancel,
+        );
+        assert_eq!(result.unwrap_err().to_string(), crate::files::CANCELLED);
+        assert_eq!(calls, 2);
+        assert!(entry.memory().is_some());
+        assert!(
+            doc.history_pool
+                .pixels
+                .values()
+                .all(|(_, blob)| blob.upgrade().is_none())
+        );
+    }
+
+    #[test]
+    fn cancelled_history_read_preserves_output_and_navigation() {
+        let cancel = AtomicBool::new(false);
+        let blob = Blob::write(&[17; 1024], tempfile::tempfile().unwrap(), &cancel).unwrap();
+        cancel.store(true, Ordering::Relaxed);
+        let mut output = [42; 1024];
+        assert_eq!(
+            blob.read(&mut output, &cancel).unwrap_err().to_string(),
+            crate::files::CANCELLED
+        );
+        assert_eq!(output, [42; 1024]);
+        let mut doc = Document::new(8, 8, [255; 4]).unwrap();
+        doc.invert();
+        doc.spill_history(0, tempfile::tempfile);
+        assert!(!doc.undo_cancellable(&cancel));
+        assert!(doc.can_undo());
+        assert!(!doc.can_redo());
+        assert!(doc.history_error().is_none());
+        assert_eq!(doc.pixels(), &[[0, 0, 0, 255]; 64]);
+        assert!(doc.undo());
+    }
+
+    #[test]
     fn failure_after_one_buffer_keeps_snapshot_and_releases_partial_files() {
         let mut doc = Document::new(8, 8, [255; 4]).unwrap();
         doc.add_layer(false);
@@ -331,14 +419,18 @@ mod tests {
         let mut calls = 0;
         assert!(
             entry
-                .spill(&mut doc.history_pool, || {
-                    calls += 1;
-                    if calls == 2 {
-                        Err(io::Error::other("simulated full disk"))
-                    } else {
-                        tempfile::tempfile()
-                    }
-                })
+                .spill(
+                    &mut doc.history_pool,
+                    || {
+                        calls += 1;
+                        if calls == 2 {
+                            Err(io::Error::other("simulated full disk"))
+                        } else {
+                            tempfile::tempfile()
+                        }
+                    },
+                    &AtomicBool::new(false)
+                )
                 .is_err()
         );
         assert!(entry.memory().is_some());
@@ -350,7 +442,11 @@ mod tests {
         );
         assert!(
             entry
-                .spill(&mut doc.history_pool, tempfile::tempfile)
+                .spill(
+                    &mut doc.history_pool,
+                    tempfile::tempfile,
+                    &AtomicBool::new(false)
+                )
                 .is_ok()
         );
     }
