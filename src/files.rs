@@ -134,7 +134,7 @@ fn read_array<const N: usize>(reader: &mut impl Read) -> Result<[u8; N], String>
 pub fn open_project(path: &Path) -> Result<Document, String> {
     let mut reader = BufReader::new(File::open(path).map_err(|e| e.to_string())?);
     let magic = read_array::<8>(&mut reader)?;
-    if &magic[..6] != &PROJECT_MAGIC[..6] || magic[7] != 0 || !matches!(magic[6], 1 | 2) {
+    if magic[..6] != PROJECT_MAGIC[..6] || magic[7] != 0 || !matches!(magic[6], 1 | 2) {
         return Err("Unsupported project signature or version.".into());
     }
     let width = u32::from_le_bytes(read_array(&mut reader)?);
