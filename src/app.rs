@@ -1874,9 +1874,7 @@ impl Editor {
                     });
                 }
                 if ui.add(Icon::Invert.button("Invert colors")).clicked() {
-                    self.finish_stroke();
-                    self.document.invert();
-                    self.texture_dirty = true;
+                    self.start_document_edit(false);
                 }
             });
             ui.horizontal(|ui| {
@@ -2130,8 +2128,7 @@ impl Editor {
                     )
                     .clicked()
                 {
-                    self.document.flatten();
-                    self.texture_dirty = true;
+                    self.start_document_edit(true);
                 }
                         ui.separator();
                         egui::ScrollArea::vertical()
@@ -2308,6 +2305,44 @@ mod tests {
             button: egui::PointerButton::Primary,
             pressed,
             modifiers: egui::Modifiers::NONE,
+        }
+    }
+
+    #[test]
+    fn background_document_edits_preserve_selection_and_undo() {
+        for flatten in [false, true] {
+            let ctx = egui::Context::default();
+            let mut editor = Editor::blank(&ctx);
+            editor.document = Document::new(8, 8, [10, 20, 30, 255]).unwrap();
+            if flatten {
+                editor.document.add_layer(false);
+            }
+            let selection = Selection {
+                x: 2,
+                y: 2,
+                width: 3,
+                height: 3,
+                ellipse: None,
+                mask: None,
+            };
+            editor.document.set_selection(Some(selection.clone()));
+            let before = editor.document.snapshot();
+            let count = editor.document.history().count();
+            editor.start_document_edit(flatten);
+            assert!(editor.document.layers() == before.layers());
+            wait_for_files(&mut editor, &ctx);
+            assert_eq!(editor.document.selection(), Some(selection.clone()));
+            assert_eq!(editor.document.history().count(), count + 1);
+            if flatten {
+                assert_eq!(editor.document.layers().len(), 1);
+                assert_eq!(editor.document.composite(), before.composite());
+            } else {
+                assert_eq!(editor.document.pixels()[0], [10, 20, 30, 255]);
+                assert_eq!(editor.document.pixels()[3 * 8 + 3], [245, 235, 225, 255]);
+            }
+            editor.undo();
+            assert!(editor.document.layers() == before.layers());
+            assert_eq!(editor.document.selection(), Some(selection));
         }
     }
 

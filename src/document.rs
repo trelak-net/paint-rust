@@ -509,14 +509,22 @@ impl Document {
     }
 
     pub fn flatten(&mut self) -> bool {
-        if !self.can_flatten() {
-            return false;
+        self.flatten_cancellable(&std::sync::atomic::AtomicBool::new(false))
+            .unwrap_or(false)
+    }
+
+    pub fn flatten_cancellable(&mut self, cancel: &std::sync::atomic::AtomicBool) -> Option<bool> {
+        if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+            return None;
         }
-        let pixels = self.composite();
+        if !self.can_flatten() {
+            return Some(false);
+        }
+        let pixels = self.composite_cancellable(cancel)?;
         self.begin("Flatten image");
         self.layers = vec![Layer::new("Flattened image".into(), pixels)];
         self.active = 0;
-        self.commit()
+        Some(self.commit())
     }
 
     pub fn move_layer(&mut self, up: bool) -> bool {
@@ -1078,6 +1086,13 @@ impl Document {
     }
 
     pub fn invert(&mut self) {
+        let _ = self.invert_cancellable(&std::sync::atomic::AtomicBool::new(false));
+    }
+
+    pub fn invert_cancellable(&mut self, cancel: &std::sync::atomic::AtomicBool) -> bool {
+        if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+            return false;
+        }
         self.begin("Invert colors");
         let width = self.width as usize;
         let selection = self.selection.clone();
@@ -1085,6 +1100,10 @@ impl Document {
             .iter_mut()
             .enumerate()
         {
+            if i.is_multiple_of(4096) && cancel.load(std::sync::atomic::Ordering::Relaxed) {
+                self.cancel();
+                return false;
+            }
             if !selected(selection.as_ref(), i % width, i / width) {
                 continue;
             }
@@ -1093,6 +1112,7 @@ impl Document {
             }
         }
         self.commit();
+        true
     }
 }
 

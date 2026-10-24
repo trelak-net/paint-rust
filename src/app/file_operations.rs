@@ -9,7 +9,7 @@ pub(super) enum Outcome {
     Exported(PathBuf),
     Transformed(Box<Document>, String),
     Selection(Selection),
-    Filled(Box<Document>),
+    Edited(Box<Document>, String),
 }
 
 pub(super) struct FileJob {
@@ -19,6 +19,28 @@ pub(super) struct FileJob {
 }
 
 impl Editor {
+    pub(super) fn start_document_edit(&mut self, flatten: bool) {
+        self.finish_stroke();
+        let mut document = self.document.snapshot();
+        document.set_selection(self.document.selection());
+        let label = if flatten {
+            "Flatten image"
+        } else {
+            "Invert colors"
+        };
+        self.start_cancellable_file_job(label, move |cancel| {
+            let completed = if flatten {
+                document.flatten_cancellable(cancel).is_some()
+            } else {
+                document.invert_cancellable(cancel)
+            };
+            if !completed {
+                return Err(files::CANCELLED.into());
+            }
+            Ok(Outcome::Edited(Box::new(document), label.into()))
+        });
+    }
+
     pub(super) fn start_fill(&mut self, x: i32, y: i32) {
         let mut document = self.document.snapshot();
         document.set_selection(self.document.selection());
@@ -29,7 +51,7 @@ impl Editor {
                 return Err(files::CANCELLED.into());
             }
             document.commit();
-            Ok(Outcome::Filled(Box::new(document)))
+            Ok(Outcome::Edited(Box::new(document), "Flood fill".into()))
         });
     }
 
@@ -149,20 +171,19 @@ impl Editor {
                     Err(error) => self.status = format!("Could not {operation}: {error}"),
                 }
             }
-            Ok(Outcome::Filled(document)) => {
+            Ok(Outcome::Edited(document, label)) => {
                 let selection = self.document.selection();
-                match self.document.apply_transformed(*document, "Flood fill") {
+                match self.document.apply_transformed(*document, &label) {
                     Ok(changed) => {
                         self.document.set_selection(selection);
                         self.texture_dirty |= changed;
                         self.status = if changed {
-                            "Flood fill completed"
+                            format!("{label} completed")
                         } else {
-                            "Image unchanged"
-                        }
-                        .into();
+                            "Image unchanged".into()
+                        };
                     }
-                    Err(error) => self.status = format!("Could not fill: {error}"),
+                    Err(error) => self.status = format!("Could not {operation}: {error}"),
                 }
             }
             Ok(Outcome::Selection(selection)) => {

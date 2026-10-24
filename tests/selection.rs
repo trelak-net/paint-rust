@@ -150,3 +150,18 @@ fn cancelled_fill_can_be_rolled_back_without_history_or_dirty_state() {
     document.commit();
     assert!(document.pixels().iter().all(|p| *p == [0; 4]));
 }
+
+#[test]
+fn cancelled_document_operations_leave_the_original_unchanged() {
+    use std::sync::atomic::AtomicBool;
+    let mut document = Document::new(8, 8, [10, 20, 30, 255]).unwrap();
+    document.add_layer(false);
+    let before = document.snapshot();
+    let history = document.history().count();
+    let cancel = AtomicBool::new(true);
+    assert!(!document.invert_cancellable(&cancel));
+    assert_eq!(document.flatten_cancellable(&cancel), None);
+    assert!(document.layers() == before.layers());
+    assert_eq!(document.history().count(), history);
+    assert!(!document.editing());
+}

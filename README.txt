@@ -410,3 +410,12 @@ fills preserve the selection and publish one undo step; cancelled snapshots are
 discarded. A final completed result can win a late cancellation request.
 Validation: 122 Rust tests and strict Clippy pass, including selected-area
 background filling and cancellation rollback.
+
+Background layer operations
+---------------------------
+Flatten Image and Invert Colors also run on private snapshots with cancellation.
+Both preserve the current selection and existing undo history when the completed
+result is published. Flattening composites visible layers before changing the
+layer stack; cancellation during compositing leaves the original stack intact.
+Validation: 124 Rust tests and strict Clippy pass, including background publication,
+selection preservation, undo restoration and pre-cancelled document operations.
