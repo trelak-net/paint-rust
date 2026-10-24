@@ -94,9 +94,9 @@ Current boundaries
 ------------------
 This is an initial application, not a complete graphics suite. Pressure-sensitive
 input, nonrectangular selections and free transforms are not implemented yet.
-Manual file decoding/encoding, geometry changes and fill run on the UI thread;
-large operations can pause the interface. Recovery copies and effect previews
-run in background workers. Canvas updates upload the full
+File decoding/encoding, recovery copies and effect previews run in background
+workers. Geometry changes, compositing and fill still run on the UI thread;
+large operations can pause the interface. Canvas updates upload the full
 image texture. Metadata, orientation tags and embedded color profiles are not
 preserved or interpreted. PNG is the only raster export format. There is no installer or
 signed distribution yet. Linux is the currently validated desktop target.
@@ -231,7 +231,7 @@ name and preserve the current project path and canvas size. Placement follows th
 selection origin, or centers smaller images without a selection; excess pixels
 are clipped. Project imports use the visible composite. The complete insertion
 is one undo step. Failed decoding or validation leaves the document intact.
-File picking and import decoding currently run synchronously.
+Native file picking remains modal; import decoding runs in a background worker.
 
 Additional effect validation: 72 tests pass. Pixelate averages premultiplied color
 and alpha in blocks anchored to the canvas origin, including partial edge blocks.
@@ -239,3 +239,11 @@ Posterize quantizes each RGB channel to 2–32 levels while retaining alpha. Bot
 use cancellable background previews and leave unselected pixels untouched. As
 with blur, pixelation may sample pixels outside the selection, but only writes
 inside it. Invalid effect buffer dimensions produce no output.
+
+Background file validation: 75 tests pass. Open, save, export, import and recovery
+decoding run off the UI thread. Editing is temporarily disabled while a file job
+is active; the window continues repainting a busy indicator. Closing waits for
+the operation to finish. A Save-before-New/Open/Close action proceeds only after
+a successful write; failures keep the document and unsaved-changes choice. Export
+does not mark a project saved. Native file pickers remain modal. File operations
+currently have no cancellation or byte progress.

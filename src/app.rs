@@ -1,5 +1,7 @@
+mod file_operations;
 use crate::icons::Icon;
 use eframe::egui::{self, Color32, Key, Pos2, Rect, Sense, TextureHandle, TextureOptions, Vec2};
+use file_operations::{FileJob, Outcome};
 use paint_rust::effects::Effect;
 use paint_rust::transform::Orientation;
 use paint_rust::{
@@ -56,6 +58,9 @@ struct EffectDialog {
 }
 
 pub struct Editor {
+    context: egui::Context,
+    file_job: Option<FileJob>,
+    after_save: Option<Action>,
     document: Document,
     texture: Option<TextureHandle>,
     texture_dirty: bool,
@@ -117,6 +122,9 @@ impl Editor {
         crate::appearance::configure(ctx);
         egui_extras::install_image_loaders(ctx);
         Self {
+            context: ctx.clone(),
+            file_job: None,
+            after_save: None,
             document: Document::new(960, 640, [255; 4]).unwrap(),
             texture: None,
             texture_dirty: true,
@@ -161,18 +169,9 @@ impl Editor {
     }
 
     fn load(&mut self, path: PathBuf) {
-        match files::open(&path) {
-            Ok(document) => {
-                self.document = document;
-                self.path = Some(path);
-                self.texture_dirty = true;
-                self.last_point = None;
-                self.zoom = 1.0;
-                self.status = "Image opened".into();
-                self.clear_recovery();
-            }
-            Err(error) => self.status = format!("Could not open image: {error}"),
-        }
+        self.start_file_job("open image", move || {
+            Ok(Outcome::Opened(Box::new(files::open(&path)?), path))
+        });
     }
 
     fn save(&mut self, save_as: bool) -> bool {
@@ -213,19 +212,7 @@ impl Editor {
             self.status = "Could not save project: choose a filename ending in .prust".into();
             return false;
         }
-        match files::save_project(&self.document, &path) {
-            Ok(()) => {
-                self.document.mark_saved();
-                self.status = format!("Saved {}", path.display());
-                self.path = Some(path);
-                self.clear_recovery();
-                true
-            }
-            Err(error) => {
-                self.status = format!("Could not save project: {error}");
-                false
-            }
-        }
+        self.save_to_path(path)
     }
 
     fn export_png(&mut self) {
@@ -249,13 +236,11 @@ impl Editor {
             self.status = "Could not export image: choose a filename ending in .png".into();
             return;
         }
-        self.status = match files::save_png(&self.document, &path) {
-            Ok(()) => format!(
-                "Exported {} — save the project to preserve editable layers",
-                path.display()
-            ),
-            Err(error) => format!("Could not export image: {error}"),
-        };
+        let snapshot = self.document.snapshot();
+        self.start_file_job("export image", move || {
+            files::save_png(&snapshot, &path)?;
+            Ok(Outcome::Exported(path))
+        });
     }
 
     fn import_layer(&mut self) {
@@ -274,27 +259,16 @@ impl Editor {
     }
 
     fn import_layer_from_path(&mut self, path: &std::path::Path) {
-        let result = files::open(path).and_then(|image| {
-            let name = path.file_stem().unwrap_or_default().to_string_lossy();
-            self.document
-                .import_layer(image.width, image.height, &image.composite(), &name)?;
-            Ok((image.width, image.height))
+        let path = path.to_path_buf();
+        self.start_file_job("import image", move || {
+            let image = files::open(&path)?;
+            Ok(Outcome::Imported(
+                image.composite(),
+                image.width,
+                image.height,
+                path,
+            ))
         });
-        match result {
-            Ok((width, height)) => {
-                self.texture_dirty = true;
-                let clipped = self
-                    .document
-                    .selection()
-                    .is_some_and(|s| s.width < width || s.height < height);
-                self.status = if clipped {
-                    "Imported image as a new layer; image clipped to the canvas".into()
-                } else {
-                    "Imported image as a new layer".into()
-                };
-            }
-            Err(error) => self.status = format!("Could not import image: {error}"),
-        }
     }
 
     fn begin_text(&mut self, ctx: &egui::Context, origin: (f32, f32)) {
@@ -381,6 +355,9 @@ impl Editor {
     }
 
     fn request(&mut self, action: Action, ctx: &egui::Context) {
+        if self.file_job.is_some() {
+            return;
+        }
         self.finish_stroke();
         if self.document.dirty() {
             self.pending = Some(action);
@@ -831,6 +808,19 @@ impl Editor {
     }
 
     fn dialogs(&mut self, ctx: &egui::Context) {
+        if self.file_job.is_some() {
+            egui::Window::new("File operation")
+                .collapsible(false)
+                .resizable(false)
+                .anchor(egui::Align2::CENTER_CENTER, Vec2::ZERO)
+                .show(ctx, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.spinner();
+                        ui.label(&self.status);
+                    });
+                });
+            return;
+        }
         if let Some(action) = self.pending {
             egui::Window::new("Unsaved changes")
                 .collapsible(false)
@@ -841,7 +831,7 @@ impl Editor {
                     ui.horizontal(|ui| {
                         if ui.add(Icon::Save.button("Save")).clicked() && self.save(false) {
                             self.pending = None;
-                            self.perform(action, ctx);
+                            self.after_save = Some(action);
                         }
                         if ui.button("Discard").clicked() {
                             self.pending = None;
@@ -1170,25 +1160,10 @@ impl Editor {
                 });
             if let Some((index, recover)) = chosen {
                 if recover {
-                    match files::open(&self.recoverable[index].path) {
-                        Ok(mut document) => {
-                            document.mark_unsaved();
-                            self.clear_recovery();
-                            self.document = document;
-                            self.path = None;
-                            self.texture_dirty = true;
-                            self.zoom = 1.0;
-                            let candidate = self.recoverable.remove(index);
-                            if let Some(recovery) = &mut self.recovery {
-                                recovery.adopt(candidate);
-                            }
-                            self.status = "Recovered unsaved work — save it as a project".into();
-                            self.recovery_prompt = false;
-                        }
-                        Err(error) => {
-                            self.status = format!("Could not recover the project: {error}")
-                        }
-                    }
+                    let path = self.recoverable[index].path.clone();
+                    self.start_file_job("recover project", move || {
+                        Ok(Outcome::Recovered(Box::new(files::open(&path)?), index))
+                    });
                 } else {
                     let candidate = self.recoverable.remove(index);
                     if let Err(error) = candidate.discard() {
@@ -1253,6 +1228,10 @@ impl Editor {
 
 impl Editor {
     fn show(&mut self, ctx: &egui::Context) {
+        self.poll_file_job(ctx);
+        if self.file_job.is_some() && ctx.input(|i| i.viewport().close_requested()) {
+            ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+        }
         if ctx.input(|i| i.viewport().close_requested()) && self.effect_dialog.is_some() {
             self.effect_dialog = None;
             self.document.cancel();
@@ -1277,12 +1256,14 @@ impl Editor {
         }
         if ctx.input(|i| i.viewport().close_requested())
             && !self.allow_close
+            && self.file_job.is_none()
             && self.document.dirty()
         {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
             self.pending = Some(Action::Close);
         }
-        let enabled = self.pending.is_none()
+        let enabled = self.file_job.is_none()
+            && self.pending.is_none()
             && !self.new_dialog
             && self.layer_properties.is_none()
             && self.resize_dialog.is_none()
@@ -1292,7 +1273,8 @@ impl Editor {
         if enabled {
             self.shortcuts(ctx);
         }
-        let enabled = self.pending.is_none()
+        let enabled = self.file_job.is_none()
+            && self.pending.is_none()
             && !self.new_dialog
             && self.layer_properties.is_none()
             && self.resize_dialog.is_none()
@@ -1524,7 +1506,7 @@ impl Editor {
                 egui::ScrollArea::vertical()
                     .id_salt("tool-panel")
                     .show(ui, |ui| {
-                        if !enabled || self.document.editing() {
+                        if !enabled || self.file_job.is_some() || self.document.editing() {
                             ui.disable();
                         }
                         ui.heading("Tools");
@@ -1626,7 +1608,7 @@ impl Editor {
             .default_width(220.0)
             .width_range(180.0..=320.0)
             .show(ctx, |ui| {
-                if !enabled || self.document.editing() {
+                if !enabled || self.file_job.is_some() || self.document.editing() {
                     ui.disable();
                 }
                 ui.heading("Layers");
@@ -1748,7 +1730,7 @@ impl Editor {
                     .fill(crate::appearance::workspace_color(ctx.theme())),
             )
             .show(ctx, |ui| {
-                if !enabled {
+                if !enabled || self.file_job.is_some() {
                     ui.disable();
                 }
                 self.canvas(ui);
@@ -1783,6 +1765,15 @@ impl eframe::App for Editor {
 
 #[cfg(test)]
 mod tests {
+    fn wait_for_files(editor: &mut Editor, ctx: &egui::Context) {
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        while editor.file_job.is_some() {
+            editor.poll_file_job(ctx);
+            assert!(std::time::Instant::now() < deadline);
+            std::thread::sleep(std::time::Duration::from_millis(2));
+        }
+    }
+
     use super::*;
 
     fn frame(editor: &mut Editor, ctx: &egui::Context, events: Vec<egui::Event>) {
@@ -2130,6 +2121,7 @@ mod tests {
         let path = dir.path().join("Zażółć.prust");
         files::save_project(&image, &path).unwrap();
         editor.import_layer_from_path(&path);
+        wait_for_files(&mut editor, &ctx);
         assert_eq!(editor.document.layers().len(), 2);
         assert_eq!(editor.document.layers()[1].name, "Zażółć");
         assert_eq!(editor.document.pixels()[5], image.composite()[0]);
@@ -2145,7 +2137,93 @@ mod tests {
         assert_eq!(editor.document.pixels()[5], image.composite()[0]);
         let before = editor.document.layers().to_vec();
         editor.import_layer_from_path(&dir.path().join("missing.png"));
+        wait_for_files(&mut editor, &ctx);
         assert!(editor.document.layers() == before);
         assert!(editor.status.starts_with("Could not import image:"));
+    }
+    #[test]
+    fn save_completion_controls_followup_and_failure_preserves_dirty_document() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.document = Document::new(4, 4, [255; 4]).unwrap();
+        editor.document.invert();
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("saved.prust");
+        assert!(editor.save_to_path(path.clone()));
+        editor.after_save = Some(Action::New);
+        assert!(editor.document.dirty());
+        assert!(!editor.new_dialog);
+        wait_for_files(&mut editor, &ctx);
+        assert!(editor.new_dialog);
+        assert!(!editor.document.dirty());
+        assert_eq!(
+            files::open(&path).unwrap().pixels(),
+            editor.document.pixels()
+        );
+        editor.new_dialog = false;
+        editor.document.invert();
+        assert!(editor.save_to_path(dir.path().join("missing/saved.prust")));
+        editor.after_save = Some(Action::Close);
+        wait_for_files(&mut editor, &ctx);
+        assert!(editor.document.dirty());
+        assert!(!editor.allow_close);
+        assert!(matches!(editor.pending, Some(Action::Close)));
+        assert_eq!(editor.path, Some(path));
+        assert!(editor.status.starts_with("Could not save project:"));
+    }
+
+    #[test]
+    fn running_file_job_blocks_edits_and_replacement_until_completion() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        frame(&mut editor, &ctx, vec![]);
+        let (release, wait) = std::sync::mpsc::channel();
+        assert!(editor.start_file_job("test operation", move || {
+            wait.recv().unwrap();
+            Err("Test failure".into())
+        }));
+        assert!(!editor.start_file_job("second operation", || unreachable!()));
+        editor.request(Action::New, &ctx);
+        assert!(!editor.new_dialog);
+        let point = Pos2::new(350.0, 200.0);
+        frame(
+            &mut editor,
+            &ctx,
+            vec![egui::Event::PointerMoved(point), pointer(point, true)],
+        );
+        frame(&mut editor, &ctx, vec![pointer(point, false)]);
+        assert!(!editor.document.dirty());
+        let mut input = egui::RawInput::default();
+        input
+            .viewports
+            .get_mut(&egui::ViewportId::ROOT)
+            .unwrap()
+            .events
+            .push(egui::ViewportEvent::Close);
+        let output = ctx.run(input, |ctx| editor.show(ctx));
+        assert!(
+            output.viewport_output[&egui::ViewportId::ROOT]
+                .commands
+                .iter()
+                .any(|command| matches!(command, egui::ViewportCommand::CancelClose))
+        );
+        release.send(()).unwrap();
+        wait_for_files(&mut editor, &ctx);
+        assert!(editor.status.contains("Test failure"));
+        assert!(!editor.document.dirty());
+    }
+
+    #[test]
+    fn failed_background_open_preserves_current_pixels_and_path() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.document = Document::new(2, 2, [10, 20, 30, 255]).unwrap();
+        editor.path = Some(PathBuf::from("current.prust"));
+        let dir = tempfile::tempdir().unwrap();
+        editor.load(dir.path().join("missing.prust"));
+        wait_for_files(&mut editor, &ctx);
+        assert_eq!(editor.document.pixels(), &[[10, 20, 30, 255]; 4]);
+        assert_eq!(editor.path, Some(PathBuf::from("current.prust")));
+        assert!(editor.status.starts_with("Could not open image:"));
     }
 }
