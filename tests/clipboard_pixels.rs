@@ -5,6 +5,7 @@ fn copy_reads_selection_from_active_or_merged_layers() {
     let mut doc = Document::new(4, 4, [50, 60, 70, 255]).unwrap();
     doc.add_layer(false);
     doc.set_selection(Some(Selection {
+        ellipse: None,
         x: 1,
         y: 1,
         width: 2,
@@ -22,6 +23,7 @@ fn copy_reads_selection_from_active_or_merged_layers() {
 fn paste_clips_at_selection_origin_and_restores_previous_selection_on_undo() {
     let mut doc = Document::new(4, 4, [0; 4]).unwrap();
     let before = Selection {
+        ellipse: None,
         x: 3,
         y: 2,
         width: 1,
@@ -32,6 +34,7 @@ fn paste_clips_at_selection_origin_and_restores_previous_selection_on_undo() {
     assert_eq!(
         doc.selection(),
         Some(Selection {
+            ellipse: None,
             x: 3,
             y: 2,
             width: 1,

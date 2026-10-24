@@ -29,18 +29,53 @@ const HISTORY_BYTES: usize = 128 * 1024 * 1024;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Selection {
+    pub ellipse: Option<EllipseSelection>,
     pub x: u32,
     pub y: u32,
     pub width: u32,
     pub height: u32,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct EllipseSelection {
+    pub x: i64,
+    pub y: i64,
+    pub width: u32,
+    pub height: u32,
+}
+
 impl Selection {
+    pub fn elliptical(x: u32, y: u32, width: u32, height: u32) -> Self {
+        Self {
+            x,
+            y,
+            width,
+            height,
+            ellipse: Some(EllipseSelection {
+                x: i64::from(x),
+                y: i64::from(y),
+                width,
+                height,
+            }),
+        }
+    }
+
     pub(crate) fn contains(self, x: usize, y: usize) -> bool {
-        x >= self.x as usize
-            && y >= self.y as usize
-            && x < self.x as usize + self.width as usize
-            && y < self.y as usize + self.height as usize
+        if x < self.x as usize
+            || y < self.y as usize
+            || x >= self.x as usize + self.width as usize
+            || y >= self.y as usize + self.height as usize
+        {
+            return false;
+        }
+        self.ellipse.is_none_or(|ellipse| {
+            if ellipse.width == 0 || ellipse.height == 0 {
+                return false;
+            }
+            let nx = 2.0 * (x as f64 + 0.5 - ellipse.x as f64) / f64::from(ellipse.width) - 1.0;
+            let ny = 2.0 * (y as f64 + 0.5 - ellipse.y as f64) / f64::from(ellipse.height) - 1.0;
+            nx * nx + ny * ny <= 1.0
+        })
     }
 }
 
@@ -210,6 +245,7 @@ impl Document {
             let width = s.width.min(self.width - x);
             let height = s.height.min(self.height - y);
             (width > 0 && height > 0).then_some(Selection {
+                ellipse: s.ellipse,
                 x,
                 y,
                 width,
@@ -352,6 +388,7 @@ impl Document {
 
     pub fn copy_pixels(&self, merged: bool) -> (u32, u32, Vec<Pixel>) {
         let rect = self.selection.unwrap_or(Selection {
+            ellipse: None,
             x: 0,
             y: 0,
             width: self.width,
@@ -367,7 +404,13 @@ impl Document {
         let mut pixels = Vec::with_capacity(rect.width as usize * rect.height as usize);
         for y in rect.y..rect.y + rect.height {
             let start = y as usize * self.width as usize + rect.x as usize;
-            pixels.extend_from_slice(&source[start..start + rect.width as usize]);
+            for x in 0..rect.width as usize {
+                pixels.push(if rect.contains(rect.x as usize + x, y as usize) {
+                    source[start + x]
+                } else {
+                    [0; 4]
+                });
+            }
         }
         (rect.width, rect.height, pixels)
     }
@@ -431,6 +474,7 @@ impl Document {
         self.layers
             .insert(self.active, Layer::new(name.into(), output));
         self.selection = Some(Selection {
+            ellipse: None,
             x,
             y,
             width: clipped_width,
@@ -835,6 +879,7 @@ impl Document {
             return;
         }
         let area = before.selection.unwrap_or(Selection {
+            ellipse: None,
             x: 0,
             y: 0,
             width: self.width,
@@ -847,6 +892,11 @@ impl Document {
         let right = (left + i64::from(area.width)).clamp(0, i64::from(self.width)) as u32;
         let bottom = (top + i64::from(area.height)).clamp(0, i64::from(self.height)) as u32;
         self.selection = (right > x && bottom > y).then_some(Selection {
+            ellipse: area.ellipse.map(|mut ellipse| {
+                ellipse.x += i64::from(dx);
+                ellipse.y += i64::from(dy);
+                ellipse
+            }),
             x,
             y,
             width: right - x,
@@ -860,11 +910,18 @@ impl Document {
         if !copy {
             for y in area.y..area.y + area.height {
                 let start = y as usize * self.width as usize + area.x as usize;
-                output[start..start + area.width as usize].fill([0; 4]);
+                for x in 0..area.width as usize {
+                    if area.contains(area.x as usize + x, y as usize) {
+                        output[start + x] = [0; 4];
+                    }
+                }
             }
         }
         for sy in area.y..area.y + area.height {
             for sx in area.x..area.x + area.width {
+                if !area.contains(sx as usize, sy as usize) {
+                    continue;
+                }
                 let x = i64::from(sx) + i64::from(dx);
                 let y = i64::from(sy) + i64::from(dy);
                 if x < 0 || y < 0 || x >= i64::from(self.width) || y >= i64::from(self.height) {

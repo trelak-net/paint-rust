@@ -42,6 +42,7 @@ fn text_clips_to_selection_and_commits_once_on_the_active_layer() {
     let mut doc = Document::new(100, 60, [255; 4]).unwrap();
     doc.add_layer(false);
     doc.set_selection(Some(Selection {
+        ellipse: None,
         x: 0,
         y: 0,
         width: 25,

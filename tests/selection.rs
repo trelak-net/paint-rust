@@ -2,6 +2,7 @@ use paint_rust::document::{Document, Selection, Shape, ShapeStyle};
 
 fn area() -> Selection {
     Selection {
+        ellipse: None,
         x: 2,
         y: 2,
         width: 3,
@@ -102,6 +103,7 @@ fn crop_preserves_all_layers_and_undo_restores_dimensions_and_selection() {
 fn selection_bounds_are_clipped_without_integer_overflow() {
     let mut doc = Document::new(8, 8, [255; 4]).unwrap();
     doc.set_selection(Some(Selection {
+        ellipse: None,
         x: 7,
         y: 7,
         width: u32::MAX,
@@ -110,6 +112,7 @@ fn selection_bounds_are_clipped_without_integer_overflow() {
     assert_eq!(
         doc.selection(),
         Some(Selection {
+            ellipse: None,
             x: 7,
             y: 7,
             width: 1,
@@ -117,6 +120,7 @@ fn selection_bounds_are_clipped_without_integer_overflow() {
         })
     );
     doc.set_selection(Some(Selection {
+        ellipse: None,
         x: u32::MAX,
         y: 0,
         width: 10,

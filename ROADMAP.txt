@@ -11,7 +11,8 @@ Development roadmap
 [x] Import image files and project composites as layers.
 [x] Raster text with editable preview.
 [x] Move/copy selected pixels and move selection bounds.
-[ ] Additional selection shapes, boolean operations and free transforms.
+[x] Elliptical selections with masked editing, clipboard and movement.
+[ ] Selection boolean operations, additional shapes and free transforms.
 [x] Eight layer blend modes with project persistence.
 [x] Lossless visible-image flattening with complete layer restoration on undo.
 [x] Brightness/contrast, saturation, grayscale, sepia and box blur previews.

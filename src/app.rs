@@ -71,6 +71,7 @@ pub struct Editor {
     brush_size: f32,
     shape_filled: bool,
     move_selection_only: bool,
+    ellipse_selection: bool,
     shape_origin: Option<(f32, f32)>,
     selection_before: Option<Option<Selection>>,
     zoom: f32,
@@ -139,6 +140,7 @@ impl Editor {
             brush_size: 12.0,
             shape_filled: false,
             move_selection_only: false,
+            ellipse_selection: false,
             shape_origin: None,
             selection_before: None,
             zoom: 1.0,
@@ -514,6 +516,7 @@ impl Editor {
             Some(7) => {
                 self.finish_stroke();
                 self.document.set_selection(Some(Selection {
+                    ellipse: None,
                     x: 0,
                     y: 0,
                     width: self.document.width,
@@ -644,18 +647,36 @@ impl Editor {
                         rect.min + Vec2::new(selection.x as f32, selection.y as f32) * self.zoom,
                         Vec2::new(selection.width as f32, selection.height as f32) * self.zoom,
                     );
-                    painter.rect_stroke(
-                        outline,
-                        0.0,
-                        egui::Stroke::new(3.0_f32, Color32::BLACK),
-                        egui::StrokeKind::Inside,
-                    );
-                    painter.rect_stroke(
-                        outline,
-                        0.0,
-                        egui::Stroke::new(1.0_f32, Color32::WHITE),
-                        egui::StrokeKind::Inside,
-                    );
+                    if let Some(ellipse) = selection.ellipse {
+                        let center = rect.min
+                            + Vec2::new(
+                                ellipse.x as f32 + ellipse.width as f32 / 2.0,
+                                ellipse.y as f32 + ellipse.height as f32 / 2.0,
+                            ) * self.zoom;
+                        let radius = Vec2::new(ellipse.width as f32, ellipse.height as f32)
+                            * (self.zoom / 2.0);
+                        for (width, color) in [(3.0_f32, Color32::BLACK), (1.0_f32, Color32::WHITE)]
+                        {
+                            painter.add(egui::epaint::EllipseShape::stroke(
+                                center,
+                                radius,
+                                egui::Stroke::new(width, color),
+                            ));
+                        }
+                    } else {
+                        painter.rect_stroke(
+                            outline,
+                            0.0,
+                            egui::Stroke::new(3.0_f32, Color32::BLACK),
+                            egui::StrokeKind::Inside,
+                        );
+                        painter.rect_stroke(
+                            outline,
+                            0.0,
+                            egui::Stroke::new(1.0_f32, Color32::WHITE),
+                            egui::StrokeKind::Inside,
+                        );
+                    }
                 }
                 if response.hovered()
                     && !self.panning
@@ -683,7 +704,7 @@ impl Editor {
                     && ((response.is_pointer_button_down_on()
                         && ui.input(|i| i.pointer.primary_down()))
                         || response.clicked_by(egui::PointerButton::Primary)
-                        || (response.drag_stopped_by(egui::PointerButton::Primary)
+                        || (ui.input(|i| i.pointer.button_released(egui::PointerButton::Primary))
                             && self.last_point.is_some()))
                     && let Some(pos) = response
                         .interact_pointer_pos()
@@ -841,12 +862,18 @@ impl Editor {
                             .ceil()
                             .clamp(0.0, self.document.height as f32)
                             as u32;
-                        self.document.set_selection(Some(Selection {
-                            x,
-                            y,
-                            width: right - x,
-                            height: bottom - y,
-                        }));
+                        let selection = if self.ellipse_selection {
+                            Selection::elliptical(x, y, right - x, bottom - y)
+                        } else {
+                            Selection {
+                                ellipse: None,
+                                x,
+                                y,
+                                width: right - x,
+                                height: bottom - y,
+                            }
+                        };
+                        self.document.set_selection(Some(selection));
                         ui.ctx().request_repaint();
                     }
                     self.last_point = Some(point);
@@ -1454,6 +1481,7 @@ impl Editor {
                     if ui.button("Select all    Ctrl+A").clicked() {
                         self.finish_stroke();
                         self.document.set_selection(Some(Selection {
+                            ellipse: None,
                             x: 0,
                             y: 0,
                             width: self.document.width,
@@ -1590,6 +1618,9 @@ impl Editor {
                         }
                         if self.tool == Tool::Gradient {
                             ui.checkbox(&mut self.radial_gradient, "Radial gradient");
+                        }
+                        if self.tool == Tool::Select {
+                            ui.checkbox(&mut self.ellipse_selection, "Elliptical selection");
                         }
                         if self.tool == Tool::Move {
                             ui.checkbox(&mut self.move_selection_only, "Move selection only");
@@ -1929,6 +1960,7 @@ mod tests {
         let mut editor = Editor::blank(&ctx);
         editor.tool = Tool::Select;
         let previous = Selection {
+            ellipse: None,
             x: 5,
             y: 6,
             width: 7,
@@ -2002,6 +2034,7 @@ mod tests {
             fail: false,
         }));
         editor.document.set_selection(Some(Selection {
+            ellipse: None,
             x: 0,
             y: 0,
             width: 2,
@@ -2346,5 +2379,31 @@ mod tests {
         assert_eq!((editor.document.width, editor.document.height), (4, 3));
         assert!(!editor.document.dirty());
         assert!(editor.status.starts_with("Could not resize image:"));
+    }
+    #[test]
+    fn elliptical_selection_gesture_sets_shape_and_stays_out_of_history() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.tool = Tool::Select;
+        editor.ellipse_selection = true;
+        frame(&mut editor, &ctx, vec![]);
+        frame(&mut editor, &ctx, vec![]);
+        let start = editor.canvas_viewport.min + Vec2::new(130.0, 100.0);
+        let end = start + Vec2::new(100.0, 80.0);
+        frame(
+            &mut editor,
+            &ctx,
+            vec![egui::Event::PointerMoved(start), pointer(start, true)],
+        );
+        frame(
+            &mut editor,
+            &ctx,
+            vec![egui::Event::PointerMoved(end), pointer(end, false)],
+        );
+        let selected = editor.document.selection().unwrap();
+        assert!(selected.ellipse.is_some());
+        assert_eq!((selected.width, selected.height), (100, 80));
+        assert!(!editor.document.dirty());
+        assert!(!editor.document.can_undo());
     }
 }

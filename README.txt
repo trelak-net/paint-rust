@@ -58,7 +58,7 @@ Features
 - Preview brightness/contrast, saturation, grayscale, sepia and alpha-aware box blur.
 - Pixelate with alpha-aware block averages or posterize individual color channels.
 - Draw lines and outlined/filled rectangles or ellipses with cancellable previews.
-- Select a rectangular area, limit edits to it, delete pixels or crop all layers.
+- Select a rectangular or elliptical area, limit edits to it, delete pixels or crop all layers.
 - Resize all layers, change canvas size with a nine-position anchor, rotate or mirror.
 - Hold Shift for 45-degree line angles or equal shape dimensions.
 - Zoom from 10% to 400%, fit the canvas, and navigate with scrollbars.
@@ -122,7 +122,7 @@ is session-local and is not stored in project files.
 Current boundaries
 ------------------
 This is an initial application, not a complete graphics suite. Pressure-sensitive
-input, nonrectangular selections and free transforms are not implemented yet.
+input, selection boolean operations and free transforms are not implemented yet.
 File decoding/encoding, recovery copies, effect previews and image/canvas resizing,
 rotation and mirroring run in background workers. Compositing and fill still run on the UI thread;
 large operations can pause the interface. Canvas updates upload the full
@@ -295,3 +295,11 @@ growing integrates pixel coverage across each destination footprint. Fractional
 edge coverage is weighted and colors use premultiplied alpha to prevent invisible
 RGB from bleeding into the result. Nearest-neighbor remains available. Filtering
 uses encoded RGB, not linear-light color.
+
+Elliptical selection validation: 88 Rust tests pass. The selection tool offers an
+elliptical mode; its mask limits painting, fill, adjustments, text, gradients and
+delete. Copy uses transparent pixels outside the ellipse. Move preserves masked
+pixels and the ellipse's original geometry when clipped at canvas edges. Undo
+and cancellation restore the prior selection. Crop uses its rectangular bounding
+box. Selection edges use pixel-center coverage without feathering. Rapid pointer
+release gestures are finalized even before the UI recognizes a drag threshold.

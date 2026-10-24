@@ -71,6 +71,7 @@ fn smooth_resize_uses_premultiplied_alpha_to_avoid_transparent_color_bleed() {
 fn invalid_resize_is_transactional_and_undo_restores_selection() {
     let mut doc = numbered();
     let selection = Selection {
+        ellipse: None,
         x: 1,
         y: 0,
         width: 2,
@@ -97,6 +98,7 @@ fn publishing_background_geometry_retains_history_and_saved_state() {
     doc.invert();
     doc.mark_saved();
     doc.set_selection(Some(Selection {
+        ellipse: None,
         x: 1,
         y: 0,
         width: 2,
@@ -125,6 +127,7 @@ fn publishing_background_geometry_retains_history_and_saved_state() {
 fn unchanged_background_geometry_preserves_selection_and_pending_edit_is_rejected() {
     let mut doc = Document::new(2, 2, [255; 4]).unwrap();
     let selection = Some(Selection {
+        ellipse: None,
         x: 1,
         y: 0,
         width: 1,

@@ -126,6 +126,7 @@ fn flatten_preserves_composite_and_undo_restores_every_layer() {
         doc.set_visibility(2, false);
         doc.select_layer(1);
         let selection = Selection {
+            ellipse: None,
             x: 1,
             y: 0,
             width: 1,
@@ -185,6 +186,7 @@ fn import_clips_at_selection_origin_and_rejects_invalid_input_atomically() {
     use paint_rust::document::Selection;
     let mut doc = Document::new(3, 2, [255; 4]).unwrap();
     let selection = Selection {
+        ellipse: None,
         x: 2,
         y: 1,
         width: 1,
