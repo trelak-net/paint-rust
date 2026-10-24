@@ -285,6 +285,66 @@ impl Document {
         })
     }
 
+    pub fn copy_pixels(&self, merged: bool) -> (u32, u32, Vec<Pixel>) {
+        let rect = self.selection.unwrap_or(Selection {
+            x: 0,
+            y: 0,
+            width: self.width,
+            height: self.height,
+        });
+        let flattened;
+        let source = if merged {
+            flattened = self.composite();
+            &flattened[..]
+        } else {
+            self.pixels()
+        };
+        let mut pixels = Vec::with_capacity(rect.width as usize * rect.height as usize);
+        for y in rect.y..rect.y + rect.height {
+            let start = y as usize * self.width as usize + rect.x as usize;
+            pixels.extend_from_slice(&source[start..start + rect.width as usize]);
+        }
+        (rect.width, rect.height, pixels)
+    }
+    pub fn paste_layer(
+        &mut self,
+        width: u32,
+        height: u32,
+        pixels: &[Pixel],
+    ) -> Result<bool, String> {
+        Self::validate_size(width, height)?;
+        if pixels.len() != width as usize * height as usize {
+            return Err("Invalid pasted pixel buffer.".into());
+        }
+        if self.editing() || !self.can_add_layer() {
+            return Err("Cannot add another layer to this document.".into());
+        }
+        let (x, y) = self.selection.map(|s| (s.x, s.y)).unwrap_or((
+            (self.width.saturating_sub(width)) / 2,
+            (self.height.saturating_sub(height)) / 2,
+        ));
+        let clipped_width = width.min(self.width - x);
+        let clipped_height = height.min(self.height - y);
+        let mut output = vec![[0; 4]; self.width as usize * self.height as usize];
+        for row in 0..clipped_height {
+            let src = row as usize * width as usize;
+            let dst = (row + y) as usize * self.width as usize + x as usize;
+            output[dst..dst + clipped_width as usize]
+                .copy_from_slice(&pixels[src..src + clipped_width as usize]);
+        }
+        self.begin("Paste layer");
+        self.active += 1;
+        self.layers
+            .insert(self.active, Layer::new("Pasted image".into(), output));
+        self.selection = Some(Selection {
+            x,
+            y,
+            width: clipped_width,
+            height: clipped_height,
+        });
+        Ok(self.commit())
+    }
+
     pub fn layers(&self) -> &[Layer] {
         &self.layers
     }

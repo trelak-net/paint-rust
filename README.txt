@@ -35,6 +35,7 @@ Features
 - Undo/redo complete strokes and edits; cancel a stroke with Escape.
 - Open PNG, JPEG, BMP and WebP; export a flattened RGBA PNG.
 - Add, duplicate, reorder, hide and delete layers; edit names and opacity.
+- Copy/cut active-layer pixels or copy the merged image; paste images as new layers.
 - Save editable layers in a versioned .prust project.
 - Confirm unsaved changes before opening, creating or closing a document.
 - Write through a temporary sibling file before replacing the destination.
@@ -51,6 +52,8 @@ O: ellipse                   S: rectangular selection
 Ctrl+A: select all           Ctrl+Shift+A: deselect
 Delete: clear selected pixels (or the whole active layer without a selection)
 Ctrl+Shift+X: crop all layers to the selection
+Ctrl+C: copy active pixels   Ctrl+X: cut active pixels
+Ctrl+V: paste image as a new layer
 Escape: cancel the current stroke
 
 Use Command instead of Ctrl on macOS.
@@ -155,3 +158,13 @@ selection controls cropping/placement. Rotation and mirroring preserve exact pix
 values. Geometry changes affect every layer and clear the selection; undo restores
 its previous bounds. Resampling currently interpolates encoded RGB values rather
 than linear-light colors, and bilinear downsampling is not an area filter.
+
+Clipboard validation: 39 tests pass, including injected clipboard failures, native
+cut/paste input events, selected-region copying and one-step paste undo. Cut only
+deletes pixels after the clipboard accepts the image. Paste uses the selection
+origin or centers the image, clipping to the canvas. Copy merged is in the Edit
+menu. The clipboard connection stays alive while the editor runs. This backend
+handles image paste on Ctrl+V release because the window integration consumes its
+press for text paste. OS clipboard interoperability still needs validation across
+target desktops; tests use an injected memory clipboard rather than replacing
+the user's clipboard contents. Clipboard decoding is currently synchronous.

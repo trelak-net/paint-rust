@@ -7,7 +7,8 @@ Development roadmap
 [x] Lines, rectangles and ellipses with cancellable previews.
 [x] Rectangular selections, selected-area operations and crop.
 [x] Image/canvas resizing, rotation and mirroring.
-[ ] Text editing, clipboard integration and additional selection tools.
+[x] Clipboard image copy/cut/paste.
+[ ] Text editing and additional selection tools.
 [ ] Blend modes, adjustments and effects.
 [ ] Background processing, recovery and large-document performance.
 [ ] Desktop integration, accessibility, packaging and release validation.

@@ -1,5 +1,6 @@
 mod app;
 mod appearance;
+mod clipboard;
 mod icons;
 
 fn main() -> eframe::Result {

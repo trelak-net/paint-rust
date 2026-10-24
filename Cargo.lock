@@ -1999,6 +1999,7 @@ dependencies = [
 name = "paint-rust"
 version = "0.1.0"
 dependencies = [
+ "arboard",
  "ashpd",
  "eframe",
  "egui_extras",
