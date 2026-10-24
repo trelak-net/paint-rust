@@ -36,6 +36,7 @@ Features
 - Open PNG, JPEG, BMP and WebP; export a flattened RGBA PNG.
 - Add, duplicate, reorder, hide and delete layers; edit names and opacity.
 - Copy/cut active-layer pixels or copy the merged image; paste images as new layers.
+- Place multiline text with a live preview, adjustable size/color and explicit Apply.
 - Save editable layers in a versioned .prust project.
 - Confirm unsaved changes before opening, creating or closing a document.
 - Write through a temporary sibling file before replacing the destination.
@@ -49,6 +50,7 @@ B: brush                     E: eraser
 F: flood fill                I: color picker
 L: line                      R: rectangle
 O: ellipse                   S: rectangular selection
+T: text
 Ctrl+A: select all           Ctrl+Shift+A: deselect
 Delete: clear selected pixels (or the whole active layer without a selection)
 Ctrl+Shift+X: crop all layers to the selection
@@ -85,7 +87,7 @@ is session-local and is not stored in project files.
 
 Current boundaries
 ------------------
-This is an initial application, not a complete graphics suite. Text, pressure-sensitive input, advanced effects, autosave and session
+This is an initial application, not a complete graphics suite. Pressure-sensitive input, advanced effects, autosave and session
 recovery are not implemented yet. Image decoding, encoding and fill run on the UI
 thread; large operations can pause the interface. Canvas updates upload the full
 image texture. Metadata, orientation tags and embedded color profiles are not
@@ -168,3 +170,9 @@ handles image paste on Ctrl+V release because the window integration consumes it
 press for text paste. OS clipboard interoperability still needs validation across
 target desktops; tests use an injected memory clipboard rather than replacing
 the user's clipboard contents. Clipboard decoding is currently synchronous.
+
+Text validation: 43 tests pass. Text uses the interface font, glyph coverage and
+basic kerning, including Polish characters. The canvas preview stays pending until
+Apply; Cancel/Escape restores the previous layer. Applied text becomes raster
+pixels. Complex-script shaping, bidirectional layout, font fallback, persistent
+text objects and font selection are not implemented. Size is in image pixels.

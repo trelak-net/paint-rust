@@ -17,6 +17,7 @@ enum Tool {
     Rectangle,
     Ellipse,
     Select,
+    Text,
 }
 
 #[derive(Clone, Copy)]
@@ -34,6 +35,15 @@ struct ResizeDialog {
     ratio: f64,
     smooth: bool,
     anchor: usize,
+}
+
+struct TextDialog {
+    content: String,
+    font: ab_glyph::FontArc,
+    origin: (f32, f32),
+    size: f32,
+    color: Color32,
+    focus: bool,
 }
 
 pub struct Editor {
@@ -54,6 +64,7 @@ pub struct Editor {
     new_dialog: bool,
     layer_properties: Option<(String, u8)>,
     resize_dialog: Option<ResizeDialog>,
+    text_dialog: Option<TextDialog>,
     new_width: u32,
     new_height: u32,
     transparent: bool,
@@ -94,6 +105,7 @@ impl Editor {
             new_dialog: false,
             layer_properties: None,
             resize_dialog: None,
+            text_dialog: None,
             new_width: 960,
             new_height: 640,
             transparent: false,
@@ -200,6 +212,36 @@ impl Editor {
         };
     }
 
+    fn begin_text(&mut self, ctx: &egui::Context, origin: (f32, f32)) {
+        let data = ctx.fonts(|fonts| {
+            let definitions = fonts.definitions();
+            definitions
+                .families
+                .get(&egui::FontFamily::Proportional)
+                .and_then(|names| names.first())
+                .and_then(|name| definitions.font_data.get(name))
+                .cloned()
+        });
+        let font = data
+            .and_then(|data| {
+                ab_glyph::FontVec::try_from_vec_and_index(data.font.to_vec(), data.index).ok()
+            })
+            .map(ab_glyph::FontArc::new);
+        if let Some(font) = font {
+            self.document.begin("Text");
+            self.text_dialog = Some(TextDialog {
+                content: String::new(),
+                font,
+                origin,
+                size: 32.0,
+                color: self.color,
+                focus: true,
+            });
+        } else {
+            self.status = "Could not load a font for the text tool".into();
+        }
+    }
+
     fn clipboard(&mut self) -> Result<&mut (dyn crate::clipboard::Backend + 'static), String> {
         if self.clipboard.is_none() {
             self.clipboard = Some(Box::new(crate::clipboard::Clipboard::connect()?));
@@ -284,6 +326,9 @@ impl Editor {
     }
 
     fn finish_stroke(&mut self) {
+        if self.text_dialog.is_some() {
+            return;
+        }
         if self.document.editing() {
             self.document.commit();
             self.texture_dirty = true;
@@ -349,6 +394,7 @@ impl Editor {
                 if i.key_pressed(Key::F) {
                     self.tool = Tool::Fill;
                 }
+                if i.key_pressed(Key::T) { self.tool = Tool::Text; }
                 if i.key_pressed(Key::S) {
                     self.tool = Tool::Select;
                 }
@@ -533,6 +579,7 @@ impl Editor {
                         let origin = (origin - rect.min) / self.zoom;
                         self.shape_origin = Some((origin.x, origin.y));
                         match self.tool {
+                            Tool::Text => self.begin_text(ui.ctx(), point),
                             Tool::Select => {
                                 self.selection_before = Some(self.document.selection());
                             }
@@ -807,6 +854,67 @@ impl Editor {
                 self.resize_dialog = Some(dialog);
             }
         }
+        if let Some(mut dialog) = self.text_dialog.take() {
+            let mut keep = true;
+            let cancel = ctx.input(|i| i.key_pressed(Key::Escape));
+            if cancel {
+                self.document.cancel();
+                self.texture_dirty = true;
+                keep = false;
+            } else {
+                egui::Window::new("Text")
+                    .collapsible(false)
+                    .resizable(true)
+                    .default_width(320.0)
+                    .show(ctx, |ui| {
+                        let response = ui.add(
+                            egui::TextEdit::multiline(&mut dialog.content)
+                                .desired_rows(4)
+                                .char_limit(4096),
+                        );
+                        if dialog.focus {
+                            response.request_focus();
+                            dialog.focus = false;
+                        }
+                        let mut changed = response.changed();
+                        changed |= ui
+                            .add(egui::Slider::new(&mut dialog.size, 4.0..=256.0).text("Size (px)"))
+                            .changed();
+                        changed |= ui.color_edit_button_srgba(&mut dialog.color).changed();
+                        if changed {
+                            match self.document.preview_text(paint_rust::text::TextStyle {
+                                font: &dialog.font,
+                                text: &dialog.content,
+                                origin: dialog.origin,
+                                size: dialog.size,
+                                color: dialog.color.to_srgba_unmultiplied(),
+                            }) {
+                                Ok(()) => self.texture_dirty = true,
+                                Err(error) => self.status = error,
+                            }
+                        }
+                        ui.horizontal(|ui| {
+                            if ui.button("Apply").clicked() {
+                                self.document.commit();
+                                self.texture_dirty = true;
+                                keep = false;
+                            }
+                            if ui.button("Cancel").clicked() {
+                                self.document.cancel();
+                                self.texture_dirty = true;
+                                keep = false;
+                            }
+                        });
+                        ui.small("Text becomes pixels on the active layer when applied.");
+                    });
+            }
+            if keep {
+                self.text_dialog = Some(dialog);
+            } else {
+                self.last_point = None;
+                self.shape_origin = None;
+            }
+        }
         if self.new_dialog {
             egui::Window::new("New image")
                 .collapsible(false)
@@ -859,6 +967,11 @@ impl Editor {
 
 impl Editor {
     fn show(&mut self, ctx: &egui::Context) {
+        if ctx.input(|i| i.viewport().close_requested()) && self.text_dialog.is_some() {
+            self.text_dialog = None;
+            self.document.commit();
+            self.texture_dirty = true;
+        }
         if let Some(receiver) = &self.appearance
             && let Some(theme) = receiver.try_iter().last()
         {
@@ -881,14 +994,16 @@ impl Editor {
         let enabled = self.pending.is_none()
             && !self.new_dialog
             && self.layer_properties.is_none()
-            && self.resize_dialog.is_none();
+            && self.resize_dialog.is_none()
+            && self.text_dialog.is_none();
         if enabled {
             self.shortcuts(ctx);
         }
         let enabled = self.pending.is_none()
             && !self.new_dialog
             && self.layer_properties.is_none()
-            && self.resize_dialog.is_none();
+            && self.resize_dialog.is_none()
+            && self.text_dialog.is_none();
         let name = self
             .path
             .as_ref()
@@ -1088,6 +1203,7 @@ impl Editor {
                         ui.heading("Tools");
                         for (tool, icon, label, shortcut) in [
                             (Tool::Select, Icon::Select, "Select area", "S"),
+                            (Tool::Text, Icon::Text, "Text", "T"),
                             (Tool::Brush, Icon::Brush, "Brush", "B"),
                             (Tool::Eraser, Icon::Eraser, "Eraser", "E"),
                             (Tool::Fill, Icon::Fill, "Flood fill", "F"),
@@ -1489,6 +1605,46 @@ mod tests {
         assert_eq!(editor.document.layers().len(), 1);
         editor.undo();
         assert_eq!(editor.document.pixels()[0], [255; 4]);
+    }
+
+    #[test]
+    fn text_stays_pending_until_apply_and_escape_restores_pixels() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.tool = Tool::Text;
+        frame(&mut editor, &ctx, vec![]);
+        let point = Pos2::new(350.0, 200.0);
+        frame(
+            &mut editor,
+            &ctx,
+            vec![
+                egui::Event::PointerMoved(point),
+                pointer(point, true),
+                pointer(point, false),
+            ],
+        );
+        assert!(editor.text_dialog.is_some());
+        assert!(editor.document.editing());
+        frame(&mut editor, &ctx, vec![egui::Event::Text("Hello".into())]);
+        frame(&mut editor, &ctx, vec![]);
+        assert!(editor.document.dirty());
+        assert!(!editor.document.can_undo());
+        assert!(editor.document.editing());
+        frame(
+            &mut editor,
+            &ctx,
+            vec![egui::Event::Key {
+                key: Key::Escape,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers::NONE,
+            }],
+        );
+        assert!(editor.text_dialog.is_none());
+        assert!(!editor.document.editing());
+        assert!(!editor.document.dirty());
+        assert!(editor.document.pixels().iter().all(|p| *p == [255; 4]));
     }
 
     #[test]

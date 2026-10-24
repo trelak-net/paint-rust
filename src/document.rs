@@ -30,7 +30,7 @@ pub struct Selection {
 }
 
 impl Selection {
-    fn contains(self, x: usize, y: usize) -> bool {
+    pub(crate) fn contains(self, x: usize, y: usize) -> bool {
         x >= self.x as usize
             && y >= self.y as usize
             && x < self.x as usize + self.width as usize
@@ -633,6 +633,25 @@ impl Document {
         }
     }
 
+    pub fn preview_text(&mut self, style: crate::text::TextStyle<'_>) -> Result<(), String> {
+        if !style.size.is_finite()
+            || style.size < 1.0
+            || style.size > 512.0
+            || style.text.len() > 16384
+        {
+            return Err("Text exceeds the supported size or length.".into());
+        }
+        let before = self
+            .pending
+            .as_ref()
+            .ok_or("Begin a text transaction first")?;
+        self.layers = before.layers.clone();
+        self.active = before.active;
+        let pixels = Arc::make_mut(&mut self.layers[self.active].pixels);
+        crate::text::render(pixels, self.width, self.height, self.selection, style);
+        Ok(())
+    }
+
     pub fn preview_shape(
         &mut self,
         shape: Shape,
@@ -748,7 +767,7 @@ impl Document {
     }
 }
 
-fn blend(dst: Pixel, src: Pixel, opacity: u8) -> Pixel {
+pub(crate) fn blend(dst: Pixel, src: Pixel, opacity: u8) -> Pixel {
     let sa = u32::from(src[3]) * u32::from(opacity);
     if sa == 0 {
         return dst;
