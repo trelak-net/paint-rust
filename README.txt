@@ -27,6 +27,8 @@ Features
 - Fill a contiguous area of exactly matching RGBA pixels.
 - Pick a color from the canvas, edit RGBA values, or use palette swatches.
 - Invert RGB while preserving alpha.
+- Draw lines and outlined/filled rectangles or ellipses with cancellable previews.
+- Hold Shift for 45-degree line angles or equal shape dimensions.
 - Zoom from 10% to 400%, fit the canvas, and navigate with scrollbars.
 - Undo/redo complete strokes and edits; cancel a stroke with Escape.
 - Open PNG, JPEG, BMP and WebP; export a flattened RGBA PNG.
@@ -42,6 +44,8 @@ Ctrl+S: save project          Ctrl+Shift+S: save project as
 Ctrl+Z: undo                  Ctrl+Shift+Z or Ctrl+Y: redo
 B: brush                     E: eraser
 F: flood fill                I: color picker
+L: line                      R: rectangle
+O: ellipse
 Escape: cancel the current stroke
 
 Use Command instead of Ctrl on macOS.
@@ -73,7 +77,7 @@ is session-local and is not stored in project files.
 Current boundaries
 ------------------
 This is an initial application, not a complete graphics suite. Selections,
-text, shapes, pressure-sensitive input, advanced effects, autosave and session
+text, pressure-sensitive input, advanced effects, autosave and session
 recovery are not implemented yet. Image decoding, encoding and fill run on the UI
 thread; large operations can pause the interface. Canvas updates upload the full
 image texture. Metadata, orientation tags and embedded color profiles are not
@@ -130,3 +134,7 @@ Labels and shortcut hints remain available beside the icons.
 Layer/project validation: 21 tests pass, including alpha/opacity/order, shared
 buffer isolation, history, Unicode layer names, editable project round trips and
 malformed project rejection.
+
+Shape validation: 25 tests pass. Previews replace intermediate geometry, Escape
+restores the starting layer, and pointer release commits its final position once.
+Shape edges currently use pixel-center coverage without antialiasing.

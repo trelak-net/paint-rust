@@ -1,6 +1,9 @@
 use crate::icons::Icon;
 use eframe::egui::{self, Color32, Key, Pos2, Rect, Sense, TextureHandle, TextureOptions, Vec2};
-use paint_rust::{document::Document, files};
+use paint_rust::{
+    document::{Document, Shape, ShapeStyle},
+    files,
+};
 use std::path::PathBuf;
 
 #[derive(Clone, Copy, PartialEq)]
@@ -9,6 +12,9 @@ enum Tool {
     Eraser,
     Fill,
     Picker,
+    Line,
+    Rectangle,
+    Ellipse,
 }
 
 #[derive(Clone, Copy)]
@@ -25,6 +31,8 @@ pub struct Editor {
     tool: Tool,
     color: Color32,
     brush_size: f32,
+    shape_filled: bool,
+    shape_origin: Option<(f32, f32)>,
     zoom: f32,
     last_point: Option<(f32, f32)>,
     path: Option<PathBuf>,
@@ -60,6 +68,8 @@ impl Editor {
             tool: Tool::Brush,
             color: Color32::from_rgb(42, 113, 224),
             brush_size: 12.0,
+            shape_filled: false,
+            shape_origin: None,
             zoom: 1.0,
             last_point: None,
             path: None,
@@ -208,6 +218,7 @@ impl Editor {
             self.texture_dirty = true;
         }
         self.last_point = None;
+        self.shape_origin = None;
     }
 
     fn undo(&mut self) {
@@ -252,6 +263,15 @@ impl Editor {
                 if i.key_pressed(Key::F) {
                     self.tool = Tool::Fill;
                 }
+                if i.key_pressed(Key::L) {
+                    self.tool = Tool::Line;
+                }
+                if i.key_pressed(Key::R) {
+                    self.tool = Tool::Rectangle;
+                }
+                if i.key_pressed(Key::O) {
+                    self.tool = Tool::Ellipse;
+                }
                 if i.key_pressed(Key::I) {
                     self.tool = Tool::Picker;
                 }
@@ -275,6 +295,7 @@ impl Editor {
                 self.suppress_stroke = true;
                 self.document.cancel();
                 self.last_point = None;
+                self.shape_origin = None;
                 self.texture_dirty = true;
             }
             _ => {}
@@ -358,15 +379,23 @@ impl Editor {
                     }
                 }
                 if ui.is_enabled()
+                    && ui.input(|i| i.focused)
                     && !self.suppress_stroke
                     && ((response.is_pointer_button_down_on()
                         && ui.input(|i| i.pointer.primary_down()))
-                        || response.clicked_by(egui::PointerButton::Primary))
-                    && let Some(pos) = response.interact_pointer_pos()
+                        || response.clicked_by(egui::PointerButton::Primary)
+                        || (response.drag_stopped_by(egui::PointerButton::Primary)
+                            && self.last_point.is_some()))
+                    && let Some(pos) = response
+                        .interact_pointer_pos()
+                        .or_else(|| ui.input(|i| i.pointer.latest_pos()))
                 {
                     let local = (pos - rect.min) / self.zoom;
                     let point = (local.x, local.y);
                     if self.last_point.is_none() {
+                        let origin = ui.input(|i| i.pointer.press_origin()).unwrap_or(pos);
+                        let origin = (origin - rect.min) / self.zoom;
+                        self.shape_origin = Some((origin.x, origin.y));
                         match self.tool {
                             Tool::Picker => {
                                 if let Some(pixel) = self
@@ -388,6 +417,9 @@ impl Editor {
                                 self.document.commit();
                                 self.texture_dirty = true;
                             }
+                            Tool::Line => self.document.begin("Line"),
+                            Tool::Rectangle => self.document.begin("Rectangle"),
+                            Tool::Ellipse => self.document.begin("Ellipse"),
                             _ => self.document.begin(if self.tool == Tool::Eraser {
                                 "Eraser"
                             } else {
@@ -397,11 +429,49 @@ impl Editor {
                     }
                     if matches!(self.tool, Tool::Brush | Tool::Eraser) {
                         self.document.stroke(
-                            self.last_point.unwrap_or(point),
+                            self.last_point.or(self.shape_origin).unwrap_or(point),
                             point,
                             self.brush_size,
                             self.color.to_srgba_unmultiplied(),
                             self.tool == Tool::Eraser,
+                        );
+                        self.texture_dirty = true;
+                    }
+                    let shape = match self.tool {
+                        Tool::Line => Some(Shape::Line),
+                        Tool::Rectangle => Some(Shape::Rectangle),
+                        Tool::Ellipse => Some(Shape::Ellipse),
+                        _ => None,
+                    };
+                    if let Some(shape) = shape {
+                        let origin = self.shape_origin.unwrap_or(point);
+                        let mut end = point;
+                        if ui.input(|i| i.modifiers.shift) {
+                            let dx = point.0 - origin.0;
+                            let dy = point.1 - origin.1;
+                            if shape == Shape::Line {
+                                let length = dx.hypot(dy);
+                                let angle = (dy.atan2(dx) / std::f32::consts::FRAC_PI_4).round()
+                                    * std::f32::consts::FRAC_PI_4;
+                                end = (
+                                    origin.0 + length * angle.cos(),
+                                    origin.1 + length * angle.sin(),
+                                );
+                            } else {
+                                let size = dx.abs().max(dy.abs());
+                                end =
+                                    (origin.0 + size * dx.signum(), origin.1 + size * dy.signum());
+                            }
+                        }
+                        self.document.preview_shape(
+                            shape,
+                            origin,
+                            end,
+                            ShapeStyle {
+                                color: self.color.to_srgba_unmultiplied(),
+                                width: self.brush_size,
+                                filled: self.shape_filled,
+                            },
                         );
                         self.texture_dirty = true;
                     }
@@ -528,7 +598,7 @@ impl Editor {
                 egui::Theme::Dark => egui::SystemTheme::Dark,
             }));
         }
-        if !ctx.input(|i| i.pointer.primary_down() && i.focused) {
+        if !ctx.input(|i| i.focused) {
             self.finish_stroke();
         }
         if ctx.input(|i| i.viewport().close_requested())
@@ -642,69 +712,85 @@ impl Editor {
             .exact_width(180.0)
             .resizable(false)
             .show(ctx, |ui| {
-                if !enabled || self.document.editing() {
-                    ui.disable();
-                }
-                ui.heading("Tools");
-                for (tool, icon, label, shortcut) in [
-                    (Tool::Brush, Icon::Brush, "Brush", "B"),
-                    (Tool::Eraser, Icon::Eraser, "Eraser", "E"),
-                    (Tool::Fill, Icon::Fill, "Flood fill", "F"),
-                    (Tool::Picker, Icon::Picker, "Color picker", "I"),
-                ] {
-                    let button = icon
-                        .button(label)
-                        .selected(self.tool == tool)
-                        .shortcut_text(egui::RichText::new(shortcut).color(if self.tool == tool {
-                            ui.visuals().selection.stroke.color
-                        } else {
-                            ui.visuals().weak_text_color()
-                        }));
-                    if ui.add_sized([ui.available_width(), 34.0], button).clicked() {
-                        self.tool = tool;
-                    }
-                }
-                ui.separator();
-                ui.heading("Color");
-                ui.color_edit_button_srgba(&mut self.color);
-                ui.horizontal_wrapped(|ui| {
-                    for color in [
-                        Color32::BLACK,
-                        Color32::WHITE,
-                        Color32::from_rgb(225, 65, 75),
-                        Color32::from_rgb(245, 170, 40),
-                        Color32::from_rgb(70, 175, 115),
-                        Color32::from_rgb(42, 113, 224),
-                        Color32::from_rgb(153, 90, 210),
-                    ] {
-                        if ui.add(egui::Button::new("  ").fill(color)).clicked() {
-                            self.color = color;
-                        }
-                    }
-                });
-                ui.label(format!(
-                    "#{:02X}{:02X}{:02X}",
-                    self.color.r(),
-                    self.color.g(),
-                    self.color.b()
-                ));
-                ui.separator();
-                ui.heading("History");
-                ui.small(format!(
-                    "{:.1} / 128 MiB",
-                    self.document.history_bytes() as f32 / (1024.0 * 1024.0)
-                ));
                 egui::ScrollArea::vertical()
-                    .max_height(240.0)
+                    .id_salt("tool-panel")
                     .show(ui, |ui| {
-                        for label in self.document.history() {
-                            ui.label(label);
+                        if !enabled || self.document.editing() {
+                            ui.disable();
                         }
-                    });
-                ui.separator();
-                ui.small(
+                        ui.heading("Tools");
+                        for (tool, icon, label, shortcut) in [
+                            (Tool::Brush, Icon::Brush, "Brush", "B"),
+                            (Tool::Eraser, Icon::Eraser, "Eraser", "E"),
+                            (Tool::Fill, Icon::Fill, "Flood fill", "F"),
+                            (Tool::Picker, Icon::Picker, "Color picker", "I"),
+                            (Tool::Line, Icon::Line, "Line", "L"),
+                            (Tool::Rectangle, Icon::Rectangle, "Rectangle", "R"),
+                            (Tool::Ellipse, Icon::Ellipse, "Ellipse", "O"),
+                        ] {
+                            let button = icon
+                                .button(label)
+                                .selected(self.tool == tool)
+                                .shortcut_text(egui::RichText::new(shortcut).color(
+                                    if self.tool == tool {
+                                        ui.visuals().selection.stroke.color
+                                    } else {
+                                        ui.visuals().weak_text_color()
+                                    },
+                                ));
+                            if ui.add_sized([ui.available_width(), 34.0], button).clicked() {
+                                self.tool = tool;
+                            }
+                        }
+                        if matches!(self.tool, Tool::Rectangle | Tool::Ellipse) {
+                            ui.checkbox(&mut self.shape_filled, "Filled shape");
+                            ui.small("Hold Shift for equal sides.");
+                        }
+                        if self.tool == Tool::Line {
+                            ui.small("Hold Shift for 45° angles.");
+                        }
+                        ui.separator();
+                        ui.heading("Color");
+                        ui.color_edit_button_srgba(&mut self.color);
+                        ui.horizontal_wrapped(|ui| {
+                            for color in [
+                                Color32::BLACK,
+                                Color32::WHITE,
+                                Color32::from_rgb(225, 65, 75),
+                                Color32::from_rgb(245, 170, 40),
+                                Color32::from_rgb(70, 175, 115),
+                                Color32::from_rgb(42, 113, 224),
+                                Color32::from_rgb(153, 90, 210),
+                            ] {
+                                if ui.add(egui::Button::new("  ").fill(color)).clicked() {
+                                    self.color = color;
+                                }
+                            }
+                        });
+                        ui.label(format!(
+                            "#{:02X}{:02X}{:02X}",
+                            self.color.r(),
+                            self.color.g(),
+                            self.color.b()
+                        ));
+                        ui.separator();
+                        ui.heading("History");
+                        ui.small(format!(
+                            "{:.1} / 128 MiB",
+                            self.document.history_bytes() as f32 / (1024.0 * 1024.0)
+                        ));
+                        egui::ScrollArea::vertical()
+                            .max_height(240.0)
+                            .show(ui, |ui| {
+                                for label in self.document.history() {
+                                    ui.label(label);
+                                }
+                            });
+                        ui.separator();
+                        ui.small(
                     "Drag to paint.\nEscape cancels a stroke.\nScroll to navigate the canvas.",
                 );
+                    });
             });
         egui::SidePanel::right("layers")
             .default_width(220.0)
@@ -815,6 +901,7 @@ impl Editor {
             });
         self.dialogs(ctx);
         if !ctx.input(|i| i.pointer.primary_down()) {
+            self.finish_stroke();
             self.suppress_stroke = false;
         }
         if self.texture_dirty {
@@ -891,6 +978,42 @@ mod tests {
         assert!(editor.document.dirty());
         assert_eq!(editor.document.history().count(), 1);
         assert!(!editor.document.editing());
+    }
+
+    #[test]
+    fn shape_drag_uses_release_position_and_has_one_undo_step() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.tool = Tool::Rectangle;
+        editor.shape_filled = true;
+        frame(&mut editor, &ctx, vec![]);
+        let start = Pos2::new(350.0, 200.0);
+        let middle = Pos2::new(370.0, 220.0);
+        let end = Pos2::new(430.0, 280.0);
+        frame(
+            &mut editor,
+            &ctx,
+            vec![egui::Event::PointerMoved(start), pointer(start, true)],
+        );
+        frame(&mut editor, &ctx, vec![egui::Event::PointerMoved(middle)]);
+        frame(
+            &mut editor,
+            &ctx,
+            vec![egui::Event::PointerMoved(end), pointer(end, false)],
+        );
+        assert_eq!(editor.document.history().count(), 1);
+        let painted = editor
+            .document
+            .pixels()
+            .iter()
+            .filter(|p| **p != [255; 4])
+            .count();
+        assert!(
+            painted >= 75 * 75,
+            "release endpoint was not used: {painted}"
+        );
+        editor.undo();
+        assert!(!editor.document.dirty());
     }
 
     #[test]

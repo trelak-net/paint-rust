@@ -4,7 +4,7 @@ Development roadmap
 [x] Desktop shell, original artwork and license provenance.
 [x] Raster drawing, erasing, fill, color sampling and transaction history.
 [x] Editable layers and lossless project persistence.
-[ ] Lines, rectangles and ellipses with cancellable previews.
+[x] Lines, rectangles and ellipses with cancellable previews.
 [ ] Rectangular selections, selected-area operations and crop.
 [ ] Image/canvas resizing, rotation and mirroring.
 [ ] Text editing, clipboard integration and additional selection tools.

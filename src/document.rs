@@ -4,6 +4,20 @@ use std::{
 };
 
 pub type Pixel = [u8; 4];
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum Shape {
+    Line,
+    Rectangle,
+    Ellipse,
+}
+
+pub struct ShapeStyle {
+    pub color: Pixel,
+    pub width: f32,
+    pub filled: bool,
+}
+
 pub const MAX_PIXELS: usize = 4096 * 4096;
 const HISTORY_BYTES: usize = 128 * 1024 * 1024;
 
@@ -377,6 +391,62 @@ impl Document {
                 {
                     let i = y as usize * self.width as usize + x as usize;
                     pixels[i] = if erase { [0; 4] } else { color };
+                }
+            }
+        }
+    }
+
+    pub fn preview_shape(
+        &mut self,
+        shape: Shape,
+        from: (f32, f32),
+        to: (f32, f32),
+        style: ShapeStyle,
+    ) {
+        let before = self
+            .pending
+            .as_ref()
+            .expect("Begin a transaction before previewing");
+        self.layers = before.layers.clone();
+        self.active = before.active;
+        if shape == Shape::Line || (from.0 - to.0).abs() < 1.0 || (from.1 - to.1).abs() < 1.0 {
+            self.stroke(from, to, style.width, style.color, false);
+            return;
+        }
+        let (left, right) = (from.0.min(to.0), from.0.max(to.0));
+        let (top, bottom) = (from.1.min(to.1), from.1.max(to.1));
+        let (cx, cy) = ((left + right) * 0.5, (top + bottom) * 0.5);
+        let (rx, ry) = ((right - left) * 0.5, (bottom - top) * 0.5);
+        let width = style.width.max(1.0);
+        let pixels = Arc::make_mut(&mut self.layers[self.active].pixels);
+        for y in (top.floor() as i32).max(0)..(bottom.ceil() as i32).min(self.height as i32) {
+            for x in (left.floor() as i32).max(0)..(right.ceil() as i32).min(self.width as i32) {
+                let (px, py) = (x as f32 + 0.5, y as f32 + 0.5);
+                let painted = match shape {
+                    Shape::Rectangle => {
+                        px >= left
+                            && px <= right
+                            && py >= top
+                            && py <= bottom
+                            && (style.filled
+                                || px < left + width
+                                || px > right - width
+                                || py < top + width
+                                || py > bottom - width)
+                    }
+                    Shape::Ellipse => {
+                        ((px - cx) / rx).powi(2) + ((py - cy) / ry).powi(2) <= 1.0
+                            && (style.filled
+                                || rx <= width
+                                || ry <= width
+                                || ((px - cx) / (rx - width)).powi(2)
+                                    + ((py - cy) / (ry - width)).powi(2)
+                                    >= 1.0)
+                    }
+                    Shape::Line => unreachable!(),
+                };
+                if painted {
+                    pixels[y as usize * self.width as usize + x as usize] = style.color;
                 }
             }
         }
