@@ -47,6 +47,7 @@ struct ResizeDialog {
 }
 
 struct TextDialog {
+    preview: crate::preview::EffectPreview,
     content: String,
     font: ab_glyph::FontArc,
     origin: (f32, f32),
@@ -323,7 +324,22 @@ impl Editor {
             .map(ab_glyph::FontArc::new);
         if let Some(font) = font {
             self.document.begin("Text");
+            let preview = crate::preview::EffectPreview::new_text(
+                ctx.clone(),
+                self.document.shared_pixels(),
+                self.document.width,
+                self.document.height,
+                self.document.selection(),
+                crate::preview::TextInput {
+                    font: font.clone(),
+                    content: String::new(),
+                    origin,
+                    size: 32.0,
+                    color: self.color.to_srgba_unmultiplied(),
+                },
+            );
             self.text_dialog = Some(TextDialog {
+                preview,
                 content: String::new(),
                 font,
                 origin,
@@ -1453,6 +1469,12 @@ impl Editor {
         }
         if let Some(mut dialog) = self.text_dialog.take() {
             let mut keep = true;
+            if let Some(pixels) = dialog.preview.poll() {
+                match self.document.publish_preview(pixels) {
+                    Ok(()) => self.texture_dirty = true,
+                    Err(error) => self.status = error,
+                }
+            }
             let cancel = ctx.input(|i| i.key_pressed(Key::Escape));
             if cancel {
                 self.document.cancel();
@@ -1479,19 +1501,23 @@ impl Editor {
                             .changed();
                         changed |= ui.color_edit_button_srgba(&mut dialog.color).changed();
                         if changed {
-                            match self.document.preview_text(paint_rust::text::TextStyle {
-                                font: &dialog.font,
-                                text: &dialog.content,
+                            dialog.preview.request_text(crate::preview::TextInput {
+                                font: dialog.font.clone(),
+                                content: dialog.content.clone(),
                                 origin: dialog.origin,
                                 size: dialog.size,
                                 color: dialog.color.to_srgba_unmultiplied(),
-                            }) {
-                                Ok(()) => self.texture_dirty = true,
-                                Err(error) => self.status = error,
-                            }
+                            });
                         }
+                        if !dialog.preview.ready {
+                            ui.label("Rendering preview…");
+                        }
+
                         ui.horizontal(|ui| {
-                            if ui.button("Apply").clicked() {
+                            if ui
+                                .add_enabled(dialog.preview.ready, egui::Button::new("Apply"))
+                                .clicked()
+                            {
                                 self.document.commit();
                                 self.texture_dirty = true;
                                 keep = false;
@@ -1762,9 +1788,8 @@ impl Editor {
             self.texture_dirty = true;
         }
         if ctx.input(|i| i.viewport().close_requested()) && self.text_dialog.is_some() {
-            self.text_dialog = None;
-            self.document.commit();
-            self.texture_dirty = true;
+            ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+            self.status = "Apply or cancel the text before closing".into();
         }
         if let Some(receiver) = &self.appearance
             && let Some(theme) = receiver.try_iter().last()
@@ -1781,6 +1806,7 @@ impl Editor {
         if ctx.input(|i| i.viewport().close_requested())
             && !self.allow_close
             && self.file_job.is_none()
+            && self.text_dialog.is_none()
             && self.document.dirty()
         {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
@@ -2796,7 +2822,12 @@ mod tests {
         assert!(editor.text_dialog.is_some());
         assert!(editor.document.editing());
         frame(&mut editor, &ctx, vec![egui::Event::Text("Hello".into())]);
-        frame(&mut editor, &ctx, vec![]);
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        while !editor.text_dialog.as_ref().unwrap().preview.ready {
+            assert!(std::time::Instant::now() < deadline);
+            std::thread::sleep(std::time::Duration::from_millis(5));
+            frame(&mut editor, &ctx, vec![]);
+        }
         assert!(editor.document.dirty());
         assert!(!editor.document.can_undo());
         assert!(editor.document.editing());
@@ -2815,6 +2846,36 @@ mod tests {
         assert!(!editor.document.editing());
         assert!(!editor.document.dirty());
         assert!(editor.document.pixels().iter().all(|p| *p == [255; 4]));
+    }
+
+    #[test]
+    fn close_during_text_edit_keeps_dialog_and_does_not_commit_partial_preview() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        frame(&mut editor, &ctx, vec![]);
+        editor.begin_text(&ctx, (10.0, 10.0));
+        editor.text_dialog.as_mut().unwrap().content = "Keep this draft".into();
+        let mut input = egui::RawInput::default();
+        input
+            .viewports
+            .get_mut(&egui::ViewportId::ROOT)
+            .unwrap()
+            .events
+            .push(egui::ViewportEvent::Close);
+        let output = ctx.run(input, |ctx| editor.show(ctx));
+        assert!(
+            output.viewport_output[&egui::ViewportId::ROOT]
+                .commands
+                .iter()
+                .any(|command| matches!(command, egui::ViewportCommand::CancelClose))
+        );
+        assert_eq!(
+            editor.text_dialog.as_ref().unwrap().content,
+            "Keep this draft"
+        );
+        assert!(editor.document.editing());
+        assert!(!editor.document.can_undo());
+        assert!(editor.pending.is_none());
     }
 
     #[test]

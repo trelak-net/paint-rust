@@ -9,9 +9,22 @@ use std::sync::{
     mpsc::{self, Receiver, Sender},
 };
 
+pub struct TextInput {
+    pub font: ab_glyph::FontArc,
+    pub content: String,
+    pub origin: (f32, f32),
+    pub size: f32,
+    pub color: Pixel,
+}
+
+enum Input {
+    Effect(Effect),
+    Text(TextInput),
+}
+
 struct Request {
     generation: u64,
-    effect: Effect,
+    input: Input,
     cancel: Arc<AtomicBool>,
 }
 
@@ -31,6 +44,28 @@ impl EffectPreview {
         selection: Option<Selection>,
         effect: Effect,
     ) -> Self {
+        Self::start(ctx, source, width, height, selection, Input::Effect(effect))
+    }
+
+    pub fn new_text(
+        ctx: egui::Context,
+        source: Arc<Vec<Pixel>>,
+        width: u32,
+        height: u32,
+        selection: Option<Selection>,
+        text: TextInput,
+    ) -> Self {
+        Self::start(ctx, source, width, height, selection, Input::Text(text))
+    }
+
+    fn start(
+        ctx: egui::Context,
+        source: Arc<Vec<Pixel>>,
+        width: u32,
+        height: u32,
+        selection: Option<Selection>,
+        input: Input,
+    ) -> Self {
         let (requests, receive) = mpsc::channel::<Request>();
         let (send, results) = mpsc::channel();
         std::thread::spawn(move || {
@@ -38,14 +73,38 @@ impl EffectPreview {
                 while let Ok(newest) = receive.try_recv() {
                     request = newest;
                 }
-                if let Some(pixels) = effects::render(
-                    &source,
-                    width,
-                    height,
-                    selection.clone(),
-                    request.effect,
-                    &request.cancel,
-                ) {
+                let pixels = match request.input {
+                    Input::Effect(effect) => effects::render(
+                        &source,
+                        width,
+                        height,
+                        selection.clone(),
+                        effect,
+                        &request.cancel,
+                    ),
+                    Input::Text(text) => {
+                        if request.cancel.load(Ordering::Relaxed) {
+                            continue;
+                        }
+                        let mut pixels = source.as_ref().clone();
+                        paint_rust::text::render_cancellable(
+                            &mut pixels,
+                            width,
+                            height,
+                            selection.clone(),
+                            paint_rust::text::TextStyle {
+                                font: &text.font,
+                                text: &text.content,
+                                origin: text.origin,
+                                size: text.size,
+                                color: text.color,
+                            },
+                            &request.cancel,
+                        )
+                        .then_some(pixels)
+                    }
+                };
+                if let Some(pixels) = pixels {
                     if send.send((request.generation, pixels)).is_err() {
                         break;
                     }
@@ -60,17 +119,23 @@ impl EffectPreview {
             cancel: Arc::new(AtomicBool::new(false)),
             ready: false,
         };
-        preview.request(effect);
+        preview.request_input(input);
         preview
     }
     pub fn request(&mut self, effect: Effect) {
+        self.request_input(Input::Effect(effect));
+    }
+    pub fn request_text(&mut self, text: TextInput) {
+        self.request_input(Input::Text(text));
+    }
+    fn request_input(&mut self, input: Input) {
         self.cancel.store(true, Ordering::Relaxed);
         self.cancel = Arc::new(AtomicBool::new(false));
         self.generation += 1;
         self.ready = false;
         let _ = self.requests.send(Request {
             generation: self.generation,
-            effect,
+            input,
             cancel: self.cancel.clone(),
         });
     }
@@ -118,6 +183,32 @@ impl Drop for EffectPreview {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn text_worker_publishes_only_the_latest_content() {
+        let definitions = egui::FontDefinitions::default();
+        let name = &definitions.families[&egui::FontFamily::Proportional][0];
+        let font =
+            ab_glyph::FontArc::try_from_vec(definitions.font_data[name].font.to_vec()).unwrap();
+        let input = |content: &str| TextInput {
+            font: font.clone(),
+            content: content.into(),
+            origin: (1.0, 1.0),
+            size: 32.0,
+            color: [0, 0, 0, 255],
+        };
+        let mut preview = EffectPreview::new_text(
+            egui::Context::default(),
+            Arc::new(vec![[255; 4]; 128 * 128]),
+            128,
+            128,
+            None,
+            input("Obsolete text"),
+        );
+        preview.request_text(input(""));
+        let pixels = preview.wait(&AtomicBool::new(false)).unwrap();
+        assert!(pixels.iter().all(|pixel| *pixel == [255; 4]));
+    }
+
     #[test]
     fn waiting_for_final_preview_can_be_cancelled() {
         let preview = EffectPreview::new(

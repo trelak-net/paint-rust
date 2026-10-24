@@ -1,5 +1,6 @@
 use crate::document::{Pixel, Selection, blend};
 use ab_glyph::{Font, FontArc, ScaleFont, point};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 pub struct TextStyle<'a> {
     pub font: &'a FontArc,
@@ -16,11 +17,44 @@ pub fn render(
     selection: Option<Selection>,
     style: TextStyle<'_>,
 ) {
+    render_cancellable(
+        pixels,
+        width,
+        height,
+        selection,
+        style,
+        &AtomicBool::new(false),
+    );
+}
+
+pub fn render_cancellable(
+    pixels: &mut [Pixel],
+    width: u32,
+    height: u32,
+    selection: Option<Selection>,
+    style: TextStyle<'_>,
+    cancel: &AtomicBool,
+) -> bool {
+    if cancel.load(Ordering::Relaxed)
+        || !style.size.is_finite()
+        || !(1.0..=512.0).contains(&style.size)
+        || style.text.len() > 16384
+        || !style.origin.0.is_finite()
+        || !style.origin.1.is_finite()
+        || width == 0
+        || height == 0
+        || u64::from(width) * u64::from(height) != pixels.len() as u64
+    {
+        return false;
+    }
     let font = style.font.as_scaled(style.size);
     let mut caret = point(style.origin.0, style.origin.1 + font.ascent());
     let line_height = font.height() + font.line_gap();
     let mut previous = None;
     for ch in style.text.chars() {
+        if cancel.load(Ordering::Relaxed) {
+            return false;
+        }
         if ch == '\n' {
             caret.x = style.origin.0;
             caret.y += line_height;
@@ -47,6 +81,9 @@ pub fn render(
                 && bounds.min.y < height as f32
             {
                 glyph.draw(|x, y, coverage| {
+                    if cancel.load(Ordering::Relaxed) {
+                        return;
+                    }
                     let x = bounds.min.x as i64 + i64::from(x);
                     let y = bounds.min.y as i64 + i64::from(y);
                     if x < 0 || y < 0 || x >= i64::from(width) || y >= i64::from(height) {
@@ -70,4 +107,5 @@ pub fn render(
         caret.x += font.h_advance(id);
         previous = Some(id);
     }
+    !cancel.load(Ordering::Relaxed)
 }

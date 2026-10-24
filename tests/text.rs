@@ -101,3 +101,24 @@ fn invalid_text_parameters_and_cancellation_preserve_pixels() {
     assert!(!doc.can_undo());
     assert!(doc.pixels().iter().all(|p| *p == [255; 4]));
 }
+
+#[test]
+fn cancelled_text_render_keeps_the_destination_untouched() {
+    let font = font();
+    let mut pixels = vec![[17; 4]; 64 * 64];
+    assert!(!paint_rust::text::render_cancellable(
+        &mut pixels,
+        64,
+        64,
+        None,
+        TextStyle {
+            font: &font,
+            text: "Cancelled",
+            origin: (0.0, 0.0),
+            size: 32.0,
+            color: [255; 4]
+        },
+        &std::sync::atomic::AtomicBool::new(true)
+    ));
+    assert!(pixels.iter().all(|pixel| *pixel == [17; 4]));
+}

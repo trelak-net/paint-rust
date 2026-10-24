@@ -9,7 +9,7 @@ Development roadmap
 [x] Image/canvas resizing, rotation and mirroring.
 [x] Clipboard image copy/cut/paste.
 [x] Import image files and project composites as layers.
-[x] Raster text with editable preview.
+[x] Raster text with cancellable background previews and guarded application.
 [x] Background move/copy pixel previews and nudges; immediate movement of selection bounds.
 [x] Elliptical selections with masked editing, clipboard and movement.
 [x] Cancellable background selection union, subtraction and intersection with explicit empty masks.

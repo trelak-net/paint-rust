@@ -649,3 +649,14 @@ translated selection are published together; undo and redo restore both. Moving
 only selection bounds remains immediate because it changes metadata, not pixels.
 Validation: 161 Rust tests and strict Clippy pass, including overlapping movement,
 masked coverage, latest-generation publication, nudges and Escape during dragging.
+
+Background text previews
+------------------------
+Text content, size and color changes now use the coalescing preview worker. Apply
+is enabled only after the latest request has been displayed. Escape and Cancel
+discard the transaction. Closing the main window keeps the text dialog open so
+the draft can be applied or cancelled explicitly. Cancellation is checked between
+characters and during glyph coverage callbacks; an in-progress glyph rasterizer
+may finish its internal work before the worker returns.
+Validation: 164 Rust tests and strict Clippy pass, including stale text requests,
+Unicode rendering, cancellation, close guarding and preservation of unapplied text.
