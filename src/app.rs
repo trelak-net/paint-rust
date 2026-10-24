@@ -35,11 +35,13 @@ pub struct Editor {
     transparent: bool,
     allow_close: bool,
     suppress_stroke: bool,
+    appearance: Option<std::sync::mpsc::Receiver<egui::Theme>>,
 }
 
 impl Editor {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         let mut editor = Self::blank(&cc.egui_ctx);
+        editor.appearance = Some(crate::appearance::connect(&cc.egui_ctx));
         if let Some(path) = std::env::args_os().nth(1) {
             editor.load(PathBuf::from(path));
         }
@@ -47,11 +49,7 @@ impl Editor {
     }
 
     fn blank(ctx: &egui::Context) -> Self {
-        ctx.set_visuals(egui::Visuals::dark());
-        let mut style = (*ctx.style()).clone();
-        style.spacing.item_spacing = Vec2::new(8.0, 8.0);
-        style.spacing.button_padding = Vec2::new(10.0, 6.0);
-        ctx.set_style(style);
+        crate::appearance::configure(ctx);
         Self {
             document: Document::new(960, 640, [255; 4]).unwrap(),
             texture: None,
@@ -70,6 +68,7 @@ impl Editor {
             transparent: false,
             allow_close: false,
             suppress_stroke: false,
+            appearance: None,
         }
     }
 
@@ -449,6 +448,15 @@ impl Editor {
 
 impl Editor {
     fn show(&mut self, ctx: &egui::Context) {
+        if let Some(receiver) = &self.appearance
+            && let Some(theme) = receiver.try_iter().last()
+        {
+            ctx.set_theme(theme);
+            ctx.send_viewport_cmd(egui::ViewportCommand::SetTheme(match theme {
+                egui::Theme::Light => egui::SystemTheme::Light,
+                egui::Theme::Dark => egui::SystemTheme::Dark,
+            }));
+        }
         if !ctx.input(|i| i.pointer.primary_down() && i.focused) {
             self.finish_stroke();
         }
@@ -480,8 +488,6 @@ impl Editor {
                 ui.disable();
             }
             ui.horizontal(|ui| {
-                ui.strong("PAINT RUST");
-                ui.separator();
                 if ui.button("New").on_hover_text("Ctrl+N").clicked() {
                     self.request(Action::New, ctx);
                 }
@@ -605,7 +611,10 @@ impl Editor {
                 );
             });
         egui::CentralPanel::default()
-            .frame(egui::Frame::central_panel(&ctx.style()).fill(Color32::from_rgb(34, 37, 43)))
+            .frame(
+                egui::Frame::central_panel(&ctx.style())
+                    .fill(crate::appearance::workspace_color(ctx.theme())),
+            )
             .show(ctx, |ui| {
                 if !enabled {
                     ui.disable();

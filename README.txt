@@ -85,3 +85,24 @@ and Clippy checks passed without warnings, and the optimized build completed.
 The native OpenGL window was visually inspected on X11; the release executable
 also passed a startup/event-loop smoke check. Wayland and other operating systems
 still need separate desktop validation.
+
+Desktop appearance
+------------------
+The workspace follows the system light/dark preference. On Linux an asynchronous
+XDG Settings portal subscription reads the initial preference and receives changes
+without blocking the UI. An unavailable preference falls back to light. GNOME's
+configured interface font is resolved through Fontconfig at startup; bundled fonts
+remain available when desktop font discovery fails. Restart after changing the
+system font. Font sizes use logical pixels; the window backend supplies DPI scaling.
+
+Native window decorations remain enabled. Linux builds include the Adwaita client
+frame for Wayland compositors that do not provide server-side decorations. X11
+continues to use the window manager's frame. Panels, buttons and workspace use
+coordinated light/dark palettes, with a fixed blue accent. Widgets are rendered by
+egui; arbitrary GTK themes and system accent colors are not imported.
+
+Appearance validation: 16 tests pass, including the existing editing regressions,
+font description parsing and light/dark palette switching. Formatting and Clippy
+checks pass. The light interface and desktop font were visually checked on X11;
+live desktop theme changes and Wayland decorations need visual validation in their
+respective desktop sessions.
