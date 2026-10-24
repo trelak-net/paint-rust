@@ -1,5 +1,8 @@
 use crate::document::{BlendMode, Document, Layer};
-use image::{ImageEncoder, ImageReader, codecs::png::PngEncoder};
+use image::{
+    ImageEncoder, ImageReader,
+    codecs::{png::PngEncoder, webp::WebPEncoder},
+};
 use std::{
     fs::File,
     io::{BufReader, BufWriter, Cursor, Read, Write},
@@ -94,6 +97,26 @@ fn write_atomic(
     Ok(())
 }
 
+#[derive(Clone, Copy, Debug)]
+pub enum RasterFormat {
+    Png,
+    WebP,
+}
+impl RasterFormat {
+    pub fn extension(self) -> &'static str {
+        match self {
+            Self::Png => "png",
+            Self::WebP => "webp",
+        }
+    }
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Png => "PNG",
+            Self::WebP => "WebP (lossless)",
+        }
+    }
+}
+
 fn encode_png(
     pixels: &[[u8; 4]],
     width: u32,
@@ -101,17 +124,40 @@ fn encode_png(
     writer: impl Write,
     cancel: &AtomicBool,
 ) -> Result<(), String> {
+    encode_raster(pixels, (width, height), writer, cancel, RasterFormat::Png)
+}
+
+fn encode_raster(
+    pixels: &[[u8; 4]],
+    size: (u32, u32),
+    writer: impl Write,
+    cancel: &AtomicBool,
+    format: RasterFormat,
+) -> Result<(), String> {
     check_cancel(cancel)?;
     let mut bytes = Vec::with_capacity(pixels.len() * 4);
     for chunk in pixels.chunks(4096) {
         check_cancel(cancel)?;
         bytes.extend(chunk.iter().flatten().copied());
     }
-    PngEncoder::new(CancellableWriter {
+    let writer = CancellableWriter {
         inner: writer,
         cancel,
-    })
-    .write_image(&bytes, width, height, image::ExtendedColorType::Rgba8)
+    };
+    match format {
+        RasterFormat::Png => PngEncoder::new(writer).write_image(
+            &bytes,
+            size.0,
+            size.1,
+            image::ExtendedColorType::Rgba8,
+        ),
+        RasterFormat::WebP => WebPEncoder::new_lossless(writer).write_image(
+            &bytes,
+            size.0,
+            size.1,
+            image::ExtendedColorType::Rgba8,
+        ),
+    }
     .map_err(|e| e.to_string())
 }
 
@@ -124,17 +170,26 @@ pub fn save_png_cancellable(
     path: &Path,
     cancel: &AtomicBool,
 ) -> Result<(), String> {
+    save_raster_cancellable(document, path, RasterFormat::Png, cancel)
+}
+
+pub fn save_raster_cancellable(
+    document: &Document,
+    path: &Path,
+    format: RasterFormat,
+    cancel: &AtomicBool,
+) -> Result<(), String> {
     write_atomic(path, cancel, |file| {
         let mut writer = BufWriter::new(CancellableWriter {
             inner: file,
             cancel,
         });
-        encode_png(
+        encode_raster(
             &document.composite_cancellable(cancel).ok_or(CANCELLED)?,
-            document.width,
-            document.height,
+            (document.width, document.height),
             &mut writer,
             cancel,
+            format,
         )?;
         writer.flush().map_err(|e| e.to_string())
     })

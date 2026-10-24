@@ -227,30 +227,33 @@ impl Editor {
         self.save_to_path(path)
     }
 
-    fn export_png(&mut self) {
+    fn export_image(&mut self, format: files::RasterFormat) {
         self.finish_stroke();
         let Some(path) = rfd::FileDialog::new()
-            .add_filter("PNG image", &["png"])
-            .set_file_name("Untitled.png")
+            .add_filter(format.label(), &[format.extension()])
+            .set_file_name(format!("Untitled.{}", format.extension()))
             .save_file()
         else {
             return;
         };
         let path = if path.extension().is_none() {
-            path.with_extension("png")
+            path.with_extension(format.extension())
         } else {
             path
         };
         if !path
             .extension()
-            .is_some_and(|e| e.eq_ignore_ascii_case("png"))
+            .is_some_and(|e| e.eq_ignore_ascii_case(format.extension()))
         {
-            self.status = "Could not export image: choose a filename ending in .png".into();
+            self.status = format!(
+                "Could not export image: choose a filename ending in .{}",
+                format.extension()
+            );
             return;
         }
         let snapshot = self.document.snapshot();
         self.start_cancellable_file_job("export image", move |cancel| {
-            files::save_png_cancellable(&snapshot, &path, cancel)?;
+            files::save_raster_cancellable(&snapshot, &path, format, cancel)?;
             Ok(Outcome::Exported(path))
         });
     }
@@ -1483,9 +1486,14 @@ impl Editor {
                 if ui.add(Icon::SaveAs.button("Save as…")).clicked() {
                     self.save(true);
                 }
-                if ui.add(Icon::SaveAs.button("Export PNG…")).clicked() {
-                    self.export_png();
-                }
+                ui.menu_button("Export", |ui| {
+                    for format in [files::RasterFormat::Png, files::RasterFormat::WebP] {
+                        if ui.add(Icon::SaveAs.button(format.label())).clicked() {
+                            self.export_image(format);
+                            ui.close();
+                        }
+                    }
+                });
                 ui.separator();
                 if ui
                     .add_enabled(self.document.can_undo(), Icon::Undo.button("Undo"))

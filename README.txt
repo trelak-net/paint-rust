@@ -65,7 +65,7 @@ Features
 - Use Ctrl+wheel or a pinch gesture to zoom around the pointer; middle-drag to pan.
 - Undo/redo complete strokes and edits; cancel a stroke with Escape.
 - Expand History in the layer panel to undo or redo multiple operations at once.
-- Open PNG, JPEG, BMP and WebP; export a flattened RGBA PNG.
+- Open PNG, JPEG, BMP and WebP; export flattened RGBA PNG or lossless WebP.
 - Add, duplicate, reorder, hide and delete layers; edit names, opacity and blend mode.
 - Flatten the visible image into one layer, with undo restoring every original layer.
 - Copy/cut active-layer pixels or copy the merged image; paste images as new layers.
@@ -114,7 +114,7 @@ undo entries are evicted first, then farthest redo entries when necessary. The
 active document is limited to 256 MiB of layer pixels, excluding previews/history.
 A canvas is limited to 16,777,216 pixels. The New dialog permits up to 4096 per axis.
 
-Save writes an editable .prust project. Export PNG writes only the visible composite
+Save writes an editable .prust project. Raster export writes only the visible composite
 and does not mark an edited project as saved. Project version 2 stores blend modes as well as dimensions,
 layer order, the active layer, UTF-8 names, visibility, opacity and lossless PNG
 pixels for every layer. The reader bounds layer counts, decoded memory, payloads
@@ -129,7 +129,7 @@ File decoding/encoding, recovery copies, effect previews and image/canvas resizi
 rotation, mirroring and layer compositing run in background workers. Fill still runs on the UI thread;
 large operations can pause the interface. Canvas updates upload the full
 image texture. Metadata, orientation tags and embedded color profiles are not
-preserved or interpreted. PNG is the only raster export format. A user-local Linux installation helper is available; there is no signed
+preserved or interpreted. PNG and lossless WebP are available for raster export. A user-local Linux installation helper is available; there is no signed
 distribution yet. Linux is the currently validated desktop target.
 
 Validation
@@ -331,3 +331,8 @@ redo operations in traversal order and reports retained pixel-buffer memory.
 Choosing an entry traverses every operation through that entry. Saved revisions
 remain recognizable, and new edits invalidate the redo branch. History is bounded
 by the existing memory budget, so evicted operations are unavailable.
+
+WebP export validation: 97 Rust tests pass. The Export menu offers PNG and lossless
+WebP with transparency. Both export the visible composite through a cancellable
+background job and atomic replacement. Export does not change project layers,
+history, path or saved state. Format-specific file dialogs validate the extension.
