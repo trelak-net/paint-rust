@@ -8,13 +8,14 @@ use std::{
 
 pub type Pixel = [u8; 4];
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Shape {
     Line,
     Rectangle,
     Ellipse,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ShapeStyle {
     pub color: Pixel,
     pub width: f32,
@@ -977,35 +978,19 @@ impl Document {
         assert!(self.editing(), "Begin a transaction before drawing");
         let selection = self.selection.clone();
         let pixels = Arc::make_mut(&mut self.layers[self.active].pixels);
-        let radius = diameter.max(1.0) / 2.0;
-        let min_x = ((from.0.min(to.0) - radius).floor() as i32).max(0);
-        let max_x = ((from.0.max(to.0) + radius).ceil() as i32).min(self.width as i32 - 1);
-        let min_y = ((from.1.min(to.1) - radius).floor() as i32).max(0);
-        let max_y = ((from.1.max(to.1) + radius).ceil() as i32).min(self.height as i32 - 1);
-        let dx = to.0 - from.0;
-        let dy = to.1 - from.1;
-        let length_sq = dx * dx + dy * dy;
-        for y in min_y..=max_y {
-            for x in min_x..=max_x {
-                if !selected(selection.as_ref(), x as usize, y as usize) {
-                    continue;
-                }
-                let px = x as f32 + 0.5;
-                let py = y as f32 + 0.5;
-                let t = if length_sq > 0.0 {
-                    ((px - from.0) * dx + (py - from.1) * dy) / length_sq
-                } else {
-                    0.0
-                }
-                .clamp(0.0, 1.0);
-                if (px - from.0 - t * dx).powi(2) + (py - from.1 - t * dy).powi(2)
-                    <= radius * radius
-                {
-                    let i = y as usize * self.width as usize + x as usize;
-                    pixels[i] = if erase { [0; 4] } else { color };
-                }
-            }
-        }
+        crate::shapes::stroke(
+            pixels,
+            (self.width, self.height),
+            selection.as_ref(),
+            crate::shapes::Stroke {
+                from,
+                to,
+                diameter,
+                color,
+                erase,
+            },
+            &std::sync::atomic::AtomicBool::new(false),
+        );
     }
 
     pub fn shared_pixels(&self) -> Arc<Vec<Pixel>> {
@@ -1158,49 +1143,21 @@ impl Document {
             .pending
             .as_ref()
             .expect("Begin a transaction before previewing");
-        self.layers = before.layers.clone();
-        self.active = before.active;
-        if shape == Shape::Line || (from.0 - to.0).abs() < 1.0 || (from.1 - to.1).abs() < 1.0 {
-            self.stroke(from, to, style.width, style.color, false);
-            return;
-        }
-        let (left, right) = (from.0.min(to.0), from.0.max(to.0));
-        let (top, bottom) = (from.1.min(to.1), from.1.max(to.1));
-        let (cx, cy) = ((left + right) * 0.5, (top + bottom) * 0.5);
-        let (rx, ry) = ((right - left) * 0.5, (bottom - top) * 0.5);
-        let width = style.width.max(1.0);
-        let selection = self.selection.clone();
-        let pixels = Arc::make_mut(&mut self.layers[self.active].pixels);
-        for y in (top.floor() as i32).max(0)..(bottom.ceil() as i32).min(self.height as i32) {
-            for x in (left.floor() as i32).max(0)..(right.ceil() as i32).min(self.width as i32) {
-                let (px, py) = (x as f32 + 0.5, y as f32 + 0.5);
-                let painted = match shape {
-                    Shape::Rectangle => {
-                        px >= left
-                            && px <= right
-                            && py >= top
-                            && py <= bottom
-                            && (style.filled
-                                || px < left + width
-                                || px > right - width
-                                || py < top + width
-                                || py > bottom - width)
-                    }
-                    Shape::Ellipse => {
-                        ((px - cx) / rx).powi(2) + ((py - cy) / ry).powi(2) <= 1.0
-                            && (style.filled
-                                || rx <= width
-                                || ry <= width
-                                || ((px - cx) / (rx - width)).powi(2)
-                                    + ((py - cy) / (ry - width)).powi(2)
-                                    >= 1.0)
-                    }
-                    Shape::Line => unreachable!(),
-                };
-                if painted && selected(selection.as_ref(), x as usize, y as usize) {
-                    pixels[y as usize * self.width as usize + x as usize] = style.color;
-                }
-            }
+        if let Some(pixels) = crate::shapes::render(
+            &before.layers[before.active].pixels,
+            self.width,
+            self.height,
+            self.selection.as_ref(),
+            crate::shapes::Parameters {
+                shape,
+                from,
+                to,
+                style,
+            },
+            &std::sync::atomic::AtomicBool::new(false),
+        ) {
+            self.publish_preview(pixels)
+                .expect("Shape transaction is active");
         }
     }
 

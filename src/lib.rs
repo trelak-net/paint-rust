@@ -5,5 +5,6 @@ pub mod files;
 pub mod gradient;
 pub mod recovery;
 pub mod selection;
+pub mod shapes;
 pub mod text;
 pub mod transform;

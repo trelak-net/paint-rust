@@ -3,6 +3,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Effect {
+    Shape(crate::shapes::Parameters),
     Gradient(crate::gradient::Gradient),
     FreeTransform(crate::affine::FreeTransform),
     BrightnessContrast { brightness: i16, contrast: i16 },
@@ -17,6 +18,11 @@ pub enum Effect {
 impl Effect {
     pub fn name(self) -> &'static str {
         match self {
+            Self::Shape(parameters) => match parameters.shape {
+                crate::document::Shape::Line => "Line",
+                crate::document::Shape::Rectangle => "Rectangle",
+                crate::document::Shape::Ellipse => "Ellipse",
+            },
             Self::Gradient(_) => "Gradient",
             Self::FreeTransform(_) => "Free transform",
             Self::BrightnessContrast { .. } => "Brightness / Contrast",
@@ -45,6 +51,16 @@ pub fn render(
         || u64::from(width) * u64::from(height) != source.len() as u64
     {
         return None;
+    }
+    if let Effect::Shape(parameters) = effect {
+        return crate::shapes::render(
+            source,
+            width,
+            height,
+            selection.as_ref(),
+            parameters,
+            cancel,
+        );
     }
     if let Effect::Gradient(parameters) = effect {
         return crate::gradient::render(
@@ -126,7 +142,8 @@ pub fn render(
                     Effect::BoxBlur(_)
                     | Effect::Pixelate(_)
                     | Effect::FreeTransform(_)
-                    | Effect::Gradient(_) => continue,
+                    | Effect::Gradient(_)
+                    | Effect::Shape(_) => continue,
                 };
                 output[i][c] = value.round().clamp(0.0, 255.0) as u8;
             }

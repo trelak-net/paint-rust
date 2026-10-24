@@ -96,7 +96,7 @@ pub struct Editor {
     resize_dialog: Option<ResizeDialog>,
     text_dialog: Option<TextDialog>,
     effect_dialog: Option<EffectDialog>,
-    gradient_preview: Option<EffectDialog>,
+    gesture_preview: Option<EffectDialog>,
     transform_drag: Option<transform_handles::TransformDrag>,
     new_width: u32,
     new_height: u32,
@@ -172,7 +172,7 @@ impl Editor {
             resize_dialog: None,
             text_dialog: None,
             effect_dialog: None,
-            gradient_preview: None,
+            gesture_preview: None,
             transform_drag: None,
             new_width: 960,
             new_height: 640,
@@ -429,12 +429,31 @@ impl Editor {
         }
     }
 
+    fn request_gesture_preview(&mut self, effect: Effect) {
+        if let Some(gesture) = &mut self.gesture_preview {
+            if gesture.effect != effect {
+                gesture.effect = effect;
+                gesture.preview.request(effect);
+            }
+        } else {
+            let preview = crate::preview::EffectPreview::new(
+                self.context.clone(),
+                self.document.shared_pixels(),
+                self.document.width,
+                self.document.height,
+                self.document.selection(),
+                effect,
+            );
+            self.gesture_preview = Some(EffectDialog { effect, preview });
+        }
+    }
+
     fn finish_stroke(&mut self) {
         if self.text_dialog.is_some() || self.effect_dialog.is_some() {
             return;
         }
-        if let Some(gradient) = self.gradient_preview.take()
-            && !gradient.preview.ready
+        if let Some(gesture) = self.gesture_preview.take()
+            && !gesture.preview.ready
         {
             self.document.cancel();
             self.texture_dirty = true;
@@ -442,12 +461,13 @@ impl Editor {
             document.set_selection(self.document.selection());
             self.last_point = None;
             self.shape_origin = None;
-            self.start_cancellable_file_job("finish gradient", move |cancel| {
-                let pixels = gradient.preview.wait(cancel)?;
-                document.begin("Gradient");
+            let label = gesture.effect.name();
+            self.start_cancellable_file_job("finish drawing", move |cancel| {
+                let pixels = gesture.preview.wait(cancel)?;
+                document.begin(label);
                 document.publish_preview(pixels)?;
                 document.commit();
-                Ok(Outcome::Edited(Box::new(document), "Gradient".into()))
+                Ok(Outcome::Edited(Box::new(document), label.into()))
             });
             return;
         }
@@ -594,7 +614,7 @@ impl Editor {
             return;
         }
 
-        if matches!(self.tool, Tool::Select | Tool::Gradient)
+        if (self.tool == Tool::Select || self.gesture_preview.is_some())
             && self.last_point.is_some()
             && !ctx.input(|i| i.key_pressed(Key::Escape))
         {
@@ -723,7 +743,7 @@ impl Editor {
             Some(5) => self.undo(),
             Some(6) => {
                 self.suppress_stroke = true;
-                self.gradient_preview = None;
+                self.gesture_preview = None;
                 self.document.cancel();
                 self.last_point = None;
                 self.shape_origin = None;
@@ -1132,17 +1152,18 @@ impl Editor {
                                     (origin.0 + size * dx.signum(), origin.1 + size * dy.signum());
                             }
                         }
-                        self.document.preview_shape(
-                            shape,
-                            origin,
-                            end,
-                            ShapeStyle {
-                                color: self.color.to_srgba_unmultiplied(),
-                                width: self.brush_size,
-                                filled: self.shape_filled,
+                        self.request_gesture_preview(Effect::Shape(
+                            paint_rust::shapes::Parameters {
+                                shape,
+                                from: origin,
+                                to: end,
+                                style: ShapeStyle {
+                                    color: self.color.to_srgba_unmultiplied(),
+                                    width: self.brush_size,
+                                    filled: self.shape_filled,
+                                },
                             },
-                        );
-                        self.texture_dirty = true;
+                        ));
                     }
                     if self.tool == Tool::Gradient {
                         let effect = Effect::Gradient(paint_rust::gradient::Gradient {
@@ -1154,22 +1175,7 @@ impl Editor {
                                 radial: self.radial_gradient,
                             },
                         });
-                        if let Some(gradient) = &mut self.gradient_preview {
-                            if gradient.effect != effect {
-                                gradient.effect = effect;
-                                gradient.preview.request(effect);
-                            }
-                        } else {
-                            let preview = crate::preview::EffectPreview::new(
-                                ui.ctx().clone(),
-                                self.document.shared_pixels(),
-                                self.document.width,
-                                self.document.height,
-                                self.document.selection(),
-                                effect,
-                            );
-                            self.gradient_preview = Some(EffectDialog { effect, preview });
-                        }
+                        self.request_gesture_preview(effect);
                     }
                     if self.tool == Tool::Move {
                         let origin = self.shape_origin.unwrap_or(point);
@@ -1703,7 +1709,7 @@ impl Editor {
 
 impl Editor {
     fn show(&mut self, ctx: &egui::Context) {
-        if let Some(gradient) = &mut self.gradient_preview
+        if let Some(gradient) = &mut self.gesture_preview
             && let Some(pixels) = gradient.preview.poll()
         {
             match self.document.publish_preview(pixels) {
@@ -1711,8 +1717,8 @@ impl Editor {
                 Err(error) => self.status = error,
             }
         }
-        if self.gradient_preview.is_some() && ctx.input(|i| i.viewport().close_requested()) {
-            self.gradient_preview = None;
+        if self.gesture_preview.is_some() && ctx.input(|i| i.viewport().close_requested()) {
+            self.gesture_preview = None;
             self.document.cancel();
             self.last_point = None;
             self.shape_origin = None;
@@ -1788,7 +1794,7 @@ impl Editor {
             if self.document.dirty() { " *" } else { "" }
         )));
         egui::TopBottomPanel::top("toolbar").show(ctx, |ui| {
-            if !enabled || self.gradient_preview.is_some() {
+            if !enabled || self.gesture_preview.is_some() {
                 ui.disable();
             }
             ui.horizontal_wrapped(|ui| {
@@ -2621,6 +2627,7 @@ mod tests {
             &ctx,
             vec![egui::Event::PointerMoved(end), pointer(end, false)],
         );
+        wait_for_files(&mut editor, &ctx);
         assert_eq!(editor.document.history().count(), 1);
         let painted = editor
             .document
@@ -3312,7 +3319,7 @@ mod tests {
         let last = Effect::Gradient(final_parameters);
         preview.request(last);
         editor.document.begin("Gradient");
-        editor.gradient_preview = Some(EffectDialog {
+        editor.gesture_preview = Some(EffectDialog {
             effect: last,
             preview,
         });
@@ -3336,45 +3343,47 @@ mod tests {
     }
 
     #[test]
-    fn escape_during_gradient_gesture_discards_worker_and_pixels() {
-        let ctx = egui::Context::default();
-        let mut editor = Editor::blank(&ctx);
-        editor.tool = Tool::Gradient;
-        frame(&mut editor, &ctx, vec![]);
-        frame(&mut editor, &ctx, vec![]);
-        let from = editor.canvas_viewport.min + Vec2::new(130.0, 100.0);
-        let to = from + Vec2::new(80.0, 40.0);
-        frame(
-            &mut editor,
-            &ctx,
-            vec![egui::Event::PointerMoved(from), pointer(from, true)],
-        );
-        frame(&mut editor, &ctx, vec![egui::Event::PointerMoved(to)]);
-        assert!(editor.gradient_preview.is_some());
-        frame(
-            &mut editor,
-            &ctx,
-            vec![egui::Event::Key {
-                key: Key::Escape,
-                physical_key: None,
-                pressed: true,
-                repeat: false,
-                modifiers: egui::Modifiers::NONE,
-            }],
-        );
-        frame(&mut editor, &ctx, vec![pointer(to, false)]);
-        assert!(editor.gradient_preview.is_none());
-        assert!(editor.file_job.is_none());
-        assert!(!editor.document.editing());
-        assert!(!editor.document.dirty());
-        assert!(!editor.document.can_undo());
-        assert!(
-            editor
-                .document
-                .pixels()
-                .iter()
-                .all(|pixel| *pixel == [255; 4])
-        );
+    fn escape_during_drawing_gesture_discards_worker_and_pixels() {
+        for tool in [Tool::Gradient, Tool::Line, Tool::Rectangle, Tool::Ellipse] {
+            let ctx = egui::Context::default();
+            let mut editor = Editor::blank(&ctx);
+            editor.tool = tool;
+            frame(&mut editor, &ctx, vec![]);
+            frame(&mut editor, &ctx, vec![]);
+            let from = editor.canvas_viewport.min + Vec2::new(130.0, 100.0);
+            let to = from + Vec2::new(80.0, 40.0);
+            frame(
+                &mut editor,
+                &ctx,
+                vec![egui::Event::PointerMoved(from), pointer(from, true)],
+            );
+            frame(&mut editor, &ctx, vec![egui::Event::PointerMoved(to)]);
+            assert!(editor.gesture_preview.is_some());
+            frame(
+                &mut editor,
+                &ctx,
+                vec![egui::Event::Key {
+                    key: Key::Escape,
+                    physical_key: None,
+                    pressed: true,
+                    repeat: false,
+                    modifiers: egui::Modifiers::NONE,
+                }],
+            );
+            frame(&mut editor, &ctx, vec![pointer(to, false)]);
+            assert!(editor.gesture_preview.is_none());
+            assert!(editor.file_job.is_none());
+            assert!(!editor.document.editing());
+            assert!(!editor.document.dirty());
+            assert!(!editor.document.can_undo());
+            assert!(
+                editor
+                    .document
+                    .pixels()
+                    .iter()
+                    .all(|pixel| *pixel == [255; 4])
+            );
+        }
     }
 
     #[test]

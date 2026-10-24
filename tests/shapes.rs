@@ -54,3 +54,35 @@ fn clipped_shapes_and_lines_modify_only_active_layer() {
     doc.preview_shape(Shape::Ellipse, (-20.0, -20.0), (-10.0, -10.0), style(true));
     assert!(!doc.commit());
 }
+
+#[test]
+fn shape_kernels_reject_cancelled_or_invalid_requests() {
+    use paint_rust::shapes::{Parameters, render};
+    use std::sync::atomic::AtomicBool;
+    let source = [[17; 4]; 64];
+    for shape in [Shape::Line, Shape::Rectangle, Shape::Ellipse] {
+        let parameters = Parameters {
+            shape,
+            from: (1.0, 1.0),
+            to: (7.0, 7.0),
+            style: style(true),
+        };
+        assert!(render(&source, 8, 8, None, parameters, &AtomicBool::new(true)).is_none());
+        assert!(render(&source, 9, 8, None, parameters, &AtomicBool::new(false)).is_none());
+        assert!(
+            render(
+                &source,
+                8,
+                8,
+                None,
+                Parameters {
+                    to: (f32::INFINITY, 3.0),
+                    ..parameters
+                },
+                &AtomicBool::new(false)
+            )
+            .is_none()
+        );
+    }
+    assert_eq!(source, [[17; 4]; 64]);
+}

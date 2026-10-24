@@ -617,3 +617,14 @@ On the 4096 x 4096 benchmark, linear and radial kernels took approximately 478 m
 and 557 ms respectively; these computations now run outside the UI thread.
 Validation: 157 Rust tests and strict Clippy pass, covering final-generation
 publication, undo, Escape during a real gesture, invalid input and cancellation.
+
+Background shape gestures
+-------------------------
+Lines, rectangles and ellipses share the gradient gesture worker. Shift constraints
+and the release endpoint are preserved; intermediate requests are coalesced and
+obsolete renders are cancelled. The final result is published as one undoable
+edit, with cancellation available while it finishes. Shape kernels and the shared
+line/brush rasterizer check cancellation between rows and within wide rows.
+Validation: 158 Rust tests and strict Clippy pass, including the real release
+endpoint, Escape for every shape tool, selection masks, outlines, clipping and
+invalid inputs. Existing brush and eraser coverage tests also pass.
