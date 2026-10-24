@@ -215,6 +215,13 @@ impl Document {
         });
     }
     pub fn clear_pixels(&mut self) {
+        self.clear_pixels_cancellable(&std::sync::atomic::AtomicBool::new(false));
+    }
+
+    pub fn clear_pixels_cancellable(&mut self, cancel: &std::sync::atomic::AtomicBool) -> bool {
+        if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+            return false;
+        }
         self.begin("Delete pixels");
         let width = self.width as usize;
         let selection = self.selection.clone();
@@ -222,11 +229,20 @@ impl Document {
             .iter_mut()
             .enumerate()
         {
+            if i.is_multiple_of(4096) && cancel.load(std::sync::atomic::Ordering::Relaxed) {
+                self.cancel();
+                return false;
+            }
             if selected(selection.as_ref(), i % width, i / width) {
                 *pixel = [0; 4];
             }
         }
+        if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+            self.cancel();
+            return false;
+        }
         self.commit();
+        true
     }
     pub fn crop_to_selection(&mut self) -> bool {
         self.crop_to_selection_cancellable(&std::sync::atomic::AtomicBool::new(false))

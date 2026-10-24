@@ -1,6 +1,13 @@
 use super::*;
 use std::sync::mpsc::{self, Receiver, TryRecvError};
 
+#[derive(Clone, Copy, PartialEq)]
+pub(super) enum DocumentEdit {
+    Flatten,
+    Invert,
+    Delete,
+}
+
 pub(super) enum Outcome {
     Opened(Box<Document>, PathBuf),
     Recovered(Box<Document>, usize),
@@ -64,20 +71,20 @@ impl Editor {
         });
     }
 
-    pub(super) fn start_document_edit(&mut self, flatten: bool) {
+    pub(super) fn start_document_edit(&mut self, edit: DocumentEdit) {
         self.finish_stroke();
         let mut document = self.document.snapshot();
         document.set_selection(self.document.selection());
-        let label = if flatten {
-            "Flatten image"
-        } else {
-            "Invert colors"
+        let label = match edit {
+            DocumentEdit::Flatten => "Flatten image",
+            DocumentEdit::Invert => "Invert colors",
+            DocumentEdit::Delete => "Delete pixels",
         };
         self.start_cancellable_file_job(label, move |cancel| {
-            let completed = if flatten {
-                document.flatten_cancellable(cancel).is_some()
-            } else {
-                document.invert_cancellable(cancel)
+            let completed = match edit {
+                DocumentEdit::Flatten => document.flatten_cancellable(cancel).is_some(),
+                DocumentEdit::Invert => document.invert_cancellable(cancel),
+                DocumentEdit::Delete => document.clear_pixels_cancellable(cancel),
             };
             if !completed {
                 return Err(files::CANCELLED.into());

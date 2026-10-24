@@ -2,7 +2,7 @@ mod file_operations;
 mod transform_handles;
 use crate::icons::Icon;
 use eframe::egui::{self, Color32, Key, Pos2, Rect, Sense, TextureHandle, TextureOptions, Vec2};
-use file_operations::{FileJob, Outcome};
+use file_operations::{DocumentEdit, FileJob, Outcome};
 use paint_rust::effects::Effect;
 use paint_rust::selection::CombineMode;
 use paint_rust::transform::Orientation;
@@ -719,8 +719,7 @@ impl Editor {
             }
             Some(9) => {
                 self.finish_stroke();
-                self.document.clear_pixels();
-                self.texture_dirty = true;
+                self.start_document_edit(DocumentEdit::Delete);
             }
             Some(10) => {
                 self.finish_stroke();
@@ -1863,8 +1862,7 @@ impl Editor {
                     }
                     if ui.button("Delete pixels    Del").clicked() {
                         self.finish_stroke();
-                        self.document.clear_pixels();
-                        self.texture_dirty = true;
+                        self.start_document_edit(DocumentEdit::Delete);
                         ui.close();
                     }
                     if ui
@@ -1916,7 +1914,7 @@ impl Editor {
                     });
                 }
                 if ui.add(Icon::Invert.button("Invert colors")).clicked() {
-                    self.start_document_edit(false);
+                    self.start_document_edit(DocumentEdit::Invert);
                 }
             });
             ui.horizontal(|ui| {
@@ -2171,7 +2169,7 @@ impl Editor {
                     )
                     .clicked()
                 {
-                    self.start_document_edit(true);
+                    self.start_document_edit(DocumentEdit::Flatten);
                 }
                         ui.separator();
                         egui::ScrollArea::vertical()
@@ -2390,11 +2388,15 @@ mod tests {
 
     #[test]
     fn background_document_edits_preserve_selection_and_undo() {
-        for flatten in [false, true] {
+        for edit in [
+            DocumentEdit::Invert,
+            DocumentEdit::Flatten,
+            DocumentEdit::Delete,
+        ] {
             let ctx = egui::Context::default();
             let mut editor = Editor::blank(&ctx);
             editor.document = Document::new(8, 8, [10, 20, 30, 255]).unwrap();
-            if flatten {
+            if edit == DocumentEdit::Flatten {
                 editor.document.add_layer(false);
             }
             let selection = Selection {
@@ -2408,17 +2410,24 @@ mod tests {
             editor.document.set_selection(Some(selection.clone()));
             let before = editor.document.snapshot();
             let count = editor.document.history().count();
-            editor.start_document_edit(flatten);
+            editor.start_document_edit(edit);
             assert!(editor.document.layers() == before.layers());
             wait_for_files(&mut editor, &ctx);
             assert_eq!(editor.document.selection(), Some(selection.clone()));
             assert_eq!(editor.document.history().count(), count + 1);
-            if flatten {
+            if edit == DocumentEdit::Flatten {
                 assert_eq!(editor.document.layers().len(), 1);
                 assert_eq!(editor.document.composite(), before.composite());
             } else {
                 assert_eq!(editor.document.pixels()[0], [10, 20, 30, 255]);
-                assert_eq!(editor.document.pixels()[3 * 8 + 3], [245, 235, 225, 255]);
+                assert_eq!(
+                    editor.document.pixels()[3 * 8 + 3],
+                    if edit == DocumentEdit::Delete {
+                        [0; 4]
+                    } else {
+                        [245, 235, 225, 255]
+                    }
+                );
             }
             editor.undo();
             assert!(editor.document.layers() == before.layers());

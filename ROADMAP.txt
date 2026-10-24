@@ -35,7 +35,7 @@ Development roadmap
 [x] Linux user-local launcher, icons, MIME registration and installation helper.
 [x] Native accessibility bridge and explicit palette/layer/canvas labels.
 [x] Pinned Linux dependency and standard-library notices with consistency checks.
-[x] Cancellable background flood fill, flattening and color inversion.
+[x] Cancellable background flood fill, flattening, color inversion and pixel deletion.
 [x] Large-image CPU measurements and non-starving active-stroke previews.
 [x] Retain undo beyond the RAM budget using private temporary files.
 [x] Store and restore disk-backed history outside the UI thread.

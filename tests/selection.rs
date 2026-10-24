@@ -181,3 +181,14 @@ fn cancelled_crop_preserves_geometry_selection_and_history() {
     assert!(!doc.can_undo());
     assert!(!doc.dirty());
 }
+
+#[test]
+fn cancelled_pixel_deletion_preserves_selection_and_pixels() {
+    let mut doc = Document::new(8, 8, [17; 4]).unwrap();
+    doc.set_selection(Some(area()));
+    assert!(!doc.clear_pixels_cancellable(&std::sync::atomic::AtomicBool::new(true)));
+    assert_eq!(doc.selection(), Some(area()));
+    assert_eq!(doc.pixels(), &[[17; 4]; 64]);
+    assert!(!doc.can_undo());
+    assert!(!doc.dirty());
+}

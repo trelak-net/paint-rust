@@ -586,3 +586,11 @@ the original dimensions and selection. Existing crop semantics are unchanged:
 masked selections crop to their rectangular bounds.
 Validation: 150 Rust tests and strict Clippy pass, including selected-region
 publication, undo restoration and preservation of pre-cancelled documents.
+
+Background pixel deletion
+-------------------------
+The Delete command runs in the document worker and supports cancellation every
+4096 pixels. Cancellation rolls back partial changes; successful completion
+retains the selection and creates one undo step. Cutting still deletes pixels
+only after the clipboard accepts the image. Validation: 151 Rust tests and strict
+Clippy pass, including masked deletion, UI publication and cancellation.
