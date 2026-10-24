@@ -2023,67 +2023,75 @@ impl Editor {
                 if !enabled || self.file_job.is_some() || self.document.editing() {
                     ui.disable();
                 }
-                ui.heading("Layers");
-                ui.horizontal_wrapped(|ui| {
-                    if ui
-                        .add_enabled(self.document.can_add_layer(), egui::Button::new("Add"))
-                        .clicked()
-                    {
-                        self.document.add_layer(false);
-                        self.texture_dirty = true;
-                    }
-                    if ui
-                        .add_enabled(
-                            self.document.can_add_layer(),
-                            egui::Button::new("Duplicate"),
-                        )
-                        .clicked()
-                    {
-                        self.document.add_layer(true);
-                        self.texture_dirty = true;
-                    }
-                    if ui
-                        .add_enabled(
-                            self.document.layers().len() > 1,
-                            egui::Button::new("Delete"),
-                        )
-                        .clicked()
-                    {
-                        self.document.remove_layer();
-                        self.texture_dirty = true;
-                    }
-                });
-                ui.horizontal(|ui| {
-                    let active = self.document.active_layer();
-                    if ui
-                        .add_enabled(
-                            active + 1 < self.document.layers().len(),
-                            egui::Button::new("Move up"),
-                        )
-                        .clicked()
-                    {
-                        self.document.move_layer(true);
-                        self.texture_dirty = true;
-                    }
-                    if ui
-                        .add_enabled(active > 0, egui::Button::new("Move down"))
-                        .clicked()
-                    {
-                        self.document.move_layer(false);
-                        self.texture_dirty = true;
-                    }
-                });
-                if ui
-                    .add_enabled(
-                        self.document.can_add_layer(),
-                        egui::Button::new("Import image…"),
-                    )
-                    .on_hover_text("Add an image or a project's visible image as a new layer")
-                    .clicked()
-                {
-                    self.import_layer();
-                }
-                if ui
+                egui::ScrollArea::vertical()
+                    .id_salt("layers-panel")
+                    .show(ui, |ui| {
+                        ui.heading("Layers");
+                        ui.horizontal_wrapped(|ui| {
+                            if ui
+                                .add_enabled(
+                                    self.document.can_add_layer(),
+                                    egui::Button::new("Add"),
+                                )
+                                .clicked()
+                            {
+                                self.document.add_layer(false);
+                                self.texture_dirty = true;
+                            }
+                            if ui
+                                .add_enabled(
+                                    self.document.can_add_layer(),
+                                    egui::Button::new("Duplicate"),
+                                )
+                                .clicked()
+                            {
+                                self.document.add_layer(true);
+                                self.texture_dirty = true;
+                            }
+                            if ui
+                                .add_enabled(
+                                    self.document.layers().len() > 1,
+                                    egui::Button::new("Delete"),
+                                )
+                                .clicked()
+                            {
+                                self.document.remove_layer();
+                                self.texture_dirty = true;
+                            }
+                        });
+                        ui.horizontal(|ui| {
+                            let active = self.document.active_layer();
+                            if ui
+                                .add_enabled(
+                                    active + 1 < self.document.layers().len(),
+                                    egui::Button::new("Move up"),
+                                )
+                                .clicked()
+                            {
+                                self.document.move_layer(true);
+                                self.texture_dirty = true;
+                            }
+                            if ui
+                                .add_enabled(active > 0, egui::Button::new("Move down"))
+                                .clicked()
+                            {
+                                self.document.move_layer(false);
+                                self.texture_dirty = true;
+                            }
+                        });
+                        if ui
+                            .add_enabled(
+                                self.document.can_add_layer(),
+                                egui::Button::new("Import image…"),
+                            )
+                            .on_hover_text(
+                                "Add an image or a project's visible image as a new layer",
+                            )
+                            .clicked()
+                        {
+                            self.import_layer();
+                        }
+                        if ui
                     .add_enabled(
                         self.document.can_flatten(),
                         egui::Button::new("Flatten image"),
@@ -2096,88 +2104,100 @@ impl Editor {
                     self.document.flatten();
                     self.texture_dirty = true;
                 }
-                ui.separator();
-                egui::ScrollArea::vertical()
-                    .max_height(320.0)
-                    .show(ui, |ui| {
-                        for index in (0..self.document.layers().len()).rev() {
-                            let layer = &self.document.layers()[index];
-                            let mut visible = layer.visible;
-                            let name = layer.name.clone();
-                            ui.horizontal(|ui| {
-                                if ui
-                                    .checkbox(&mut visible, "")
-                                    .on_hover_text("Layer visibility")
-                                    .changed()
-                                {
-                                    self.document.set_visibility(index, visible);
-                                    self.texture_dirty = true;
-                                }
-                                if ui
-                                    .selectable_label(index == self.document.active_layer(), name)
-                                    .clicked()
-                                {
-                                    self.document.select_layer(index);
+                        ui.separator();
+                        egui::ScrollArea::vertical()
+                            .id_salt("layer-list")
+                            .max_height(320.0)
+                            .show(ui, |ui| {
+                                for index in (0..self.document.layers().len()).rev() {
+                                    let layer = &self.document.layers()[index];
+                                    let mut visible = layer.visible;
+                                    let name = layer.name.clone();
+                                    ui.horizontal(|ui| {
+                                        if ui
+                                            .checkbox(&mut visible, "")
+                                            .on_hover_text("Layer visibility")
+                                            .changed()
+                                        {
+                                            self.document.set_visibility(index, visible);
+                                            self.texture_dirty = true;
+                                        }
+                                        if ui
+                                            .selectable_label(
+                                                index == self.document.active_layer(),
+                                                name,
+                                            )
+                                            .clicked()
+                                        {
+                                            self.document.select_layer(index);
+                                        }
+                                    });
                                 }
                             });
+                        ui.separator();
+                        let layer = &self.document.layers()[self.document.active_layer()];
+                        ui.label(format!(
+                            "Opacity: {:.0}%",
+                            f32::from(layer.opacity) * 100.0 / 255.0
+                        ));
+                        if ui.button("Layer properties…").clicked() {
+                            self.layer_properties =
+                                Some((layer.name.clone(), layer.opacity, layer.blend_mode));
                         }
-                    });
-                ui.separator();
-                let layer = &self.document.layers()[self.document.active_layer()];
-                ui.label(format!(
-                    "Opacity: {:.0}%",
-                    f32::from(layer.opacity) * 100.0 / 255.0
-                ));
-                if ui.button("Layer properties…").clicked() {
-                    self.layer_properties =
-                        Some((layer.name.clone(), layer.opacity, layer.blend_mode));
-                }
-                if !layer.visible {
-                    ui.small("The active layer is hidden.");
-                }
-                ui.separator();
-                egui::CollapsingHeader::new("History").show(ui, |ui| {
-                    ui.small(format!(
-                        "{:.1} MiB retained",
-                        self.document.history_bytes() as f64 / (1024.0 * 1024.0)
-                    ));
-                    let undo: Vec<String> = self.document.history().map(str::to_owned).collect();
-                    let redo: Vec<String> =
-                        self.document.redo_history().map(str::to_owned).collect();
-                    let mut chosen = None;
-                    egui::ScrollArea::vertical()
-                        .id_salt("history-list")
-                        .max_height(160.0)
-                        .show(ui, |ui| {
-                            if undo.is_empty() && redo.is_empty() {
-                                ui.label("No edits yet");
-                            }
-                            for (index, label) in redo.iter().enumerate() {
-                                if ui
-                                    .button(format!("Redo {label}"))
-                                    .on_hover_text(format!("Redo {} operation(s)", index + 1))
-                                    .clicked()
-                                {
-                                    chosen = Some((index + 1, true));
-                                }
-                            }
-                            if !undo.is_empty() && !redo.is_empty() {
-                                ui.separator();
-                            }
-                            for (index, label) in undo.iter().enumerate() {
-                                if ui
-                                    .button(format!("Undo {label}"))
-                                    .on_hover_text(format!("Undo {} operation(s)", index + 1))
-                                    .clicked()
-                                {
-                                    chosen = Some((index + 1, false));
-                                }
+                        if !layer.visible {
+                            ui.small("The active layer is hidden.");
+                        }
+                        ui.separator();
+                        egui::CollapsingHeader::new("History").show(ui, |ui| {
+                            ui.small(format!(
+                                "{:.1} MiB retained",
+                                self.document.history_bytes() as f64 / (1024.0 * 1024.0)
+                            ));
+                            let undo: Vec<String> =
+                                self.document.history().map(str::to_owned).collect();
+                            let redo: Vec<String> =
+                                self.document.redo_history().map(str::to_owned).collect();
+                            let mut chosen = None;
+                            egui::ScrollArea::vertical()
+                                .id_salt("history-list")
+                                .max_height(160.0)
+                                .show(ui, |ui| {
+                                    if undo.is_empty() && redo.is_empty() {
+                                        ui.label("No edits yet");
+                                    }
+                                    for (index, label) in redo.iter().enumerate() {
+                                        if ui
+                                            .button(format!("Redo {label}"))
+                                            .on_hover_text(format!(
+                                                "Redo {} operation(s)",
+                                                index + 1
+                                            ))
+                                            .clicked()
+                                        {
+                                            chosen = Some((index + 1, true));
+                                        }
+                                    }
+                                    if !undo.is_empty() && !redo.is_empty() {
+                                        ui.separator();
+                                    }
+                                    for (index, label) in undo.iter().enumerate() {
+                                        if ui
+                                            .button(format!("Undo {label}"))
+                                            .on_hover_text(format!(
+                                                "Undo {} operation(s)",
+                                                index + 1
+                                            ))
+                                            .clicked()
+                                        {
+                                            chosen = Some((index + 1, false));
+                                        }
+                                    }
+                                });
+                            if let Some((steps, redo)) = chosen {
+                                self.navigate_history(steps, redo);
                             }
                         });
-                    if let Some((steps, redo)) = chosen {
-                        self.navigate_history(steps, redo);
-                    }
-                });
+                    });
             });
         egui::CentralPanel::default()
             .frame(
