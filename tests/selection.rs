@@ -165,3 +165,19 @@ fn cancelled_document_operations_leave_the_original_unchanged() {
     assert_eq!(document.history().count(), history);
     assert!(!document.editing());
 }
+
+#[test]
+fn cancelled_crop_preserves_geometry_selection_and_history() {
+    let mut doc = Document::new(8, 8, [17; 4]).unwrap();
+    doc.set_selection(Some(area()));
+    let cancel = std::sync::atomic::AtomicBool::new(true);
+    assert_eq!(
+        doc.crop_to_selection_cancellable(&cancel).unwrap_err(),
+        paint_rust::files::CANCELLED
+    );
+    assert_eq!((doc.width, doc.height), (8, 8));
+    assert_eq!(doc.selection(), Some(area()));
+    assert_eq!(doc.pixels(), &[[17; 4]; 64]);
+    assert!(!doc.can_undo());
+    assert!(!doc.dirty());
+}

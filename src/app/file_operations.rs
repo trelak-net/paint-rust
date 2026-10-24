@@ -297,6 +297,7 @@ impl Editor {
     ) -> bool {
         self.finish_stroke();
         let mut snapshot = self.document.snapshot();
+        snapshot.set_selection(self.document.selection());
         self.start_cancellable_file_job(operation, move |cancel| {
             transform(&mut snapshot, cancel)?;
             let label = snapshot

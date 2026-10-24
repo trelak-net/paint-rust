@@ -576,3 +576,13 @@ intact when loading is cancelled. Codec computation between input reads may dela
 cancellation; this is cooperative cancellation, not forced thread termination.
 Validation covers pre-cancelled inputs, cancellation between read chunks, seek
 rejection, project/raster pixel round trips and guarded UI publication.
+
+Background cropping
+-------------------
+Cropping now runs in the cancellable geometry worker. It copies the current
+selection into the worker snapshot, checks cancellation between rows and layers,
+and publishes one undoable edit only after every layer is complete. Undo restores
+the original dimensions and selection. Existing crop semantics are unchanged:
+masked selections crop to their rectangular bounds.
+Validation: 150 Rust tests and strict Clippy pass, including selected-region
+publication, undo restoration and preservation of pre-cancelled documents.

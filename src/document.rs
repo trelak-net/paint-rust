@@ -229,8 +229,19 @@ impl Document {
         self.commit();
     }
     pub fn crop_to_selection(&mut self) -> bool {
+        self.crop_to_selection_cancellable(&std::sync::atomic::AtomicBool::new(false))
+            .unwrap_or(false)
+    }
+
+    pub fn crop_to_selection_cancellable(
+        &mut self,
+        cancel: &std::sync::atomic::AtomicBool,
+    ) -> Result<bool, String> {
+        if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+            return Err(crate::files::CANCELLED.into());
+        }
         let Some(rect) = self.selection.clone() else {
-            return false;
+            return Ok(false);
         };
         if self.editing()
             || rect.width == 0
@@ -240,21 +251,26 @@ impl Document {
                 && rect.width == self.width
                 && rect.height == self.height)
         {
-            return false;
+            return Ok(false);
         }
-        self.begin("Crop to selection");
-        for layer in &mut self.layers {
-            let mut pixels = Vec::with_capacity(rect.width as usize * rect.height as usize);
-            for y in rect.y..rect.y + rect.height {
-                let start = y as usize * self.width as usize + rect.x as usize;
-                pixels.extend_from_slice(&layer.pixels[start..start + rect.width as usize]);
-            }
-            layer.pixels = Arc::new(pixels);
-        }
-        self.width = rect.width;
-        self.height = rect.height;
-        self.selection = None;
-        self.commit()
+        let width = self.width as usize;
+        self.transform_layers(
+            "Crop to selection",
+            rect.width,
+            rect.height,
+            cancel,
+            |source| {
+                let mut pixels = Vec::with_capacity(rect.width as usize * rect.height as usize);
+                for y in rect.y..rect.y + rect.height {
+                    if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+                        return None;
+                    }
+                    let start = y as usize * width + rect.x as usize;
+                    pixels.extend_from_slice(&source[start..start + rect.width as usize]);
+                }
+                Some(pixels)
+            },
+        )
     }
 
     /// Publish a computed image as one edit while retaining this document's history.

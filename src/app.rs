@@ -724,8 +724,7 @@ impl Editor {
             }
             Some(10) => {
                 self.finish_stroke();
-                self.document.crop_to_selection();
-                self.texture_dirty = true;
+                self.transform_in_background("crop image", Document::crop_to_selection_cancellable);
             }
             Some(11) => self.copy(false, false),
             Some(12) => self.copy(true, false),
@@ -1876,8 +1875,10 @@ impl Editor {
                         .clicked()
                     {
                         self.finish_stroke();
-                        self.document.crop_to_selection();
-                        self.texture_dirty = true;
+                        self.transform_in_background(
+                            "crop image",
+                            Document::crop_to_selection_cancellable,
+                        );
                         ui.close();
                     }
                 });
@@ -3149,6 +3150,32 @@ mod tests {
         assert!(editor.document.dirty());
         assert!(editor.document.can_undo());
         assert_eq!(editor.status, "Cancelled: open image");
+    }
+
+    #[test]
+    fn background_crop_uses_selection_and_restores_it_with_undo() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.document = Document::new(8, 6, [10, 20, 30, 255]).unwrap();
+        let area = Selection {
+            x: 2,
+            y: 1,
+            width: 3,
+            height: 4,
+            mask: None,
+            ellipse: None,
+        };
+        editor.document.set_selection(Some(area.clone()));
+        assert!(
+            editor.transform_in_background("crop image", Document::crop_to_selection_cancellable)
+        );
+        assert_eq!((editor.document.width, editor.document.height), (8, 6));
+        wait_for_files(&mut editor, &ctx);
+        assert_eq!((editor.document.width, editor.document.height), (3, 4));
+        assert!(editor.document.selection().is_none());
+        assert!(editor.document.undo());
+        assert_eq!((editor.document.width, editor.document.height), (8, 6));
+        assert_eq!(editor.document.selection(), Some(area));
     }
 
     #[test]
