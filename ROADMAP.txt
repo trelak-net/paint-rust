@@ -6,7 +6,7 @@ Development roadmap
 [x] Editable layers and lossless project persistence.
 [x] Lines, rectangles and ellipses with cancellable previews.
 [x] Rectangular selections, selected-area operations and crop.
-[ ] Image/canvas resizing, rotation and mirroring.
+[x] Image/canvas resizing, rotation and mirroring.
 [ ] Text editing, clipboard integration and additional selection tools.
 [ ] Blend modes, adjustments and effects.
 [ ] Background processing, recovery and large-document performance.

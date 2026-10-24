@@ -213,6 +213,78 @@ impl Document {
         self.commit()
     }
 
+    fn transform_layers(
+        &mut self,
+        label: &str,
+        width: u32,
+        height: u32,
+        transform: impl Fn(&[Pixel]) -> Vec<Pixel>,
+    ) -> Result<bool, String> {
+        Self::validate_size(width, height)?;
+        if self.editing() {
+            return Err("Finish the current edit first.".into());
+        }
+        if u64::from(width) * u64::from(height) * 4 * self.layers.len() as u64 > 256 * 1024 * 1024 {
+            return Err("The resized layers would exceed the 256 MiB document limit.".into());
+        }
+        self.begin(label);
+        for layer in &mut self.layers {
+            layer.pixels = Arc::new(transform(&layer.pixels));
+        }
+        self.width = width;
+        self.height = height;
+        self.selection = None;
+        Ok(self.commit())
+    }
+    pub fn resize_image(&mut self, width: u32, height: u32, smooth: bool) -> Result<bool, String> {
+        if (width, height) == (self.width, self.height) {
+            return Ok(false);
+        }
+        let old = (self.width, self.height);
+        self.transform_layers("Resize image", width, height, |pixels| {
+            crate::transform::resize(pixels, old, (width, height), smooth)
+        })
+    }
+    pub fn resize_canvas(
+        &mut self,
+        width: u32,
+        height: u32,
+        anchor: usize,
+    ) -> Result<bool, String> {
+        if anchor > 8 {
+            return Err("Invalid canvas anchor.".into());
+        }
+        if (width, height) == (self.width, self.height) {
+            return Ok(false);
+        }
+        let old = (self.width, self.height);
+        self.transform_layers("Resize canvas", width, height, |pixels| {
+            crate::transform::canvas(pixels, old, (width, height), anchor)
+        })
+    }
+    pub fn reorient(&mut self, operation: crate::transform::Orientation) -> Result<bool, String> {
+        use crate::transform::Orientation;
+        let (width, height) = (self.width, self.height);
+        let new = if matches!(
+            operation,
+            Orientation::Clockwise | Orientation::Counterclockwise
+        ) {
+            (height, width)
+        } else {
+            (width, height)
+        };
+        let label = match operation {
+            Orientation::Clockwise => "Rotate clockwise",
+            Orientation::Counterclockwise => "Rotate counterclockwise",
+            Orientation::HalfTurn => "Rotate 180 degrees",
+            Orientation::FlipHorizontal => "Flip horizontal",
+            Orientation::FlipVertical => "Flip vertical",
+        };
+        self.transform_layers(label, new.0, new.1, |pixels| {
+            crate::transform::orient(pixels, width, height, operation)
+        })
+    }
+
     pub fn layers(&self) -> &[Layer] {
         &self.layers
     }

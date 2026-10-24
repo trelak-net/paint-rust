@@ -29,6 +29,7 @@ Features
 - Invert RGB while preserving alpha.
 - Draw lines and outlined/filled rectangles or ellipses with cancellable previews.
 - Select a rectangular area, limit edits to it, delete pixels or crop all layers.
+- Resize all layers, change canvas size with a nine-position anchor, rotate or mirror.
 - Hold Shift for 45-degree line angles or equal shape dimensions.
 - Zoom from 10% to 400%, fit the canvas, and navigate with scrollbars.
 - Undo/redo complete strokes and edits; cancel a stroke with Escape.
@@ -58,6 +59,7 @@ Architecture
 ------------
 src/document.rs: pixel storage, brush/fill operations, edit transactions and history.
 src/files.rs: bounded raster/project decoding and atomic project/PNG saving.
+src/transform.rs: pixel resampling, canvas anchoring and exact right-angle transforms.
 src/app.rs: desktop workspace, input, dialogs, canvas texture and tool controls.
 src/main.rs: native window startup.
 tests/editor.rs: image operations, history semantics and file round trips.
@@ -146,3 +148,10 @@ Selection validation: 30 tests pass. Selection gestures do not dirty the documen
 Escape restores the previous selection. Brush, eraser, fill, shapes, invert and
 delete respect rectangular bounds. Crop affects every layer and restores geometry
 and the selection on undo. Selections are session-local, not project data.
+
+Geometry validation: 34 tests pass. Image resizing offers nearest-neighbor and
+premultiplied-alpha bilinear sampling. Canvas expansion is transparent; anchor
+selection controls cropping/placement. Rotation and mirroring preserve exact pixel
+values. Geometry changes affect every layer and clear the selection; undo restores
+its previous bounds. Resampling currently interpolates encoded RGB values rather
+than linear-light colors, and bilinear downsampling is not an area filter.

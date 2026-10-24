@@ -1,5 +1,6 @@
 use crate::icons::Icon;
 use eframe::egui::{self, Color32, Key, Pos2, Rect, Sense, TextureHandle, TextureOptions, Vec2};
+use paint_rust::transform::Orientation;
 use paint_rust::{
     document::{Document, Selection, Shape, ShapeStyle},
     files,
@@ -25,6 +26,16 @@ enum Action {
     Close,
 }
 
+struct ResizeDialog {
+    width: u32,
+    height: u32,
+    canvas: bool,
+    lock_ratio: bool,
+    ratio: f64,
+    smooth: bool,
+    anchor: usize,
+}
+
 pub struct Editor {
     document: Document,
     texture: Option<TextureHandle>,
@@ -42,6 +53,7 @@ pub struct Editor {
     pending: Option<Action>,
     new_dialog: bool,
     layer_properties: Option<(String, u8)>,
+    resize_dialog: Option<ResizeDialog>,
     new_width: u32,
     new_height: u32,
     transparent: bool,
@@ -80,6 +92,7 @@ impl Editor {
             pending: None,
             new_dialog: false,
             layer_properties: None,
+            resize_dialog: None,
             new_width: 960,
             new_height: 640,
             transparent: false,
@@ -634,6 +647,103 @@ impl Editor {
                 self.layer_properties = Some((name, opacity));
             }
         }
+        if let Some(mut dialog) = self.resize_dialog.take() {
+            let mut keep = true;
+            egui::Window::new(if dialog.canvas {
+                "Canvas size"
+            } else {
+                "Resize image"
+            })
+            .collapsible(false)
+            .resizable(false)
+            .anchor(egui::Align2::CENTER_CENTER, Vec2::ZERO)
+            .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label("Width");
+                    if ui
+                        .add(
+                            egui::DragValue::new(&mut dialog.width)
+                                .range(1..=16384)
+                                .suffix(" px"),
+                        )
+                        .changed()
+                        && dialog.lock_ratio
+                    {
+                        dialog.height = (f64::from(dialog.width) / dialog.ratio)
+                            .round()
+                            .clamp(1.0, 16384.0) as u32;
+                    }
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Height");
+                    if ui
+                        .add(
+                            egui::DragValue::new(&mut dialog.height)
+                                .range(1..=16384)
+                                .suffix(" px"),
+                        )
+                        .changed()
+                        && dialog.lock_ratio
+                    {
+                        dialog.width = (f64::from(dialog.height) * dialog.ratio)
+                            .round()
+                            .clamp(1.0, 16384.0) as u32;
+                    }
+                });
+                ui.checkbox(&mut dialog.lock_ratio, "Keep aspect ratio");
+                if dialog.canvas {
+                    let anchors = [
+                        "Top left",
+                        "Top center",
+                        "Top right",
+                        "Middle left",
+                        "Center",
+                        "Middle right",
+                        "Bottom left",
+                        "Bottom center",
+                        "Bottom right",
+                    ];
+                    egui::ComboBox::from_label("Anchor")
+                        .selected_text(anchors[dialog.anchor])
+                        .show_ui(ui, |ui| {
+                            for (index, name) in anchors.iter().enumerate() {
+                                ui.selectable_value(&mut dialog.anchor, index, *name);
+                            }
+                        });
+                    ui.label("New canvas area is transparent on every layer.");
+                } else {
+                    ui.checkbox(&mut dialog.smooth, "Smooth resampling (bilinear)");
+                }
+                ui.horizontal(|ui| {
+                    if ui.button("Apply").clicked() {
+                        let result = if dialog.canvas {
+                            self.document
+                                .resize_canvas(dialog.width, dialog.height, dialog.anchor)
+                        } else {
+                            self.document
+                                .resize_image(dialog.width, dialog.height, dialog.smooth)
+                        };
+                        match result {
+                            Ok(_) => {
+                                self.texture_dirty = true;
+                                self.status = "Image dimensions updated".into();
+                                keep = false;
+                            }
+                            Err(error) => self.status = format!("Could not resize: {error}"),
+                        }
+                    }
+                    if ui.button("Cancel").clicked() {
+                        keep = false;
+                    }
+                });
+                if self.status.starts_with("Could not resize") {
+                    ui.colored_label(Color32::LIGHT_RED, &self.status);
+                }
+            });
+            if keep {
+                self.resize_dialog = Some(dialog);
+            }
+        }
         if self.new_dialog {
             egui::Window::new("New image")
                 .collapsible(false)
@@ -705,11 +815,17 @@ impl Editor {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
             self.pending = Some(Action::Close);
         }
-        let enabled = self.pending.is_none() && !self.new_dialog && self.layer_properties.is_none();
+        let enabled = self.pending.is_none()
+            && !self.new_dialog
+            && self.layer_properties.is_none()
+            && self.resize_dialog.is_none();
         if enabled {
             self.shortcuts(ctx);
         }
-        let enabled = self.pending.is_none() && !self.new_dialog && self.layer_properties.is_none();
+        let enabled = self.pending.is_none()
+            && !self.new_dialog
+            && self.layer_properties.is_none()
+            && self.resize_dialog.is_none();
         let name = self
             .path
             .as_ref()
@@ -766,6 +882,41 @@ impl Editor {
                 {
                     self.redo();
                 }
+                ui.menu_button("Image", |ui| {
+                    for (label, canvas) in [("Resize image…", false), ("Canvas size…", true)] {
+                        if ui.button(label).clicked() {
+                            self.finish_stroke();
+                            self.resize_dialog = Some(ResizeDialog {
+                                width: self.document.width,
+                                height: self.document.height,
+                                canvas,
+                                lock_ratio: !canvas,
+                                ratio: f64::from(self.document.width)
+                                    / f64::from(self.document.height),
+                                smooth: true,
+                                anchor: 4,
+                            });
+                            ui.close();
+                        }
+                    }
+                    ui.separator();
+                    for (label, operation) in [
+                        ("Rotate 90° clockwise", Orientation::Clockwise),
+                        ("Rotate 90° counterclockwise", Orientation::Counterclockwise),
+                        ("Rotate 180°", Orientation::HalfTurn),
+                        ("Flip horizontal", Orientation::FlipHorizontal),
+                        ("Flip vertical", Orientation::FlipVertical),
+                    ] {
+                        if ui.button(label).clicked() {
+                            self.finish_stroke();
+                            match self.document.reorient(operation) {
+                                Ok(_) => self.texture_dirty = true,
+                                Err(error) => self.status = error,
+                            }
+                            ui.close();
+                        }
+                    }
+                });
                 ui.menu_button("Selection", |ui| {
                     if ui.button("Select all    Ctrl+A").clicked() {
                         self.finish_stroke();

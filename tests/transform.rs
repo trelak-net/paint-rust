@@ -1,0 +1,92 @@
+use paint_rust::{
+    document::{Document, Selection},
+    transform::Orientation,
+};
+
+fn numbered() -> Document {
+    Document::from_pixels(3, 2, (1..=6).map(|n| [n, 0, 0, 255]).collect()).unwrap()
+}
+
+#[test]
+fn rotation_and_mirror_preserve_pixels_and_layer_properties() {
+    let mut doc = numbered();
+    doc.add_layer(true);
+    doc.set_layer_properties("Upper".into(), 100);
+    doc.reorient(Orientation::Clockwise).unwrap();
+    assert_eq!((doc.width, doc.height), (2, 3));
+    assert_eq!(
+        doc.pixels().iter().map(|p| p[0]).collect::<Vec<_>>(),
+        vec![4, 1, 5, 2, 6, 3]
+    );
+    assert_eq!(doc.layers()[1].opacity, 100);
+    doc.reorient(Orientation::Counterclockwise).unwrap();
+    assert_eq!(doc.pixels(), numbered().pixels());
+    doc.reorient(Orientation::FlipHorizontal).unwrap();
+    assert_eq!(
+        doc.pixels().iter().map(|p| p[0]).collect::<Vec<_>>(),
+        vec![3, 2, 1, 6, 5, 4]
+    );
+    doc.undo();
+    assert_eq!(doc.pixels(), numbered().pixels());
+    doc.reorient(Orientation::FlipVertical).unwrap();
+    assert_eq!(
+        doc.pixels().iter().map(|p| p[0]).collect::<Vec<_>>(),
+        vec![4, 5, 6, 1, 2, 3]
+    );
+}
+
+#[test]
+fn canvas_anchor_expands_with_transparency_and_crops_without_resampling() {
+    let mut doc = numbered();
+    doc.resize_canvas(5, 4, 4).unwrap();
+    assert_eq!(doc.pixels()[0], [0; 4]);
+    assert_eq!(doc.pixels()[6], [1, 0, 0, 255]);
+    assert_eq!(doc.pixels()[2 * 5 + 3], [6, 0, 0, 255]);
+    doc.resize_canvas(3, 2, 4).unwrap();
+    assert_eq!(doc.pixels(), numbered().pixels());
+    doc.undo();
+    assert_eq!((doc.width, doc.height), (5, 4));
+}
+
+#[test]
+fn smooth_resize_uses_premultiplied_alpha_to_avoid_transparent_color_bleed() {
+    let mut doc = Document::from_pixels(2, 1, vec![[255, 0, 0, 255], [0, 0, 255, 0]]).unwrap();
+    doc.resize_image(3, 1, true).unwrap();
+    assert_eq!(doc.pixels()[1], [255, 0, 0, 128]);
+    doc.undo();
+    assert_eq!(doc.pixels()[1], [0, 0, 255, 0]);
+    doc.resize_image(4, 1, false).unwrap();
+    assert_eq!(
+        doc.pixels(),
+        &[
+            [255, 0, 0, 255],
+            [255, 0, 0, 255],
+            [0, 0, 255, 0],
+            [0, 0, 255, 0]
+        ]
+    );
+}
+
+#[test]
+fn invalid_resize_is_transactional_and_undo_restores_selection() {
+    let mut doc = numbered();
+    let selection = Selection {
+        x: 1,
+        y: 0,
+        width: 2,
+        height: 2,
+    };
+    doc.set_selection(Some(selection));
+    assert!(doc.resize_image(0, 1, true).is_err());
+    assert!(!doc.dirty());
+    assert!(!doc.can_undo());
+    assert!(doc.resize_canvas(2, 2, 9).is_err());
+    doc.resize_image(6, 4, false).unwrap();
+    assert_eq!(doc.selection(), None);
+    doc.undo();
+    assert_eq!(doc.selection(), Some(selection));
+    assert_eq!((doc.width, doc.height), (3, 2));
+    assert!(!doc.dirty());
+    doc.redo();
+    assert_eq!((doc.width, doc.height), (6, 4));
+}
