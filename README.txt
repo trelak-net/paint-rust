@@ -594,3 +594,11 @@ The Delete command runs in the document worker and supports cancellation every
 retains the selection and creates one undo step. Cutting still deletes pixels
 only after the clipboard accepts the image. Validation: 151 Rust tests and strict
 Clippy pass, including masked deletion, UI publication and cancellation.
+
+Cancellable selection masks
+---------------------------
+Polygon rasterization and selection union, subtraction and intersection now offer
+cancellation in the Working dialog. Computation checks between rows and while
+packing the resulting mask. Cancellation retains the previous selection, without
+changing pixels or creating history. Validation: 153 Rust tests and strict Clippy
+pass, including all pre-cancelled combination modes and guarded UI publication.

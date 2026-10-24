@@ -93,3 +93,26 @@ fn missing_previous_selection_has_predictable_combination_semantics() {
     }
     assert!(combine(0, 0, None, &candidate, CombineMode::Add).is_err());
 }
+
+#[test]
+fn cancelled_selection_operations_never_return_partial_masks() {
+    use paint_rust::selection::{combine_cancellable, polygon_cancellable};
+    use std::sync::atomic::AtomicBool;
+    let cancel = AtomicBool::new(true);
+    let candidate = Selection::elliptical(0, 0, 8, 8);
+    for mode in [
+        CombineMode::Replace,
+        CombineMode::Add,
+        CombineMode::Subtract,
+        CombineMode::Intersect,
+    ] {
+        assert_eq!(
+            combine_cancellable(8, 8, None, &candidate, mode, &cancel).unwrap_err(),
+            paint_rust::files::CANCELLED
+        );
+    }
+    assert_eq!(
+        polygon_cancellable(8, 8, &[(0.0, 0.0), (8.0, 0.0), (4.0, 8.0)], &cancel).unwrap_err(),
+        paint_rust::files::CANCELLED
+    );
+}

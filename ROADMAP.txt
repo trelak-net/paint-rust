@@ -12,8 +12,8 @@ Development roadmap
 [x] Raster text with editable preview.
 [x] Move/copy selected pixels and move selection bounds.
 [x] Elliptical selections with masked editing, clipboard and movement.
-[x] Background selection union, subtraction and intersection with explicit empty masks.
-[x] Polygon selections with editable point input and even-odd coverage.
+[x] Cancellable background selection union, subtraction and intersection with explicit empty masks.
+[x] Cancellable polygon selections with editable point input and even-odd coverage.
 [x] Numeric free transforms of selected pixels with cancellable previews.
 [x] On-canvas translation, scaling and rotation handles with Shift constraints.
 [x] Eight layer blend modes with project persistence.

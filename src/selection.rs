@@ -1,4 +1,15 @@
-use std::sync::Arc;
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
+};
+
+fn check_cancel(cancel: &AtomicBool) -> Result<(), String> {
+    if cancel.load(Ordering::Relaxed) {
+        Err(crate::files::CANCELLED.into())
+    } else {
+        Ok(())
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Selection {
@@ -100,6 +111,25 @@ pub fn combine(
     candidate: &Selection,
     mode: CombineMode,
 ) -> Result<Selection, String> {
+    combine_cancellable(
+        width,
+        height,
+        previous,
+        candidate,
+        mode,
+        &AtomicBool::new(false),
+    )
+}
+
+pub fn combine_cancellable(
+    width: u32,
+    height: u32,
+    previous: Option<&Selection>,
+    candidate: &Selection,
+    mode: CombineMode,
+    cancel: &AtomicBool,
+) -> Result<Selection, String> {
+    check_cancel(cancel)?;
     crate::document::Document::validate_size(width, height)?;
     if mode == CombineMode::Replace {
         return Ok(candidate.clone());
@@ -107,7 +137,11 @@ pub fn combine(
     let mut pixels = vec![0; width as usize * height as usize];
     let (mut left, mut top, mut right, mut bottom) = (width, height, 0, 0);
     for y in 0..height {
+        check_cancel(cancel)?;
         for x in 0..width {
+            if x.is_multiple_of(4096) {
+                check_cancel(cancel)?;
+            }
             let old = previous.map(|s| s.contains(x as usize, y as usize));
             let new = candidate.contains(x as usize, y as usize);
             let selected = match mode {
@@ -125,10 +159,16 @@ pub fn combine(
             }
         }
     }
-    Ok(raster_selection(width, pixels, (left, top, right, bottom)))
+    raster_selection(width, pixels, (left, top, right, bottom), cancel)
 }
 
-fn raster_selection(width: u32, pixels: Vec<u8>, bounds: (u32, u32, u32, u32)) -> Selection {
+fn raster_selection(
+    width: u32,
+    pixels: Vec<u8>,
+    bounds: (u32, u32, u32, u32),
+    cancel: &AtomicBool,
+) -> Result<Selection, String> {
+    check_cancel(cancel)?;
     let (mut left, mut top, right, bottom) = bounds;
     if right == 0 || bottom == 0 {
         left = 0;
@@ -139,13 +179,15 @@ fn raster_selection(width: u32, pixels: Vec<u8>, bounds: (u32, u32, u32, u32)) -
     let mut cropped = vec![0; mask_width as usize * mask_height as usize];
     if right > left && bottom > top {
         for y in top..bottom {
+            check_cancel(cancel)?;
             let source = y as usize * width as usize + left as usize;
             let target = (y - top) as usize * mask_width as usize;
             cropped[target..target + mask_width as usize]
                 .copy_from_slice(&pixels[source..source + mask_width as usize]);
         }
     }
-    Selection {
+    check_cancel(cancel)?;
+    Ok(Selection {
         x: left,
         y: top,
         width: right - left,
@@ -158,10 +200,20 @@ fn raster_selection(width: u32, pixels: Vec<u8>, bounds: (u32, u32, u32, u32)) -
             height: mask_height,
             pixels: Arc::new(cropped),
         }),
-    }
+    })
 }
 
 pub fn polygon(width: u32, height: u32, points: &[(f64, f64)]) -> Result<Selection, String> {
+    polygon_cancellable(width, height, points, &AtomicBool::new(false))
+}
+
+pub fn polygon_cancellable(
+    width: u32,
+    height: u32,
+    points: &[(f64, f64)],
+    cancel: &AtomicBool,
+) -> Result<Selection, String> {
+    check_cancel(cancel)?;
     crate::document::Document::validate_size(width, height)?;
     if points.len() < 3
         || points.len() > 4096
@@ -177,6 +229,7 @@ pub fn polygon(width: u32, height: u32, points: &[(f64, f64)]) -> Result<Selecti
     let (mut left, mut top, mut right, mut bottom) = (width, height, 0, 0);
     let mut intersections = Vec::with_capacity(points.len());
     for y in 0..height {
+        check_cancel(cancel)?;
         let py = f64::from(y) + 0.5;
         intersections.clear();
         for index in 0..points.len() {
@@ -201,5 +254,5 @@ pub fn polygon(width: u32, height: u32, points: &[(f64, f64)]) -> Result<Selecti
             }
         }
     }
-    Ok(raster_selection(width, pixels, (left, top, right, bottom)))
+    raster_selection(width, pixels, (left, top, right, bottom), cancel)
 }

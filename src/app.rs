@@ -447,13 +447,14 @@ impl Editor {
                     self.document.height,
                     self.selection_mode,
                 );
-                self.start_file_job("combine selections", move || {
-                    paint_rust::selection::combine(
+                self.start_cancellable_file_job("combine selections", move |cancel| {
+                    paint_rust::selection::combine_cancellable(
                         width,
                         height,
                         previous.as_ref(),
                         &candidate,
                         mode,
+                        cancel,
                     )
                     .map(Outcome::Selection)
                 });
@@ -542,10 +543,18 @@ impl Editor {
         let (width, height) = (self.document.width, self.document.height);
         let previous = self.document.selection();
         let mode = self.selection_mode;
-        self.start_file_job("select polygon", move || {
-            let candidate = paint_rust::selection::polygon(width, height, &points)?;
-            paint_rust::selection::combine(width, height, previous.as_ref(), &candidate, mode)
-                .map(Outcome::Selection)
+        self.start_cancellable_file_job("select polygon", move |cancel| {
+            let candidate =
+                paint_rust::selection::polygon_cancellable(width, height, &points, cancel)?;
+            paint_rust::selection::combine_cancellable(
+                width,
+                height,
+                previous.as_ref(),
+                &candidate,
+                mode,
+                cancel,
+            )
+            .map(Outcome::Selection)
         });
     }
 
@@ -3185,6 +3194,40 @@ mod tests {
         assert!(editor.document.undo());
         assert_eq!((editor.document.width, editor.document.height), (8, 6));
         assert_eq!(editor.document.selection(), Some(area));
+    }
+
+    #[test]
+    fn cancelled_selection_job_preserves_previous_mask_without_history() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.document = Document::new(8, 8, [255; 4]).unwrap();
+        let previous = Selection::elliptical(1, 1, 4, 4);
+        editor.document.set_selection(Some(previous.clone()));
+        let (release, wait) = std::sync::mpsc::channel();
+        editor.start_cancellable_file_job("select polygon", move |cancel| {
+            wait.recv().unwrap();
+            paint_rust::selection::polygon_cancellable(
+                8,
+                8,
+                &[(0.0, 0.0), (8.0, 0.0), (4.0, 8.0)],
+                cancel,
+            )
+            .map(Outcome::Selection)
+        });
+        editor
+            .file_job
+            .as_ref()
+            .unwrap()
+            .cancel
+            .as_ref()
+            .unwrap()
+            .store(true, std::sync::atomic::Ordering::Relaxed);
+        release.send(()).unwrap();
+        wait_for_files(&mut editor, &ctx);
+        assert_eq!(editor.document.selection(), Some(previous));
+        assert!(!editor.document.dirty());
+        assert!(!editor.document.can_undo());
+        assert_eq!(editor.status, "Cancelled: select polygon");
     }
 
     #[test]
