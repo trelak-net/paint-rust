@@ -2,6 +2,7 @@ use eframe::egui::{self, Button, Image, ImageSource};
 
 #[derive(Clone, Copy)]
 pub enum Icon {
+    Polygon,
     Gradient,
     Move,
     Text,
@@ -31,6 +32,7 @@ pub enum Icon {
 impl Icon {
     fn source(self) -> ImageSource<'static> {
         match self {
+            Self::Polygon => egui::include_image!("../assets/icons/polygon.svg"),
             Self::Gradient => egui::include_image!("../assets/icons/gradient.svg"),
             Self::Move => egui::include_image!("../assets/icons/move.svg"),
             Self::Text => egui::include_image!("../assets/icons/text.svg"),

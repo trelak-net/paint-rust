@@ -60,6 +60,7 @@ Features
 - Draw lines and outlined/filled rectangles or ellipses with cancellable previews.
 - Select a rectangular or elliptical area, limit edits to it, delete pixels or crop all layers.
 - Add, subtract or intersect selections; combined areas use a blue mask overlay.
+- Build polygon selections by clicking vertices; Enter/double-click finishes them.
 - Resize all layers, change canvas size with a nine-position anchor, rotate or mirror.
 - Hold Shift for 45-degree line angles or equal shape dimensions.
 - Zoom from 10% to 400%, fit the canvas, and navigate with scrollbars.
@@ -86,6 +87,7 @@ F: flood fill                I: color picker
 L: line                      R: rectangle
 O: ellipse                   S: rectangular selection
 T: text                      M: move pixels/selection
+P: polygon selection         Enter: finish polygon; Backspace: remove last point
 G: gradient                  X: swap primary/secondary colors
 Move tool: arrows move 1 px; Shift+arrows move 10 px; Ctrl+arrows copy pixels
 Ctrl+A: select all           Ctrl+Shift+A: deselect
@@ -125,7 +127,7 @@ is session-local and is not stored in project files.
 Current boundaries
 ------------------
 This is an initial application, not a complete graphics suite. Pressure-sensitive
-input, polygon selections and free transforms are not implemented yet.
+input and free transforms are not implemented yet.
 File decoding/encoding, recovery copies, effect previews and image/canvas resizing,
 rotation, mirroring and layer compositing run in background workers. Fill still runs on the UI thread;
 large operations can pause the interface. Canvas updates upload the full
@@ -347,3 +349,10 @@ affect the whole image accidentally. Combined selections use a translucent blue
 overlay that is not exported. Mask buffers are shared and cropped to their bounds;
 retained history masks count toward the 128 MiB budget. Undo/cancel, clipboard and
 clipped movement preserve mask geometry. Crop still uses rectangular bounds.
+
+Polygon selection validation: 108 Rust tests pass. Polygon input accepts 3–4096
+vertices, supports concave and self-crossing paths with an even-odd fill rule, and
+clips to the canvas. Backspace removes the last point; Escape leaves the previous
+selection intact. Completion runs in a worker and supports the same combination
+modes as rectangle/ellipse selection. Masks use pixel-center coverage without
+feathering. The polygon tool includes a new original SVG icon.

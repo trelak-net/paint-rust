@@ -125,6 +125,11 @@ pub fn combine(
             }
         }
     }
+    Ok(raster_selection(width, pixels, (left, top, right, bottom)))
+}
+
+fn raster_selection(width: u32, pixels: Vec<u8>, bounds: (u32, u32, u32, u32)) -> Selection {
+    let (mut left, mut top, right, bottom) = bounds;
     if right == 0 || bottom == 0 {
         left = 0;
         top = 0;
@@ -140,7 +145,7 @@ pub fn combine(
                 .copy_from_slice(&pixels[source..source + mask_width as usize]);
         }
     }
-    Ok(Selection {
+    Selection {
         x: left,
         y: top,
         width: right - left,
@@ -153,5 +158,48 @@ pub fn combine(
             height: mask_height,
             pixels: Arc::new(cropped),
         }),
-    })
+    }
+}
+
+pub fn polygon(width: u32, height: u32, points: &[(f64, f64)]) -> Result<Selection, String> {
+    crate::document::Document::validate_size(width, height)?;
+    if points.len() < 3
+        || points.len() > 4096
+        || points
+            .iter()
+            .any(|(x, y)| !x.is_finite() || !y.is_finite() || x.abs() > 1e9 || y.abs() > 1e9)
+    {
+        return Err(
+            "A polygon needs 3–4096 finite points within the supported coordinate range.".into(),
+        );
+    }
+    let mut pixels = vec![0; width as usize * height as usize];
+    let (mut left, mut top, mut right, mut bottom) = (width, height, 0, 0);
+    let mut intersections = Vec::with_capacity(points.len());
+    for y in 0..height {
+        let py = f64::from(y) + 0.5;
+        intersections.clear();
+        for index in 0..points.len() {
+            let (ax, ay) = points[index];
+            let (bx, by) = points[(index + 1) % points.len()];
+            if (ay > py) != (by > py) {
+                intersections.push(ax + (py - ay) * (bx - ax) / (by - ay));
+            }
+        }
+        intersections.sort_by(f64::total_cmp);
+        for span in intersections.as_chunks::<2>().0 {
+            let start = (span[0] - 0.5).ceil().clamp(0.0, f64::from(width)) as u32;
+            let end = (span[1] - 0.5).ceil().clamp(0.0, f64::from(width)) as u32;
+            if end > start {
+                pixels[y as usize * width as usize + start as usize
+                    ..y as usize * width as usize + end as usize]
+                    .fill(1);
+                left = left.min(start);
+                top = top.min(y);
+                right = right.max(end);
+                bottom = bottom.max(y + 1);
+            }
+        }
+    }
+    Ok(raster_selection(width, pixels, (left, top, right, bottom)))
 }

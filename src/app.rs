@@ -13,6 +13,7 @@ use std::path::PathBuf;
 
 #[derive(Clone, Copy, PartialEq)]
 enum Tool {
+    Polygon,
     Brush,
     Eraser,
     Fill,
@@ -75,6 +76,8 @@ pub struct Editor {
     move_selection_only: bool,
     ellipse_selection: bool,
     selection_mode: CombineMode,
+    polygon_points: Vec<(f64, f64)>,
+    polygon_size: (u32, u32),
     selection_texture: Option<(std::sync::Arc<Vec<u8>>, TextureHandle)>,
     shape_origin: Option<(f32, f32)>,
     selection_before: Option<Option<Selection>>,
@@ -147,6 +150,8 @@ impl Editor {
             move_selection_only: false,
             ellipse_selection: false,
             selection_mode: CombineMode::Replace,
+            polygon_points: Vec::new(),
+            polygon_size: (0, 0),
             selection_texture: None,
             shape_origin: None,
             selection_before: None,
@@ -379,6 +384,7 @@ impl Editor {
     }
 
     fn request(&mut self, action: Action, ctx: &egui::Context) {
+        self.polygon_points.clear();
         if self.file_job.is_some() {
             return;
         }
@@ -486,10 +492,38 @@ impl Editor {
         );
     }
 
+    fn complete_polygon(&mut self) {
+        if self.polygon_points.len() < 3 {
+            self.status = "Add at least three polygon points".into();
+            return;
+        }
+        let points = std::mem::take(&mut self.polygon_points);
+        let (width, height) = (self.document.width, self.document.height);
+        let previous = self.document.selection();
+        let mode = self.selection_mode;
+        self.start_file_job("select polygon", move || {
+            let candidate = paint_rust::selection::polygon(width, height, &points)?;
+            paint_rust::selection::combine(width, height, previous.as_ref(), &candidate, mode)
+                .map(Outcome::Selection)
+        });
+    }
+
     fn shortcuts(&mut self, ctx: &egui::Context) {
         if ctx.wants_keyboard_input() {
             return;
         }
+        if self.tool == Tool::Polygon && !self.polygon_points.is_empty() {
+            if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::Escape)) {
+                self.polygon_points.clear();
+                self.status = "Polygon selection cancelled".into();
+            } else if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::Enter)) {
+                self.complete_polygon();
+            } else if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::Backspace)) {
+                self.polygon_points.pop();
+            }
+            return;
+        }
+
         if self.tool == Tool::Select
             && self.last_point.is_some()
             && !ctx.input(|i| i.key_pressed(Key::Escape))
@@ -572,6 +606,7 @@ impl Editor {
                 Some(6)
             } else if !i.modifiers.command && !self.document.editing() && self.last_point.is_none()
             {
+                if i.key_pressed(Key::P) { self.tool = Tool::Polygon; }
                 if i.key_pressed(Key::B) {
                     self.tool = Tool::Brush;
                 }
@@ -676,6 +711,12 @@ impl Editor {
         }
         if self.document.selection().is_none() {
             self.selection_texture = None;
+        }
+        if self.tool != Tool::Polygon
+            || self.polygon_size != (self.document.width, self.document.height)
+        {
+            self.polygon_points.clear();
+            self.polygon_size = (self.document.width, self.document.height);
         }
         let viewport = ui.available_rect_before_wrap();
         if self.fit_canvas {
@@ -851,7 +892,57 @@ impl Editor {
                         );
                     }
                 }
+                if ui.is_enabled() && self.tool == Tool::Polygon {
+                    if response.hovered() {
+                        ui.ctx().set_cursor_icon(egui::CursorIcon::Crosshair);
+                    }
+                    if response.clicked_by(egui::PointerButton::Primary)
+                        && let Some(pos) = response.interact_pointer_pos()
+                    {
+                        if self.polygon_points.len() < 4096 {
+                            let point = (pos - rect.min) / self.zoom;
+                            self.polygon_points
+                                .push((f64::from(point.x), f64::from(point.y)));
+                        } else {
+                            self.status = "A polygon can contain at most 4096 points".into();
+                        }
+                        if response.double_clicked_by(egui::PointerButton::Primary)
+                            && self.polygon_points.len() >= 3
+                        {
+                            self.complete_polygon();
+                        }
+                    }
+                    let mut points: Vec<Pos2> = self
+                        .polygon_points
+                        .iter()
+                        .map(|(x, y)| rect.min + Vec2::new(*x as f32, *y as f32) * self.zoom)
+                        .collect();
+                    if !points.is_empty()
+                        && let Some(pointer) = response.hover_pos()
+                    {
+                        points.push(pointer);
+                    }
+                    for segment in points.windows(2) {
+                        painter.line_segment(
+                            [segment[0], segment[1]],
+                            egui::Stroke::new(3.0_f32, Color32::BLACK),
+                        );
+                        painter.line_segment(
+                            [segment[0], segment[1]],
+                            egui::Stroke::new(1.0_f32, Color32::WHITE),
+                        );
+                    }
+                    for point in points.iter().take(self.polygon_points.len()) {
+                        painter.circle_filled(*point, 3.0, Color32::WHITE);
+                        painter.circle_stroke(
+                            *point,
+                            3.0,
+                            egui::Stroke::new(1.0_f32, Color32::BLACK),
+                        );
+                    }
+                }
                 if ui.is_enabled()
+                    && self.tool != Tool::Polygon
                     && ui.input(|i| i.focused)
                     && !self.suppress_stroke
                     && !self.panning
@@ -881,6 +972,7 @@ impl Editor {
                             Tool::Select => {
                                 self.selection_before = Some(self.document.selection());
                             }
+                            Tool::Polygon => {}
                             Tool::Picker => {
                                 if let Some(pixel) = self
                                     .document
@@ -1769,6 +1861,7 @@ impl Editor {
                         ui.heading("Tools");
                         for (tool, icon, label, shortcut) in [
                             (Tool::Select, Icon::Select, "Select area", "S"),
+                            (Tool::Polygon, Icon::Polygon, "Polygon select", "P"),
                             (Tool::Move, Icon::Move, "Move", "M"),
                             (Tool::Gradient, Icon::Gradient, "Gradient", "G"),
                             (Tool::Text, Icon::Text, "Text", "T"),
@@ -1797,8 +1890,12 @@ impl Editor {
                         if self.tool == Tool::Gradient {
                             ui.checkbox(&mut self.radial_gradient, "Radial gradient");
                         }
-                        if self.tool == Tool::Select {
-                            ui.checkbox(&mut self.ellipse_selection, "Elliptical selection");
+                        if matches!(self.tool, Tool::Select | Tool::Polygon) {
+                            if self.tool == Tool::Select {
+                                ui.checkbox(&mut self.ellipse_selection, "Elliptical selection");
+                            } else {
+                                ui.small("Click points. Enter or double-click finishes. Backspace removes a point; Escape cancels.");
+                            }
                             egui::ComboBox::from_label("Combine")
                                 .selected_text(self.selection_mode.label())
                                 .show_ui(ui, |ui| {
@@ -2854,5 +2951,47 @@ mod tests {
         wait_for_files(&mut editor, &ctx);
         assert!(editor.document.dirty());
         assert!(!editor.allow_close);
+    }
+    #[test]
+    fn polygon_clicks_enter_and_escape_preserve_image_and_previous_selection() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.document = Document::new(100, 100, [255; 4]).unwrap();
+        editor.tool = Tool::Polygon;
+        frame(&mut editor, &ctx, vec![]);
+        frame(&mut editor, &ctx, vec![]);
+        let origin = editor.canvas_viewport.min;
+        for delta in [
+            Vec2::new(10.0, 10.0),
+            Vec2::new(50.0, 10.0),
+            Vec2::new(50.0, 50.0),
+        ] {
+            let point = origin + delta;
+            frame(
+                &mut editor,
+                &ctx,
+                vec![egui::Event::PointerMoved(point), pointer(point, true)],
+            );
+            frame(&mut editor, &ctx, vec![pointer(point, false)]);
+        }
+        assert_eq!(editor.polygon_points.len(), 3);
+        let key = |key| egui::Event::Key {
+            key,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        };
+        frame(&mut editor, &ctx, vec![key(Key::Enter)]);
+        wait_for_files(&mut editor, &ctx);
+        let previous = editor.document.selection();
+        assert!(previous.as_ref().unwrap().mask.is_some());
+        assert!(!editor.document.dirty());
+        assert!(editor.polygon_points.is_empty());
+        editor.polygon_points.push((3.0, 3.0));
+        frame(&mut editor, &ctx, vec![key(Key::Escape)]);
+        assert!(editor.polygon_points.is_empty());
+        assert_eq!(editor.document.selection(), previous);
+        assert!(!editor.document.can_undo());
     }
 }
