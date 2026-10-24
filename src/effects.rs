@@ -3,6 +3,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Effect {
+    FreeTransform(crate::affine::FreeTransform),
     BrightnessContrast { brightness: i16, contrast: i16 },
     Saturation(f32),
     Grayscale,
@@ -14,6 +15,7 @@ pub enum Effect {
 impl Effect {
     pub fn name(self) -> &'static str {
         match self {
+            Self::FreeTransform(_) => "Free transform",
             Self::BrightnessContrast { .. } => "Brightness / Contrast",
             Self::Saturation(_) => "Saturation",
             Self::Grayscale => "Grayscale",
@@ -39,6 +41,16 @@ pub fn render(
         || u64::from(width) * u64::from(height) != source.len() as u64
     {
         return None;
+    }
+    if let Effect::FreeTransform(parameters) = effect {
+        return crate::affine::render(
+            source,
+            width,
+            height,
+            selection.as_ref(),
+            parameters,
+            cancel,
+        );
     }
     let mut output = match effect {
         Effect::BoxBlur(radius) if radius > 0 => {
@@ -84,7 +96,7 @@ pub fn render(
                         let steps = f64::from(levels.clamp(2, 32) - 1);
                         (f64::from(*channel) * steps / 255.0).round() * 255.0 / steps
                     }
-                    Effect::BoxBlur(_) | Effect::Pixelate(_) => continue,
+                    Effect::BoxBlur(_) | Effect::Pixelate(_) | Effect::FreeTransform(_) => continue,
                 };
                 output[i][c] = value.round().clamp(0.0, 255.0) as u8;
             }

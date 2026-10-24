@@ -1,3 +1,4 @@
+pub mod affine;
 pub mod document;
 pub mod effects;
 pub mod files;

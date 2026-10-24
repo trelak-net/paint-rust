@@ -492,6 +492,28 @@ impl Editor {
         );
     }
 
+    fn begin_effect(&mut self, ctx: &egui::Context, effect: Effect) {
+        self.finish_stroke();
+        let preview = crate::preview::EffectPreview::new(
+            ctx.clone(),
+            self.document.shared_pixels(),
+            self.document.width,
+            self.document.height,
+            self.document.selection(),
+            effect,
+        );
+        self.document.begin(effect.name());
+        self.effect_dialog = Some(EffectDialog { effect, preview });
+    }
+
+    fn apply_effect(&mut self, effect: Effect) {
+        let changed = self.document.commit();
+        if changed && matches!(effect, Effect::FreeTransform(_)) {
+            self.document.set_selection(None);
+        }
+        self.texture_dirty = true;
+    }
+
     fn complete_polygon(&mut self) {
         if self.polygon_points.len() < 3 {
             self.status = "Add at least three polygon points".into();
@@ -795,7 +817,12 @@ impl Editor {
                         Color32::WHITE,
                     );
                 }
-                if let Some(selection) = self.document.selection() {
+                if let Some(selection) = self.document.selection().filter(|_| {
+                    !self
+                        .effect_dialog
+                        .as_ref()
+                        .is_some_and(|dialog| matches!(dialog.effect, Effect::FreeTransform(_)))
+                }) {
                     if let Some(mask) = &selection.mask {
                         if self
                             .selection_texture
@@ -1400,6 +1427,24 @@ impl Editor {
                     .show(ctx, |ui| {
                         let mut changed = false;
                         match &mut dialog.effect {
+                            Effect::FreeTransform(parameters) => {
+                                changed |= ui.add(egui::Slider::new(&mut parameters.angle, -180.0..=180.0).text("Angle (degrees)")).changed();
+                                for (label, scale) in [("Horizontal scale", &mut parameters.scale_x), ("Vertical scale", &mut parameters.scale_y)] {
+                                    changed |= ui.add(egui::Slider::new(scale, 0.01..=4.0).logarithmic(true)
+                                        .custom_formatter(|v, _| format!("{:.0}%", v * 100.0)).text(label)).changed();
+                                }
+                                ui.horizontal(|ui| {
+                                    ui.label("Offset X");
+                                    changed |= ui.add(egui::DragValue::new(&mut parameters.offset_x).range(-16384.0..=16384.0).suffix(" px")).changed();
+                                    ui.label("Y");
+                                    changed |= ui.add(egui::DragValue::new(&mut parameters.offset_y).range(-16384.0..=16384.0).suffix(" px")).changed();
+                                });
+                                changed |= ui.checkbox(&mut parameters.flip_x, "Flip horizontally").changed();
+                                changed |= ui.checkbox(&mut parameters.flip_y, "Flip vertically").changed();
+                                changed |= ui.checkbox(&mut parameters.copy, "Keep source pixels").changed();
+                                changed |= ui.checkbox(&mut parameters.smooth, "Smooth sampling").changed();
+                                ui.small("Transforms around the selection center. Pixels outside the canvas are clipped.");
+                            }
                             Effect::BrightnessContrast {
                                 brightness,
                                 contrast,
@@ -1452,8 +1497,7 @@ impl Editor {
                                 .add_enabled(dialog.preview.ready, egui::Button::new("Apply"))
                                 .clicked()
                             {
-                                self.document.commit();
-                                self.texture_dirty = true;
+                                self.apply_effect(dialog.effect);
                                 keep = false;
                             }
                             if ui.button("Cancel").clicked() {
@@ -1744,6 +1788,10 @@ impl Editor {
                     }
                 });
                 ui.menu_button("Selection", |ui| {
+                    if ui.button("Free transform pixels…").clicked() {
+                        self.begin_effect(ctx, Effect::FreeTransform(Default::default()));
+                        ui.close();
+                    }
                     if ui.button("Select all    Ctrl+A").clicked() {
                         self.finish_stroke();
                         self.document.set_selection(Some(Selection {
@@ -1794,17 +1842,7 @@ impl Editor {
                         Effect::Posterize(4),
                     ] {
                         if ui.button(effect.name()).clicked() {
-                            self.finish_stroke();
-                            let preview = crate::preview::EffectPreview::new(
-                                ctx.clone(),
-                                self.document.shared_pixels(),
-                                self.document.width,
-                                self.document.height,
-                                self.document.selection(),
-                                effect,
-                            );
-                            self.document.begin(effect.name());
-                            self.effect_dialog = Some(EffectDialog { effect, preview });
+                            self.begin_effect(ctx, effect);
                             ui.close();
                         }
                     }
@@ -2993,5 +3031,57 @@ mod tests {
         assert!(editor.polygon_points.is_empty());
         assert_eq!(editor.document.selection(), previous);
         assert!(!editor.document.can_undo());
+    }
+    #[test]
+    fn free_transform_preview_cancels_and_applies_as_one_undoable_edit() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.document = Document::new(4, 4, [200, 100, 50, 255]).unwrap();
+        let selection = Selection::elliptical(0, 0, 2, 2);
+        editor.document.set_selection(Some(selection.clone()));
+        let source = editor.document.pixels().to_vec();
+        let effect = Effect::FreeTransform(paint_rust::affine::FreeTransform {
+            offset_x: 2.0,
+            smooth: false,
+            ..Default::default()
+        });
+        for cancel in [true, false] {
+            editor.begin_effect(&ctx, effect);
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+            loop {
+                frame(&mut editor, &ctx, vec![]);
+                if editor.effect_dialog.as_ref().unwrap().preview.ready {
+                    break;
+                }
+                assert!(std::time::Instant::now() < deadline);
+                std::thread::sleep(std::time::Duration::from_millis(2));
+            }
+            assert!(editor.document.editing());
+            assert_ne!(editor.document.pixels(), source);
+            if cancel {
+                frame(
+                    &mut editor,
+                    &ctx,
+                    vec![egui::Event::Key {
+                        key: Key::Escape,
+                        physical_key: None,
+                        pressed: true,
+                        repeat: false,
+                        modifiers: egui::Modifiers::NONE,
+                    }],
+                );
+                assert_eq!(editor.document.pixels(), source);
+                assert_eq!(editor.document.selection(), Some(selection.clone()));
+                assert!(!editor.document.dirty());
+            } else {
+                editor.apply_effect(effect);
+                editor.effect_dialog = None;
+                assert!(editor.document.selection().is_none());
+                assert_eq!(editor.document.history().count(), 1);
+                editor.undo();
+                assert_eq!(editor.document.pixels(), source);
+                assert_eq!(editor.document.selection(), Some(selection.clone()));
+            }
+        }
     }
 }

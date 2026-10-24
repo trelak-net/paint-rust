@@ -62,6 +62,7 @@ Features
 - Add, subtract or intersect selections; combined areas use a blue mask overlay.
 - Build polygon selections by clicking vertices; Enter/double-click finishes them.
 - Resize all layers, change canvas size with a nine-position anchor, rotate or mirror.
+- Free-transform selected pixels with rotation, scaling, mirroring and offsets.
 - Hold Shift for 45-degree line angles or equal shape dimensions.
 - Zoom from 10% to 400%, fit the canvas, and navigate with scrollbars.
 - Use Ctrl+wheel or a pinch gesture to zoom around the pointer; middle-drag to pan.
@@ -127,7 +128,8 @@ is session-local and is not stored in project files.
 Current boundaries
 ------------------
 This is an initial application, not a complete graphics suite. Pressure-sensitive
-input and free transforms are not implemented yet.
+input is not implemented yet. Free transforms currently use numeric controls;
+on-canvas transformation handles remain planned.
 File decoding/encoding, recovery copies, effect previews and image/canvas resizing,
 rotation, mirroring and layer compositing run in background workers. Fill still runs on the UI thread;
 large operations can pause the interface. Canvas updates upload the full
@@ -356,3 +358,12 @@ clips to the canvas. Backspace removes the last point; Escape leaves the previou
 selection intact. Completion runs in a worker and supports the same combination
 modes as rectangle/ellipse selection. Masks use pixel-center coverage without
 feathering. The polygon tool includes a new original SVG icon.
+
+Free transform validation: 114 Rust tests pass. Selection > Free transform pixels
+opens a cancellable background preview for rotation, independent scales, offsets,
+mirroring and optional source copying. It transforms around the selection bounds'
+center (the canvas center without a selection). Mask holes remain excluded and
+output is clipped to the existing canvas. Smooth sampling uses premultiplied-alpha
+bilinear interpolation in encoded RGB; nearest-neighbor is also available. Apply
+creates one undo entry and clears the old selection when pixels changed. Undo
+restores pixels and selection. Identity and empty-selection transforms are no-ops.

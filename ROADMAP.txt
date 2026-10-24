@@ -14,7 +14,8 @@ Development roadmap
 [x] Elliptical selections with masked editing, clipboard and movement.
 [x] Background selection union, subtraction and intersection with explicit empty masks.
 [x] Polygon selections with editable point input and even-odd coverage.
-[ ] Free transforms.
+[x] Numeric free transforms of selected pixels with cancellable previews.
+[ ] On-canvas transformation handles.
 [x] Eight layer blend modes with project persistence.
 [x] Lossless visible-image flattening with complete layer restoration on undo.
 [x] Brightness/contrast, saturation, grayscale, sepia and box blur previews.
