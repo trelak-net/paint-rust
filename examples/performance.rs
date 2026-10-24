@@ -41,7 +41,14 @@ fn main() {
     measure("Invert active layer", || document.invert());
     measure("Flatten layers", || document.flatten());
     println!(
-        "Retained history: {:.1} MiB",
-        document.history_bytes() as f64 / 1048576.0
+        "Retained history: {:.1} MiB RAM, {:.1} MiB disk, {} undo steps",
+        document.history_bytes() as f64 / 1048576.0,
+        document.history_disk_bytes() as f64 / 1048576.0,
+        document.history().count(),
     );
+    assert!(measure("Undo flatten", || document.undo()));
+    assert_eq!(document.layers().len(), 4);
+    assert!(measure("Redo flatten", || document.redo()));
+    assert_eq!(document.layers().len(), 1);
+    assert!(document.history_error().is_none());
 }

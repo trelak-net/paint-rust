@@ -108,14 +108,15 @@ fn corrupt_input_is_rejected() {
 }
 
 #[test]
-fn history_evicts_oldest_snapshots_at_the_memory_budget() {
+fn history_spills_oldest_snapshots_without_losing_undo_steps() {
     let mut doc = Document::new(512, 512, [255; 4]).unwrap();
     for _ in 0..130 {
         doc.invert();
     }
-    assert_eq!(doc.history().count(), 128);
+    assert_eq!(doc.history().count(), 130);
+    assert_eq!(doc.history_disk_bytes(), 2 * 1024 * 1024);
     assert_eq!(doc.history_bytes(), 128 * 1024 * 1024);
-    for _ in 0..128 {
+    for _ in 0..130 {
         doc.undo();
     }
     assert!(!doc.can_undo());

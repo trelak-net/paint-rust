@@ -1,3 +1,6 @@
+mod history;
+use history::Entry;
+
 use std::{
     collections::{HashSet, VecDeque},
     sync::Arc,
@@ -111,9 +114,10 @@ pub struct Document {
     selection: Option<Selection>,
     layers: Vec<Layer>,
     active: usize,
-    undo: VecDeque<Snapshot>,
-    redo: Vec<Snapshot>,
+    undo: VecDeque<Entry>,
+    redo: Vec<Entry>,
     pending: Option<Snapshot>,
+    history_error: Option<String>,
     revision: u64,
     next_revision: u64,
     saved_revision: u64,
@@ -176,6 +180,7 @@ impl Document {
             undo: VecDeque::new(),
             redo: Vec::new(),
             pending: None,
+            history_error: None,
             revision: 0,
             next_revision: 1,
             saved_revision: 0,
@@ -625,13 +630,10 @@ impl Document {
         !self.redo.is_empty()
     }
     pub fn history(&self) -> impl Iterator<Item = &str> {
-        self.undo.iter().rev().map(|s| s.label.as_str())
+        self.undo.iter().rev().map(Entry::label)
     }
     pub fn redo_history(&self) -> impl Iterator<Item = &str> {
-        self.redo
-            .iter()
-            .rev()
-            .map(|snapshot| snapshot.label.as_str())
+        self.redo.iter().rev().map(Entry::label)
     }
 
     pub fn history_bytes(&self) -> usize {
@@ -641,6 +643,7 @@ impl Document {
             .undo
             .iter()
             .chain(self.redo.iter())
+            .filter_map(Entry::memory)
             .filter_map(|s| s.selection.as_ref().and_then(|s| s.mask.as_ref()))
             .filter(|mask| masks.insert(Arc::as_ptr(&mask.pixels)))
             .map(|mask| mask.pixels.len())
@@ -648,6 +651,7 @@ impl Document {
         self.undo
             .iter()
             .chain(self.redo.iter())
+            .filter_map(Entry::memory)
             .flat_map(|s| &s.layers)
             .filter(|layer| buffers.insert(Arc::as_ptr(&layer.pixels)))
             .map(|layer| layer.pixels.len() * 4)
@@ -682,7 +686,7 @@ impl Document {
         {
             return false;
         }
-        self.undo.push_back(before);
+        self.undo.push_back(Entry::Memory(before));
         self.redo.clear();
         self.revision = self.next_revision;
         self.next_revision += 1;
@@ -690,10 +694,42 @@ impl Document {
         true
     }
 
+    pub fn history_disk_bytes(&self) -> u64 {
+        self.undo
+            .iter()
+            .chain(self.redo.iter())
+            .map(Entry::disk_bytes)
+            .sum()
+    }
+
+    pub fn history_error(&self) -> Option<&str> {
+        self.history_error.as_deref()
+    }
+
     fn trim_history(&mut self) {
-        while self.history_bytes() > HISTORY_BYTES {
-            if self.undo.pop_front().is_none() {
-                self.redo.remove(0);
+        self.spill_history(HISTORY_BYTES, history::temporary_file);
+    }
+
+    fn spill_history(
+        &mut self,
+        budget: usize,
+        mut create: impl FnMut() -> std::io::Result<std::fs::File>,
+    ) {
+        self.history_error = None;
+        while self.history_bytes() > budget {
+            let entry = self
+                .undo
+                .iter_mut()
+                .chain(self.redo.iter_mut())
+                .find(|entry| entry.memory().is_some());
+            let Some(entry) = entry else {
+                break;
+            };
+            if let Err(error) = entry.spill(&mut create) {
+                self.history_error = Some(format!(
+                    "Could not store undo history: {error}. History remains in RAM above its normal limit."
+                ));
+                break;
             }
         }
     }
@@ -708,38 +744,54 @@ impl Document {
         }
     }
 
-    pub fn undo(&mut self) {
-        self.cancel();
-        if let Some(previous) = self.undo.pop_back() {
-            self.redo.push(Snapshot {
-                width: std::mem::replace(&mut self.width, previous.width),
-                height: std::mem::replace(&mut self.height, previous.height),
-                selection: std::mem::replace(&mut self.selection, previous.selection),
-                layers: std::mem::replace(&mut self.layers, previous.layers),
-                active: std::mem::replace(&mut self.active, previous.active),
-                revision: self.revision,
-                label: previous.label,
-            });
-            self.revision = previous.revision;
-            self.trim_history();
-        }
+    pub fn undo(&mut self) -> bool {
+        self.navigate_history(false)
     }
 
-    pub fn redo(&mut self) {
+    pub fn redo(&mut self) -> bool {
+        self.navigate_history(true)
+    }
+
+    fn navigate_history(&mut self, redo: bool) -> bool {
+        let entry = if redo {
+            self.redo.last_mut()
+        } else {
+            self.undo.back_mut()
+        };
+        let Some(entry) = entry else {
+            self.cancel();
+            return false;
+        };
+        // Load and validate before touching the current document or either stack.
+        let target = match entry.load() {
+            Ok(target) => target,
+            Err(error) => {
+                self.history_error = Some(format!(
+                    "Could not restore undo history: {error}. The image and history were kept unchanged."
+                ));
+                return false;
+            }
+        };
         self.cancel();
-        if let Some(next) = self.redo.pop() {
-            self.undo.push_back(Snapshot {
-                width: std::mem::replace(&mut self.width, next.width),
-                height: std::mem::replace(&mut self.height, next.height),
-                selection: std::mem::replace(&mut self.selection, next.selection),
-                layers: std::mem::replace(&mut self.layers, next.layers),
-                active: std::mem::replace(&mut self.active, next.active),
-                revision: self.revision,
-                label: next.label,
-            });
-            self.revision = next.revision;
-            self.trim_history();
+        let current = Snapshot {
+            width: std::mem::replace(&mut self.width, target.width),
+            height: std::mem::replace(&mut self.height, target.height),
+            selection: std::mem::replace(&mut self.selection, target.selection),
+            layers: std::mem::replace(&mut self.layers, target.layers),
+            active: std::mem::replace(&mut self.active, target.active),
+            revision: self.revision,
+            label: target.label,
+        };
+        self.revision = target.revision;
+        if redo {
+            self.redo.pop();
+            self.undo.push_back(Entry::Memory(current));
+        } else {
+            self.undo.pop_back();
+            self.redo.push(Entry::Memory(current));
         }
+        self.trim_history();
+        true
     }
 
     pub fn sample(&self, x: i32, y: i32) -> Option<Pixel> {

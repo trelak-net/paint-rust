@@ -113,9 +113,9 @@ tests/editor.rs: image operations, history semantics and file round trips.
 The document stores up to 32 RGBA layers with configurable blend modes.
 Brush strokes replace RGBA values on the active layer; repeated samples do not
 accumulate opacity. Transparent pixels are displayed over a checkerboard. History
-shares unchanged layer buffers and retains up to 128 MiB of unique pixel and selection-mask buffers
-across undo/redo; history labels and metadata are additional allocations. Oldest
-undo entries are evicted first, then farthest redo entries when necessary. The
+shares unchanged layer buffers and keeps up to 128 MiB of unique pixel and
+selection-mask buffers in RAM across undo/redo. Older states spill into private
+temporary files instead of being evicted. Labels and metadata remain in RAM. The
 active document is limited to 256 MiB of layer pixels, excluding previews/history.
 A canvas is limited to 16,777,216 pixels. The New dialog permits up to 4096 per axis.
 
@@ -436,11 +436,32 @@ uploads and full-image compositing remain; tiled rendering is not implemented.
 Validation: 125 Rust tests and strict Clippy pass, including preview scheduling
 while a stroke is active and publication after it ends.
 
-Known large-document history limitation
----------------------------------------
-The 128 MiB history cap currently counts unique buffers retained by history,
-including buffers also referenced by the active document. A snapshot larger than
-that cap is evicted immediately. In particular, a four-layer 4096 x 4096 document
-can lose even its most recent undo step, and flattening can leave no undo entry.
-The performance example exposes this case. Large-document history needs a storage
-policy change before it can guarantee undo for all supported document sizes.
+RAM and temporary-file history
+------------------------------
+Undo and redo retain complete document states, including exact RGBA bytes, layer
+properties, active layer, dimensions, selection geometry/masks and saved revisions.
+When the 128 MiB RAM target is exceeded, older states move to temporary files in
+$XDG_CACHE_HOME/net.trelak.PaintRust/history (default:
+~/.cache/net.trelak.PaintRust/history). The cache is used instead of /tmp because
+/tmp can be backed by RAM. Choose a disk-backed XDG_CACHE_HOME when necessary.
+On Windows the base directory is LOCALAPPDATA; Windows runtime validation remains
+outstanding. The history panel shows RAM and disk usage separately.
+
+Files are private and automatically removed when their history entries are dropped
+or the document closes. On Linux they are unlinked while open, so a process crash
+also releases them. Undo history is session-only; recovery snapshots remain the
+separate mechanism for recovering unsaved documents after a crash.
+
+A failed write keeps the entry in RAM and reports the error, allowing RAM use to
+exceed its normal target rather than silently losing undo. Reads validate file
+length and a checksum before changing the document or either history stack. A
+failed read leaves the current edit and history untouched, allowing retry.
+Branching after undo releases obsolete redo files. Disk usage is not capped;
+large sessions require free cache space. Stored snapshots are currently full,
+uncompressed states, and synchronous disk I/O can delay a large commit or undo.
+
+Validation: 131 Rust tests and strict Clippy pass. Tests cover spilling beyond the
+RAM budget without losing steps, exact restoration of layers/masks/revisions,
+geometry and redo, failed writes, corrupted/truncated reads and redo cleanup. The
+4096 x 4096 four-layer performance example now retains all three edit steps and
+successfully undoes and redoes flattening instead of losing its entire history.

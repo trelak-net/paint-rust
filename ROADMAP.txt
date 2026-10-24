@@ -34,7 +34,8 @@ Development roadmap
 [x] Pinned Linux dependency and standard-library notices with consistency checks.
 [x] Cancellable background flood fill, flattening and color inversion.
 [x] Large-image CPU measurements and non-starving active-stroke previews.
-[ ] Retain undo for documents whose snapshots exceed the RAM history budget.
+[x] Retain undo beyond the RAM budget using private temporary files.
+[ ] Reduce history disk duplication and move cold-history I/O off the UI thread.
 [ ] Full screen-reader workflow audit and final distribution validation.
 
 Each completed increment receives regression checks and its own commit. Keep the

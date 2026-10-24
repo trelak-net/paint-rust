@@ -461,13 +461,17 @@ impl Editor {
 
     fn undo(&mut self) {
         self.finish_stroke();
-        self.document.undo();
-        self.texture_dirty = true;
+        self.texture_dirty |= self.document.undo();
+        if let Some(error) = self.document.history_error() {
+            self.status = error.into();
+        }
     }
     fn redo(&mut self) {
         self.finish_stroke();
-        self.document.redo();
-        self.texture_dirty = true;
+        self.texture_dirty |= self.document.redo();
+        if let Some(error) = self.document.history_error() {
+            self.status = error.into();
+        }
     }
 
     fn navigate_history(&mut self, steps: usize, redo: bool) {
@@ -480,19 +484,29 @@ impl Editor {
         } else {
             self.document.history().count()
         };
-        let count = steps.min(available);
-        for _ in 0..count {
-            if redo {
-                self.document.redo();
+        let mut count = 0;
+        for _ in 0..steps.min(available) {
+            let changed = if redo {
+                self.document.redo()
             } else {
-                self.document.undo();
+                self.document.undo()
+            };
+            if !changed {
+                break;
             }
+            count += 1;
         }
         self.texture_dirty |= count > 0;
-        self.status = format!(
-            "{} {count} operation(s)",
-            if redo { "Redone" } else { "Undone" }
-        );
+        self.status = self
+            .document
+            .history_error()
+            .map(str::to_owned)
+            .unwrap_or_else(|| {
+                format!(
+                    "{} {count} operation(s)",
+                    if redo { "Redone" } else { "Undone" }
+                )
+            });
     }
 
     fn begin_effect(&mut self, ctx: &egui::Context, effect: Effect) {
@@ -1630,6 +1644,9 @@ impl Editor {
 impl Editor {
     fn show(&mut self, ctx: &egui::Context) {
         self.poll_file_job(ctx);
+        if let Some(error) = self.document.history_error() {
+            self.status = error.to_owned();
+        }
         if self.file_job.is_some() && ctx.input(|i| i.viewport().close_requested()) {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
         }
@@ -2029,8 +2046,9 @@ impl Editor {
                         ui.separator();
                         ui.heading("History");
                         ui.small(format!(
-                            "{:.1} / 128 MiB",
-                            self.document.history_bytes() as f32 / (1024.0 * 1024.0)
+                            "RAM: {:.1} / 128 MiB; disk: {:.1} MiB",
+                            self.document.history_bytes() as f64 / (1024.0 * 1024.0),
+                            self.document.history_disk_bytes() as f64 / (1024.0 * 1024.0)
                         ));
                         egui::ScrollArea::vertical()
                             .max_height(240.0)
@@ -2184,8 +2202,9 @@ impl Editor {
                         ui.separator();
                         egui::CollapsingHeader::new("History").show(ui, |ui| {
                             ui.small(format!(
-                                "{:.1} MiB retained",
-                                self.document.history_bytes() as f64 / (1024.0 * 1024.0)
+                                "RAM: {:.1} MiB; disk: {:.1} MiB",
+                                self.document.history_bytes() as f64 / (1024.0 * 1024.0),
+                                self.document.history_disk_bytes() as f64 / (1024.0 * 1024.0)
                             ));
                             let undo: Vec<String> =
                                 self.document.history().map(str::to_owned).collect();
