@@ -2171,6 +2171,7 @@ dependencies = [
  "ashpd",
  "eframe",
  "egui_extras",
+ "flate2",
  "fs2",
  "futures-lite",
  "image",

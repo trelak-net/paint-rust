@@ -1,5 +1,6 @@
 //! Session-only undo storage. Metadata stays in memory; large pixel buffers spill.
 use super::{Pixel, Snapshot};
+use flate2::{Compression, read::ZlibDecoder, write::ZlibEncoder};
 use std::{
     collections::hash_map::DefaultHasher,
     fs::File,
@@ -79,27 +80,26 @@ impl Entry {
             return Ok(());
         };
         // Keep the original entry until every write and flush has succeeded.
-        let mut file = create()?;
+        let mut encoder = ZlibEncoder::new(create()?, Compression::fast());
         let mut checksum = DefaultHasher::new();
         let mut lengths = Vec::new();
-        let mut bytes = 0;
         for layer in &snapshot.layers {
             let data = layer.pixels.as_flattened();
-            file.write_all(data)?;
+            encoder.write_all(data)?;
             data.hash(&mut checksum);
             lengths.push(layer.pixels.len());
-            bytes += data.len() as u64;
         }
         let mask = snapshot.selection.as_ref().and_then(|s| s.mask.as_ref());
         let mask_length = if let Some(mask) = mask {
-            file.write_all(&mask.pixels)?;
+            encoder.write_all(&mask.pixels)?;
             mask.pixels.as_slice().hash(&mut checksum);
-            bytes += mask.pixels.len() as u64;
             Some(mask.pixels.len())
         } else {
             None
         };
+        let mut file = encoder.finish()?;
         file.flush()?;
+        let bytes = file.metadata()?.len();
         file.sync_data()?;
         let mut metadata = snapshot.clone();
         for layer in &mut metadata.layers {
@@ -134,17 +134,18 @@ impl Entry {
             ));
         }
         file.seek(SeekFrom::Start(0))?;
+        let mut decoder = ZlibDecoder::new(&mut *file);
         let mut snapshot = stored.metadata.clone();
         let mut checksum = DefaultHasher::new();
         for (layer, &length) in snapshot.layers.iter_mut().zip(&stored.lengths) {
             let mut pixels: Vec<Pixel> = vec![[0; 4]; length];
-            file.read_exact(pixels.as_flattened_mut())?;
+            decoder.read_exact(pixels.as_flattened_mut())?;
             pixels.as_flattened().hash(&mut checksum);
             layer.pixels = Arc::new(pixels);
         }
         if let Some(length) = stored.mask_length {
             let mut pixels = vec![0; length];
-            file.read_exact(&mut pixels)?;
+            decoder.read_exact(&mut pixels)?;
             pixels.as_slice().hash(&mut checksum);
             snapshot
                 .selection
@@ -152,6 +153,13 @@ impl Entry {
                 .and_then(|s| s.mask.as_mut())
                 .expect("stored selection mask")
                 .pixels = Arc::new(pixels);
+        }
+        // Force trailer validation and reject more decoded bytes than metadata allows.
+        if decoder.read(&mut [0u8; 1])? != 0 || decoder.total_in() != stored.bytes {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Unexpected trailing history data",
+            ));
         }
         if checksum.finish() != stored.checksum {
             return Err(io::Error::new(
@@ -167,6 +175,28 @@ impl Entry {
 mod tests {
     use super::*;
     use crate::document::{BlendMode, Document, Selection};
+
+    #[test]
+    fn compressed_history_preserves_varied_pixels_and_reduces_uniform_images() {
+        let mut seed = 42u32;
+        let pixels: Vec<_> = (0..128 * 128)
+            .map(|_| {
+                seed = seed.wrapping_mul(1664525).wrapping_add(1013904223);
+                seed.to_le_bytes()
+            })
+            .collect();
+        let mut doc = Document::from_pixels(128, 128, pixels.clone()).unwrap();
+        doc.invert();
+        doc.spill_history(0, tempfile::tempfile);
+        assert!(doc.undo());
+        assert_eq!(doc.pixels(), pixels);
+        let mut uniform = Document::new(512, 512, [255; 4]).unwrap();
+        uniform.invert();
+        uniform.spill_history(0, tempfile::tempfile);
+        assert!(uniform.history_disk_bytes() < 1024 * 1024 / 10);
+        assert!(uniform.undo());
+        assert!(uniform.pixels().iter().all(|p| *p == [255; 4]));
+    }
 
     #[test]
     fn worker_clones_can_read_shared_disk_history_without_changing_source() {
@@ -257,20 +287,22 @@ mod tests {
         let Entry::Disk(stored) = doc.undo.back_mut().unwrap() else {
             panic!("disk entry");
         };
-        stored
-            .file
-            .lock()
-            .unwrap()
-            .seek(SeekFrom::Start(0))
-            .unwrap();
-        stored.file.lock().unwrap().write_all(&[0]).unwrap();
+        let original = {
+            let mut file = stored.file.lock().unwrap();
+            file.seek(SeekFrom::Start(0)).unwrap();
+            let mut original = [0];
+            file.read_exact(&mut original).unwrap();
+            file.seek(SeekFrom::Start(0)).unwrap();
+            file.write_all(&[original[0] ^ 255]).unwrap();
+            original
+        };
         let revision = doc.revision();
         assert!(!doc.undo());
         assert_eq!(doc.revision(), revision);
         assert!(doc.pixels().iter().all(|p| *p == [0, 0, 0, 255]));
         assert_eq!(doc.history().count(), 1);
         assert!(!doc.can_redo());
-        assert!(doc.history_error().unwrap().contains("checksum"));
+        assert!(doc.history_error().unwrap().contains("Could not restore"));
         let Entry::Disk(stored) = doc.undo.back_mut().unwrap() else {
             unreachable!();
         };
@@ -280,7 +312,7 @@ mod tests {
             .unwrap()
             .seek(SeekFrom::Start(0))
             .unwrap();
-        stored.file.lock().unwrap().write_all(&[255]).unwrap();
+        stored.file.lock().unwrap().write_all(&original).unwrap();
         assert!(doc.undo());
         assert!(doc.pixels().iter().all(|p| *p == [255; 4]));
     }

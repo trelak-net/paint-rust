@@ -36,7 +36,8 @@ Development roadmap
 [x] Large-image CPU measurements and non-starving active-stroke previews.
 [x] Retain undo beyond the RAM budget using private temporary files.
 [x] Store and restore disk-backed history outside the UI thread.
-[ ] Reduce history disk duplication and storage volume.
+[x] Compress temporary history streams losslessly to reduce storage volume.
+[ ] Share unchanged buffers across disk history states.
 [ ] Full screen-reader workflow audit and final distribution validation.
 
 Each completed increment receives regression checks and its own commit. Keep the

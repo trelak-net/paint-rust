@@ -114,7 +114,8 @@ fn history_spills_oldest_snapshots_without_losing_undo_steps() {
         doc.invert();
     }
     assert_eq!(doc.history().count(), 130);
-    assert_eq!(doc.history_disk_bytes(), 2 * 1024 * 1024);
+    assert!(doc.history_disk_bytes() > 0);
+    assert!(doc.history_disk_bytes() < 2 * 1024 * 1024);
     assert_eq!(doc.history_bytes(), 128 * 1024 * 1024);
     for _ in 0..130 {
         doc.undo();

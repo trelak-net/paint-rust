@@ -457,7 +457,7 @@ exceed its normal target rather than silently losing undo. Reads validate file
 length and a checksum before changing the document or either history stack. A
 failed read leaves the current edit and history untouched, allowing retry.
 Branching after undo releases obsolete redo files. Disk usage is not capped;
-large sessions require free cache space. Stored snapshots are currently full, uncompressed states. The desktop editor
+large sessions require free cache space. Stored snapshots are full states compressed losslessly with zlib. The desktop editor
 stores them and restores disk-backed history in background jobs. RAM-only undo
 remains immediate. Editing is disabled while a history job is pending; the window
 stays responsive. The library API remains synchronous unless storage is deferred.
@@ -480,3 +480,13 @@ provides Retry history storage instead of retrying continuously. Temporary rende
 and effect snapshots defer storage to avoid writing histories that are discarded.
 Validation: 133 Rust tests and strict Clippy pass, including concurrent reads of
 shared history files and background storage/navigation beyond the RAM limit.
+
+Compressed history storage
+--------------------------
+Temporary history files use streaming zlib compression with a fast setting. Reads
+validate the compressed stream, exact decoded size and pixel checksum. On the
+four-layer 4096 x 4096 uniform-image benchmark, three states used about 3.8 MiB
+instead of 768 MiB. Compression ratios depend on image content; noisy images can
+remain close to their original size. No cross-state disk deduplication is used.
+Validation: 134 Rust tests, strict Clippy and the dependency-notice check pass;
+round trips cover varied pixel bytes, transparent pixels and compressed corruption.
