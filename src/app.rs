@@ -28,6 +28,7 @@ enum Action {
     New,
     Open,
     Close,
+    Recovery,
 }
 
 struct ResizeDialog {
@@ -84,6 +85,9 @@ pub struct Editor {
     suppress_stroke: bool,
     appearance: Option<std::sync::mpsc::Receiver<egui::Theme>>,
     clipboard: Option<Box<dyn crate::clipboard::Backend>>,
+    recovery: Option<paint_rust::recovery::Recovery>,
+    recoverable: Vec<paint_rust::recovery::Candidate>,
+    recovery_prompt: bool,
 }
 
 impl Editor {
@@ -92,6 +96,19 @@ impl Editor {
         editor.appearance = Some(crate::appearance::connect(&cc.egui_ctx));
         if let Some(path) = std::env::args_os().nth(1) {
             editor.load(PathBuf::from(path));
+        }
+        match paint_rust::recovery::Recovery::default_root().and_then(|root| {
+            let recovery = paint_rust::recovery::Recovery::new(&root)?;
+            let candidates = paint_rust::recovery::Recovery::discover(&root)?;
+            Ok((recovery, candidates))
+        }) {
+            Ok((recovery, candidates)) => {
+                editor.recovery = Some(recovery);
+                editor.recoverable = candidates;
+                editor.recovery_prompt =
+                    std::env::args_os().len() == 1 && !editor.recoverable.is_empty();
+            }
+            Err(error) => editor.status = format!("Recovery unavailable: {error}"),
         }
         editor
     }
@@ -129,6 +146,17 @@ impl Editor {
             suppress_stroke: false,
             appearance: None,
             clipboard: None,
+            recovery: None,
+            recoverable: Vec::new(),
+            recovery_prompt: false,
+        }
+    }
+
+    fn clear_recovery(&mut self) {
+        if let Some(recovery) = &mut self.recovery
+            && let Err(error) = recovery.clear()
+        {
+            self.status = format!("Could not clear the recovery copy: {error}");
         }
     }
 
@@ -141,6 +169,7 @@ impl Editor {
                 self.last_point = None;
                 self.zoom = 1.0;
                 self.status = "Image opened".into();
+                self.clear_recovery();
             }
             Err(error) => self.status = format!("Could not open image: {error}"),
         }
@@ -189,6 +218,7 @@ impl Editor {
                 self.document.mark_saved();
                 self.status = format!("Saved {}", path.display());
                 self.path = Some(path);
+                self.clear_recovery();
                 true
             }
             Err(error) => {
@@ -323,6 +353,7 @@ impl Editor {
     fn perform(&mut self, action: Action, ctx: &egui::Context) {
         match action {
             Action::New => self.new_dialog = true,
+            Action::Recovery => self.recovery_prompt = true,
             Action::Open => {
                 if let Some(path) = rfd::FileDialog::new()
                     .add_filter(
@@ -335,6 +366,7 @@ impl Editor {
                 }
             }
             Action::Close => {
+                self.clear_recovery();
                 self.allow_close = true;
                 ctx.send_viewport_cmd(egui::ViewportCommand::Close);
             }
@@ -1052,6 +1084,70 @@ impl Editor {
                 self.effect_dialog = Some(dialog);
             }
         }
+        if self.recovery_prompt {
+            let mut chosen = None;
+            egui::Window::new("Recover unsaved work")
+                .collapsible(false)
+                .resizable(false)
+                .anchor(egui::Align2::CENTER_CENTER, Vec2::ZERO)
+                .show(ctx, |ui| {
+                    ui.label("An earlier session left unsaved image data.");
+                    egui::ScrollArea::vertical()
+                        .max_height(300.0)
+                        .show(ui, |ui| {
+                            for (index, candidate) in self.recoverable.iter().enumerate() {
+                                let minutes =
+                                    candidate.modified.elapsed().unwrap_or_default().as_secs() / 60;
+                                ui.horizontal(|ui| {
+                                    ui.label(format!(
+                                        "Session {} — last copied {minutes} min ago",
+                                        index + 1
+                                    ));
+                                    if ui.button("Recover").clicked() {
+                                        chosen = Some((index, true));
+                                    }
+                                    if ui.button("Discard").clicked() {
+                                        chosen = Some((index, false));
+                                    }
+                                });
+                            }
+                        });
+                    if ui.button("Later").clicked() {
+                        self.recovery_prompt = false;
+                    }
+                });
+            if let Some((index, recover)) = chosen {
+                if recover {
+                    match files::open(&self.recoverable[index].path) {
+                        Ok(mut document) => {
+                            document.mark_unsaved();
+                            self.clear_recovery();
+                            self.document = document;
+                            self.path = None;
+                            self.texture_dirty = true;
+                            self.zoom = 1.0;
+                            let candidate = self.recoverable.remove(index);
+                            if let Some(recovery) = &mut self.recovery {
+                                recovery.adopt(candidate);
+                            }
+                            self.status = "Recovered unsaved work — save it as a project".into();
+                            self.recovery_prompt = false;
+                        }
+                        Err(error) => {
+                            self.status = format!("Could not recover the project: {error}")
+                        }
+                    }
+                } else {
+                    let candidate = self.recoverable.remove(index);
+                    if let Err(error) = candidate.discard() {
+                        self.status = format!("Could not discard recovery data: {error}");
+                    }
+                    if self.recoverable.is_empty() {
+                        self.recovery_prompt = false;
+                    }
+                }
+            }
+        }
         if self.new_dialog {
             egui::Window::new("New image")
                 .collapsible(false)
@@ -1089,6 +1185,7 @@ impl Editor {
                                     self.zoom = 1.0;
                                     self.new_dialog = false;
                                     self.status = "New image created".into();
+                                    self.clear_recovery();
                                 }
                                 Err(error) => self.status = error,
                             }
@@ -1138,7 +1235,8 @@ impl Editor {
             && self.layer_properties.is_none()
             && self.resize_dialog.is_none()
             && self.text_dialog.is_none()
-            && self.effect_dialog.is_none();
+            && self.effect_dialog.is_none()
+            && !self.recovery_prompt;
         if enabled {
             self.shortcuts(ctx);
         }
@@ -1147,7 +1245,8 @@ impl Editor {
             && self.layer_properties.is_none()
             && self.resize_dialog.is_none()
             && self.text_dialog.is_none()
-            && self.effect_dialog.is_none();
+            && self.effect_dialog.is_none()
+            && !self.recovery_prompt;
         let name = self
             .path
             .as_ref()
@@ -1203,6 +1302,9 @@ impl Editor {
                     .clicked()
                 {
                     self.redo();
+                }
+                if !self.recoverable.is_empty() && ui.button("Recover…").clicked() {
+                    self.request(Action::Recovery, ctx);
                 }
                 ui.menu_button("Edit", |ui| {
                     if ui.add(Icon::Copy.button("Copy    Ctrl+C")).clicked() {
@@ -1575,6 +1677,13 @@ impl Editor {
                 self.canvas(ui);
             });
         self.dialogs(ctx);
+        if let Some(recovery) = &mut self.recovery {
+            let wake = ctx.clone();
+            if let Err(error) = recovery.tick(&self.document, move || wake.request_repaint()) {
+                self.status = format!("Could not update the recovery copy: {error}");
+            }
+            ctx.request_repaint_after(std::time::Duration::from_secs(1));
+        }
         if !ctx.input(|i| i.pointer.primary_down()) {
             self.finish_stroke();
             self.suppress_stroke = false;
@@ -1586,6 +1695,10 @@ impl Editor {
 }
 
 impl eframe::App for Editor {
+    fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
+        self.clear_recovery();
+    }
+
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.show(ctx);
     }

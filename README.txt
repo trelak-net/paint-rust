@@ -203,3 +203,14 @@ premultiplied RGBA between the primary and secondary colors, then composite over
 the original active layer. Previews replace earlier drag results, respect the
 selection and cancel without history. Gradient calculations are currently on the
 UI thread and use encoded RGB interpolation.
+
+Recovery validation: 62 tests pass. Unsaved committed changes are copied in the
+background at approximately 15-second intervals. On Linux, recovery data lives in
+$XDG_STATE_HOME/paint-rust/recovery (default ~/.local/state/paint-rust/recovery).
+A startup dialog offers recovery from interrupted sessions; Recover remains
+available after choosing Later. Recovered work must be saved to a project file.
+Session locks exclude running instances, and discarded snapshots cannot reappear
+when an older background write finishes. Pending tool previews are not copied.
+Recent edits since the last completed copy can be lost after a crash. Recovery
+does not overwrite project files and is not a substitute for regular saves.
+Old empty session directories are currently retained.

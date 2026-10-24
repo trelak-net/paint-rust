@@ -390,6 +390,17 @@ impl Document {
         Ok(self.commit())
     }
 
+    pub fn snapshot(&self) -> Self {
+        Self::from_layers(self.width, self.height, self.layers.clone(), self.active)
+            .expect("valid document snapshot")
+    }
+    pub fn revision(&self) -> u64 {
+        self.revision
+    }
+    pub fn mark_unsaved(&mut self) {
+        self.saved_revision = u64::MAX;
+    }
+
     pub fn layers(&self) -> &[Layer] {
         &self.layers
     }

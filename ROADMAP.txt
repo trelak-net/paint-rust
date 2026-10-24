@@ -15,7 +15,8 @@ Development roadmap
 [x] Brightness/contrast, saturation, grayscale, sepia and box blur previews.
 [x] Linear and radial gradients.
 [ ] Additional effects.
-[ ] Background processing, recovery and large-document performance.
+[x] Background recovery snapshots and interrupted-session recovery.
+[ ] Background file operations and large-document performance.
 [ ] Desktop integration, accessibility, packaging and release validation.
 
 Each completed increment receives regression checks and its own commit. Keep the
