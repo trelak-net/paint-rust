@@ -1087,6 +1087,19 @@ impl Editor {
                                     .add(egui::Slider::new(amount, 0.0..=2.0).text("Saturation"))
                                     .changed();
                             }
+                            Effect::Pixelate(size) => {
+                                changed |= ui
+                                    .add(egui::Slider::new(size, 1..=128).text("Block size (px)"))
+                                    .changed();
+                            }
+                            Effect::Posterize(levels) => {
+                                changed |= ui
+                                    .add(
+                                        egui::Slider::new(levels, 2..=32)
+                                            .text("Levels per channel"),
+                                    )
+                                    .changed();
+                            }
                             Effect::BoxBlur(radius) => {
                                 changed |= ui
                                     .add(egui::Slider::new(radius, 0..=32).text("Radius (px)"))
@@ -1446,6 +1459,8 @@ impl Editor {
                         Effect::Grayscale,
                         Effect::Sepia,
                         Effect::BoxBlur(2),
+                        Effect::Pixelate(8),
+                        Effect::Posterize(4),
                     ] {
                         if ui.button(effect.name()).clicked() {
                             self.finish_stroke();

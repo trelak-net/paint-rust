@@ -28,6 +28,7 @@ Features
 - Pick a color from the canvas, edit RGBA values, or use palette swatches.
 - Invert RGB while preserving alpha.
 - Preview brightness/contrast, saturation, grayscale, sepia and alpha-aware box blur.
+- Pixelate with alpha-aware block averages or posterize individual color channels.
 - Draw lines and outlined/filled rectangles or ellipses with cancellable previews.
 - Select a rectangular area, limit edits to it, delete pixels or crop all layers.
 - Resize all layers, change canvas size with a nine-position anchor, rotate or mirror.
@@ -91,9 +92,11 @@ is session-local and is not stored in project files.
 
 Current boundaries
 ------------------
-This is an initial application, not a complete graphics suite. Pressure-sensitive input, advanced effects, autosave and session
-recovery are not implemented yet. Image decoding, encoding and fill run on the UI
-thread; large operations can pause the interface. Canvas updates upload the full
+This is an initial application, not a complete graphics suite. Pressure-sensitive
+input, nonrectangular selections and free transforms are not implemented yet.
+Manual file decoding/encoding, geometry changes and fill run on the UI thread;
+large operations can pause the interface. Recovery copies and effect previews
+run in background workers. Canvas updates upload the full
 image texture. Metadata, orientation tags and embedded color profiles are not
 preserved or interpreted. PNG is the only raster export format. There is no installer or
 signed distribution yet. Linux is the currently validated desktop target.
@@ -229,3 +232,10 @@ selection origin, or centers smaller images without a selection; excess pixels
 are clipped. Project imports use the visible composite. The complete insertion
 is one undo step. Failed decoding or validation leaves the document intact.
 File picking and import decoding currently run synchronously.
+
+Additional effect validation: 72 tests pass. Pixelate averages premultiplied color
+and alpha in blocks anchored to the canvas origin, including partial edge blocks.
+Posterize quantizes each RGB channel to 2–32 levels while retaining alpha. Both
+use cancellable background previews and leave unselected pixels untouched. As
+with blur, pixelation may sample pixels outside the selection, but only writes
+inside it. Invalid effect buffer dimensions produce no output.

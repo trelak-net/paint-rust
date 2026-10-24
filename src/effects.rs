@@ -8,6 +8,8 @@ pub enum Effect {
     Grayscale,
     Sepia,
     BoxBlur(u32),
+    Pixelate(u32),
+    Posterize(u8),
 }
 impl Effect {
     pub fn name(self) -> &'static str {
@@ -17,6 +19,8 @@ impl Effect {
             Self::Grayscale => "Grayscale",
             Self::Sepia => "Sepia",
             Self::BoxBlur(_) => "Box blur",
+            Self::Pixelate(_) => "Pixelate",
+            Self::Posterize(_) => "Posterize",
         }
     }
 }
@@ -29,12 +33,19 @@ pub fn render(
     effect: Effect,
     cancel: &AtomicBool,
 ) -> Option<Vec<Pixel>> {
-    if cancel.load(Ordering::Relaxed) {
+    if cancel.load(Ordering::Relaxed)
+        || width == 0
+        || height == 0
+        || u64::from(width) * u64::from(height) != source.len() as u64
+    {
         return None;
     }
     let mut output = match effect {
         Effect::BoxBlur(radius) if radius > 0 => {
             blur(source, width, height, radius.min(64), cancel)?
+        }
+        Effect::Pixelate(size) if size > 1 => {
+            pixelate(source, width, height, size.min(128), cancel)?
         }
         _ => source.to_vec(),
     };
@@ -69,7 +80,11 @@ pub fn render(
                     }
                     Effect::Grayscale => luminance,
                     Effect::Sepia => luminance * [1.13, 1.0, 0.8][c],
-                    Effect::BoxBlur(_) => continue,
+                    Effect::Posterize(levels) => {
+                        let steps = f64::from(levels.clamp(2, 32) - 1);
+                        (f64::from(*channel) * steps / 255.0).round() * 255.0 / steps
+                    }
+                    Effect::BoxBlur(_) | Effect::Pixelate(_) => continue,
                 };
                 output[i][c] = value.round().clamp(0.0, 255.0) as u8;
             }
@@ -147,6 +162,48 @@ fn blur(
             let added = sample(y as i64 + radius + 1);
             for c in 0..4 {
                 sum[c] += f64::from(added[c]) - f64::from(removed[c]);
+            }
+        }
+    }
+    Some(output)
+}
+
+fn pixelate(
+    source: &[Pixel],
+    width: u32,
+    height: u32,
+    size: u32,
+    cancel: &AtomicBool,
+) -> Option<Vec<Pixel>> {
+    let (width, height, size) = (width as usize, height as usize, size as usize);
+    let mut output = vec![[0; 4]; source.len()];
+    for top in (0..height).step_by(size) {
+        for left in (0..width).step_by(size) {
+            if cancel.load(Ordering::Relaxed) {
+                return None;
+            }
+            let bottom = (top + size).min(height);
+            let right = (left + size).min(width);
+            let mut sum = [0.0; 4];
+            for y in top..bottom {
+                for x in left..right {
+                    let pixel = premultiply(source[y * width + x]);
+                    for c in 0..4 {
+                        sum[c] += pixel[c];
+                    }
+                }
+            }
+            let mut average = [0; 4];
+            if sum[3] > 0.0 {
+                for c in 0..3 {
+                    average[c] = (sum[c] / sum[3]).round().clamp(0.0, 255.0) as u8;
+                }
+                average[3] = (sum[3] / ((bottom - top) * (right - left)) as f64)
+                    .round()
+                    .clamp(0.0, 255.0) as u8;
+            }
+            for y in top..bottom {
+                output[y * width + left..y * width + right].fill(average);
             }
         }
     }
