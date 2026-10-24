@@ -9,6 +9,7 @@ pub(super) enum Outcome {
     Exported(PathBuf),
     Transformed(Box<Document>, String),
     Selection(Selection),
+    Filled(Box<Document>),
 }
 
 pub(super) struct FileJob {
@@ -18,6 +19,20 @@ pub(super) struct FileJob {
 }
 
 impl Editor {
+    pub(super) fn start_fill(&mut self, x: i32, y: i32) {
+        let mut document = self.document.snapshot();
+        document.set_selection(self.document.selection());
+        let color = self.color.to_srgba_unmultiplied();
+        self.start_cancellable_file_job("fill image", move |cancel| {
+            document.begin("Flood fill");
+            if !document.fill_cancellable(x, y, color, cancel) {
+                return Err(files::CANCELLED.into());
+            }
+            document.commit();
+            Ok(Outcome::Filled(Box::new(document)))
+        });
+    }
+
     pub(super) fn start_file_job(
         &mut self,
         operation: &'static str,
@@ -132,6 +147,22 @@ impl Editor {
                         };
                     }
                     Err(error) => self.status = format!("Could not {operation}: {error}"),
+                }
+            }
+            Ok(Outcome::Filled(document)) => {
+                let selection = self.document.selection();
+                match self.document.apply_transformed(*document, "Flood fill") {
+                    Ok(changed) => {
+                        self.document.set_selection(selection);
+                        self.texture_dirty |= changed;
+                        self.status = if changed {
+                            "Flood fill completed"
+                        } else {
+                            "Image unchanged"
+                        }
+                        .into();
+                    }
+                    Err(error) => self.status = format!("Could not fill: {error}"),
                 }
             }
             Ok(Outcome::Selection(selection)) => {

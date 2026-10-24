@@ -132,3 +132,21 @@ fn selection_bounds_are_clipped_without_integer_overflow() {
     }));
     assert_eq!(doc.selection(), None);
 }
+
+#[test]
+fn cancelled_fill_can_be_rolled_back_without_history_or_dirty_state() {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    let mut document = Document::new(32, 32, [255; 4]).unwrap();
+    let cancel = AtomicBool::new(true);
+    document.begin("Fill");
+    assert!(!document.fill_cancellable(0, 0, [0; 4], &cancel));
+    document.cancel();
+    assert!(!document.dirty());
+    assert_eq!(document.history().count(), 0);
+    assert!(document.pixels().iter().all(|p| *p == [255; 4]));
+    cancel.store(false, Ordering::Relaxed);
+    document.begin("Fill");
+    assert!(document.fill_cancellable(0, 0, [0; 4], &cancel));
+    document.commit();
+    assert!(document.pixels().iter().all(|p| *p == [0; 4]));
+}

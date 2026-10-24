@@ -1026,14 +1026,7 @@ impl Editor {
                                 }
                             }
                             Tool::Fill => {
-                                self.document.begin("Flood fill");
-                                self.document.fill(
-                                    local.x.floor() as i32,
-                                    local.y.floor() as i32,
-                                    self.color.to_srgba_unmultiplied(),
-                                );
-                                self.document.commit();
-                                self.texture_dirty = true;
+                                self.start_fill(local.x.floor() as i32, local.y.floor() as i32);
                             }
                             Tool::Line => self.document.begin("Line"),
                             Tool::Rectangle => self.document.begin("Rectangle"),
@@ -2316,6 +2309,33 @@ mod tests {
             pressed,
             modifiers: egui::Modifiers::NONE,
         }
+    }
+
+    #[test]
+    fn background_fill_preserves_selection_and_commits_one_undo_step() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.document = Document::new(8, 8, [255; 4]).unwrap();
+        let selection = Selection {
+            x: 2,
+            y: 2,
+            width: 3,
+            height: 3,
+            ellipse: None,
+            mask: None,
+        };
+        editor.document.set_selection(Some(selection.clone()));
+        editor.color = Color32::BLACK;
+        editor.start_fill(3, 3);
+        assert!(!editor.document.dirty());
+        wait_for_files(&mut editor, &ctx);
+        assert_eq!(editor.document.selection(), Some(selection.clone()));
+        assert_eq!(editor.document.history().count(), 1);
+        assert_eq!(editor.document.pixels()[3 * 8 + 3], [0, 0, 0, 255]);
+        assert_eq!(editor.document.pixels()[0], [255; 4]);
+        editor.undo();
+        assert!(editor.document.pixels().iter().all(|p| *p == [255; 4]));
+        assert_eq!(editor.document.selection(), Some(selection));
     }
 
     #[test]

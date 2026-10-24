@@ -401,3 +401,12 @@ A regression test checks the emitted tree. The drawing surface still requires
 pointer input for painting, and a complete screen-reader workflow audit remains
 to be performed.
 Validation: 120 Rust tests, strict Clippy and the dependency-notice check pass.
+
+Flood fill responsiveness
+-------------------------
+Flood fill computes on a private document snapshot in a background worker. The
+Working dialog offers cancellation, checked every 4096 visited pixels. Completed
+fills preserve the selection and publish one undo step; cancelled snapshots are
+discarded. A final completed result can win a late cancellation request.
+Validation: 122 Rust tests and strict Clippy pass, including selected-area
+background filling and cancellation rollback.

@@ -1018,23 +1018,43 @@ impl Document {
     }
 
     pub fn fill(&mut self, x: i32, y: i32, color: Pixel) {
+        let _ = self.fill_cancellable(x, y, color, &std::sync::atomic::AtomicBool::new(false));
+    }
+
+    /// Returns false when cancelled. The caller must discard or cancel the edit.
+    pub fn fill_cancellable(
+        &mut self,
+        x: i32,
+        y: i32,
+        color: Pixel,
+        cancel: &std::sync::atomic::AtomicBool,
+    ) -> bool {
+        use std::sync::atomic::Ordering;
         assert!(self.editing(), "Begin a transaction before filling");
+        if cancel.load(Ordering::Relaxed) {
+            return false;
+        }
         let Some(start) = self.index(x, y) else {
-            return;
+            return true;
         };
         let selection = self.selection.clone();
         if !selected(selection.as_ref(), x as usize, y as usize) {
-            return;
+            return true;
+        }
+        let target = self.layers[self.active].pixels[start];
+        if target == color {
+            return true;
         }
         let pixels = Arc::make_mut(&mut self.layers[self.active].pixels);
-        let target = pixels[start];
-        if target == color {
-            return;
-        }
         let width = self.width as usize;
         let mut stack = vec![start];
         pixels[start] = color;
+        let mut visited = 0usize;
         while let Some(i) = stack.pop() {
+            if visited.is_multiple_of(4096) && cancel.load(Ordering::Relaxed) {
+                return false;
+            }
+            visited += 1;
             let mut visit = |n: usize| {
                 if pixels[n] == target && selected(selection.as_ref(), n % width, n / width) {
                     pixels[n] = color;
@@ -1054,6 +1074,7 @@ impl Document {
                 visit(i + width);
             }
         }
+        !cancel.load(Ordering::Relaxed)
     }
 
     pub fn invert(&mut self) {
