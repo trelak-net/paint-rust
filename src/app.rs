@@ -2,7 +2,7 @@ use crate::icons::Icon;
 use eframe::egui::{self, Color32, Key, Pos2, Rect, Sense, TextureHandle, TextureOptions, Vec2};
 use paint_rust::transform::Orientation;
 use paint_rust::{
-    document::{Document, Selection, Shape, ShapeStyle},
+    document::{BlendMode, Document, Selection, Shape, ShapeStyle},
     files,
 };
 use std::path::PathBuf;
@@ -62,7 +62,7 @@ pub struct Editor {
     status: String,
     pending: Option<Action>,
     new_dialog: bool,
-    layer_properties: Option<(String, u8)>,
+    layer_properties: Option<(String, u8, BlendMode)>,
     resize_dialog: Option<ResizeDialog>,
     text_dialog: Option<TextDialog>,
     new_width: u32,
@@ -729,7 +729,7 @@ impl Editor {
                     }
                 });
         }
-        if let Some((mut name, mut opacity)) = self.layer_properties.take() {
+        if let Some((mut name, mut opacity, mut mode)) = self.layer_properties.take() {
             let mut keep = true;
             egui::Window::new("Layer properties")
                 .collapsible(false)
@@ -739,12 +739,19 @@ impl Editor {
                     ui.label("Name");
                     ui.text_edit_singleline(&mut name);
                     ui.add(egui::Slider::new(&mut opacity, 0..=255).text("Opacity"));
+                    egui::ComboBox::from_label("Blend mode")
+                        .selected_text(mode.name())
+                        .show_ui(ui, |ui| {
+                            for candidate in BlendMode::ALL {
+                                ui.selectable_value(&mut mode, candidate, candidate.name());
+                            }
+                        });
                     ui.horizontal(|ui| {
                         if ui
                             .add_enabled(name.len() <= 4096, egui::Button::new("Apply"))
                             .clicked()
                         {
-                            self.document.set_layer_properties(name.clone(), opacity);
+                            self.document.set_layer_style(name.clone(), opacity, mode);
                             self.texture_dirty = true;
                             keep = false;
                         }
@@ -754,7 +761,7 @@ impl Editor {
                     });
                 });
             if keep {
-                self.layer_properties = Some((name, opacity));
+                self.layer_properties = Some((name, opacity, mode));
             }
         }
         if let Some(mut dialog) = self.resize_dialog.take() {
@@ -1366,7 +1373,8 @@ impl Editor {
                     f32::from(layer.opacity) * 100.0 / 255.0
                 ));
                 if ui.button("Layer properties…").clicked() {
-                    self.layer_properties = Some((layer.name.clone(), layer.opacity));
+                    self.layer_properties =
+                        Some((layer.name.clone(), layer.opacity, layer.blend_mode));
                 }
                 if !layer.visible {
                     ui.small("The active layer is hidden.");

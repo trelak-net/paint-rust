@@ -10,7 +10,8 @@ Development roadmap
 [x] Clipboard image copy/cut/paste.
 [x] Raster text with editable preview.
 [ ] Additional selection tools and transforms.
-[ ] Blend modes, adjustments and effects.
+[x] Eight layer blend modes with project persistence.
+[ ] Adjustments and effects.
 [ ] Background processing, recovery and large-document performance.
 [ ] Desktop integration, accessibility, packaging and release validation.
 

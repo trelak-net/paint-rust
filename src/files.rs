@@ -1,4 +1,4 @@
-use crate::document::{Document, Layer};
+use crate::document::{BlendMode, Document, Layer};
 use image::{ImageEncoder, ImageReader, codecs::png::PngEncoder};
 use std::{
     fs::File,
@@ -6,7 +6,7 @@ use std::{
     path::Path,
 };
 
-const PROJECT_MAGIC: &[u8; 8] = b"PRUST\0\x01\0";
+const PROJECT_MAGIC: &[u8; 8] = b"PRUST\0\x02\0";
 
 pub fn open(path: &Path) -> Result<Document, String> {
     let mut header = [0; 8];
@@ -108,7 +108,11 @@ pub fn save_project(document: &Document, path: &Path) -> Result<(), String> {
                 .write_all(layer.name.as_bytes())
                 .map_err(|e| e.to_string())?;
             writer
-                .write_all(&[u8::from(layer.visible), layer.opacity])
+                .write_all(&[
+                    u8::from(layer.visible),
+                    layer.opacity,
+                    layer.blend_mode as u8,
+                ])
                 .map_err(|e| e.to_string())?;
             let mut png = Vec::new();
             encode_png(layer.pixels(), document.width, document.height, &mut png)?;
@@ -129,7 +133,8 @@ fn read_array<const N: usize>(reader: &mut impl Read) -> Result<[u8; N], String>
 
 pub fn open_project(path: &Path) -> Result<Document, String> {
     let mut reader = BufReader::new(File::open(path).map_err(|e| e.to_string())?);
-    if &read_array::<8>(&mut reader)? != PROJECT_MAGIC {
+    let magic = read_array::<8>(&mut reader)?;
+    if &magic[..6] != &PROJECT_MAGIC[..6] || magic[7] != 0 || !matches!(magic[6], 1 | 2) {
         return Err("Unsupported project signature or version.".into());
     }
     let width = u32::from_le_bytes(read_array(&mut reader)?);
@@ -157,6 +162,14 @@ pub fn open_project(path: &Path) -> Result<Document, String> {
         if flags[0] > 1 {
             return Err("Invalid layer visibility.".into());
         }
+        let mode = if magic[6] >= 2 {
+            let index = read_array::<1>(&mut reader)?[0] as usize;
+            *BlendMode::ALL
+                .get(index)
+                .ok_or("Unsupported layer blend mode")?
+        } else {
+            BlendMode::Normal
+        };
         let size = u64::from_le_bytes(read_array(&mut reader)?);
         if size > 128 * 1024 * 1024 {
             return Err("Layer payload exceeds the memory limit.".into());
@@ -183,6 +196,7 @@ pub fn open_project(path: &Path) -> Result<Document, String> {
         let mut layer = Layer::new(name, image.pixels().map(|p| p.0).collect());
         layer.visible = flags[0] != 0;
         layer.opacity = flags[1];
+        layer.blend_mode = mode;
         layers.push(layer);
     }
     if reader.read(&mut [0; 1]).map_err(|e| e.to_string())? != 0 {

@@ -69,7 +69,7 @@ src/app.rs: desktop workspace, input, dialogs, canvas texture and tool controls.
 src/main.rs: native window startup.
 tests/editor.rs: image operations, history semantics and file round trips.
 
-The document stores up to 32 RGBA layers with normal source-over compositing.
+The document stores up to 32 RGBA layers with configurable blend modes.
 Brush strokes replace RGBA values on the active layer; repeated samples do not
 accumulate opacity. Transparent pixels are displayed over a checkerboard. History
 shares unchanged layer buffers and retains up to 128 MiB of unique pixel buffers
@@ -79,7 +79,7 @@ active document is limited to 256 MiB of layer pixels, excluding previews/histor
 A canvas is limited to 16,777,216 pixels. The New dialog permits up to 4096 per axis.
 
 Save writes an editable .prust project. Export PNG writes only the visible composite
-and does not mark an edited project as saved. Project version 1 stores dimensions,
+and does not mark an edited project as saved. Project version 2 stores blend modes as well as dimensions,
 layer order, the active layer, UTF-8 names, visibility, opacity and lossless PNG
 pixels for every layer. The reader bounds layer counts, decoded memory, payloads
 and names, and rejects unsupported versions, truncation and trailing data. History
@@ -176,3 +176,9 @@ basic kerning, including Polish characters. The canvas preview stays pending unt
 Apply; Cancel/Escape restores the previous layer. Applied text becomes raster
 pixels. Complex-script shaping, bidirectional layout, font fallback, persistent
 text objects and font selection are not implemented. Size is in image pixels.
+
+Blend validation: 46 tests pass. Normal, Multiply, Screen, Overlay, Darken, Lighten,
+Difference and Add are available in Layer properties. Blend calculations use
+encoded RGB with explicit source/backdrop alpha. Project version 2 preserves the
+mode per layer; version 1 projects remain readable with Normal mode. Unknown
+blend-mode identifiers are rejected rather than silently changed.

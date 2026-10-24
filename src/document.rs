@@ -42,11 +42,49 @@ fn selected(selection: Option<Selection>, x: usize, y: usize) -> bool {
     selection.is_none_or(|rect| rect.contains(x, y))
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum BlendMode {
+    Normal,
+    Multiply,
+    Screen,
+    Overlay,
+    Darken,
+    Lighten,
+    Difference,
+    Add,
+}
+impl BlendMode {
+    pub const ALL: [Self; 8] = [
+        Self::Normal,
+        Self::Multiply,
+        Self::Screen,
+        Self::Overlay,
+        Self::Darken,
+        Self::Lighten,
+        Self::Difference,
+        Self::Add,
+    ];
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Normal => "Normal",
+            Self::Multiply => "Multiply",
+            Self::Screen => "Screen",
+            Self::Overlay => "Overlay",
+            Self::Darken => "Darken",
+            Self::Lighten => "Lighten",
+            Self::Difference => "Difference",
+            Self::Add => "Add",
+        }
+    }
+}
+
 #[derive(Clone, PartialEq)]
 pub struct Layer {
     pub name: String,
     pub visible: bool,
     pub opacity: u8,
+    pub blend_mode: BlendMode,
     pixels: Arc<Vec<Pixel>>,
 }
 
@@ -56,6 +94,7 @@ impl Layer {
             name,
             visible: true,
             opacity: 255,
+            blend_mode: BlendMode::Normal,
             pixels: Arc::new(pixels),
         }
     }
@@ -382,6 +421,7 @@ impl Document {
                 name: format!("Layer {}", self.layers.len() + 1),
                 visible: true,
                 opacity: 255,
+                blend_mode: BlendMode::Normal,
                 pixels: Arc::new(vec![[0; 4]; self.width as usize * self.height as usize]),
             }
         };
@@ -421,6 +461,9 @@ impl Document {
         self.commit();
     }
     pub fn set_layer_properties(&mut self, name: String, opacity: u8) {
+        self.set_layer_style(name, opacity, self.layers[self.active].blend_mode);
+    }
+    pub fn set_layer_style(&mut self, name: String, opacity: u8, mode: BlendMode) {
         if self.editing() {
             return;
         }
@@ -435,6 +478,7 @@ impl Document {
             name
         };
         layer.opacity = opacity;
+        layer.blend_mode = mode;
         self.commit();
     }
     pub fn composite(&self) -> Vec<Pixel> {
@@ -445,7 +489,7 @@ impl Document {
                 pixels.copy_from_slice(&layer.pixels);
             } else {
                 for (dst, src) in pixels.iter_mut().zip(layer.pixels.iter()) {
-                    *dst = blend(*dst, *src, layer.opacity);
+                    *dst = blend_layer(*dst, *src, layer.opacity, layer.blend_mode);
                 }
             }
             first = false;
@@ -581,7 +625,7 @@ impl Document {
                 .iter()
                 .filter(|l| l.visible)
                 .fold([0; 4], |dst, layer| {
-                    blend(dst, layer.pixels[i], layer.opacity)
+                    blend_layer(dst, layer.pixels[i], layer.opacity, layer.blend_mode)
                 })
         })
     }
@@ -784,5 +828,43 @@ pub(crate) fn blend(dst: Pixel, src: Pixel, opacity: u8) -> Pixel {
                 / alpha) as u8;
     }
     result[3] = ((alpha + 32512) / 65025) as u8;
+    result
+}
+
+fn blend_layer(dst: Pixel, src: Pixel, opacity: u8, mode: BlendMode) -> Pixel {
+    if mode == BlendMode::Normal {
+        return blend(dst, src, opacity);
+    }
+    let sa = f64::from(src[3]) * f64::from(opacity) / (255.0 * 255.0);
+    let da = f64::from(dst[3]) / 255.0;
+    if sa == 0.0 {
+        return dst;
+    }
+    let alpha = sa + da - sa * da;
+    let mut result = [0; 4];
+    for c in 0..3 {
+        let a = f64::from(dst[c]) / 255.0;
+        let b = f64::from(src[c]) / 255.0;
+        let mixed = match mode {
+            BlendMode::Multiply => a * b,
+            BlendMode::Screen => a + b - a * b,
+            BlendMode::Overlay => {
+                if a <= 0.5 {
+                    2.0 * a * b
+                } else {
+                    1.0 - 2.0 * (1.0 - a) * (1.0 - b)
+                }
+            }
+            BlendMode::Darken => a.min(b),
+            BlendMode::Lighten => a.max(b),
+            BlendMode::Difference => (a - b).abs(),
+            BlendMode::Add => (a + b).min(1.0),
+            BlendMode::Normal => b,
+        };
+        result[c] = (((1.0 - sa) * da * a + (1.0 - da) * sa * b + sa * da * mixed) / alpha * 255.0)
+            .round()
+            .clamp(0.0, 255.0) as u8;
+    }
+    result[3] = (alpha * 255.0).round().clamp(0.0, 255.0) as u8;
     result
 }
