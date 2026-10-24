@@ -565,3 +565,14 @@ Validation: six Python tests pass, including installation from an extracted
 archive, checksum verification, deterministic archives and unsafe-path rejection.
 The actual release archive was extracted, verified, installed into an isolated
 prefix containing spaces, and launched with a visible net.trelak.PaintRust window.
+
+Cancellable file loading
+------------------------
+Opening images and projects, importing layers and recovering projects now expose
+a Cancel action. Input reads are bounded to 64 KiB, seeks check cancellation, and
+project decoding checks between layers and during pixel conversion. Import
+compositing is also cancellable. The current document, path and undo history stay
+intact when loading is cancelled. Codec computation between input reads may delay
+cancellation; this is cooperative cancellation, not forced thread termination.
+Validation covers pre-cancelled inputs, cancellation between read chunks, seek
+rejection, project/raster pixel round trips and guarded UI publication.

@@ -5,7 +5,7 @@ use image::{
 };
 use std::{
     fs::File,
-    io::{BufReader, BufWriter, Cursor, Read, Write},
+    io::{BufReader, BufWriter, Cursor, Read, Seek, SeekFrom, Write},
     path::Path,
     sync::atomic::{AtomicBool, Ordering},
 };
@@ -13,6 +13,11 @@ use std::{
 const PROJECT_MAGIC: &[u8; 8] = b"PRUST\0\x02\0";
 
 pub fn open(path: &Path) -> Result<Document, String> {
+    open_cancellable(path, &AtomicBool::new(false))
+}
+
+pub fn open_cancellable(path: &Path, cancel: &AtomicBool) -> Result<Document, String> {
+    check_cancel(cancel)?;
     let mut header = [0; 8];
     let mut file = File::open(path).map_err(|e| e.to_string())?;
     let read = file.read(&mut header).map_err(|e| e.to_string())?;
@@ -21,17 +26,23 @@ pub fn open(path: &Path) -> Result<Document, String> {
             .extension()
             .is_some_and(|e| e.eq_ignore_ascii_case("prust"))
     {
-        return open_project(path);
+        return open_project_cancellable(path, cancel);
     }
-    let dimensions = ImageReader::new(BufReader::new(File::open(path).map_err(|e| e.to_string())?))
-        .with_guessed_format()
-        .map_err(|e| e.to_string())?
-        .into_dimensions()
-        .map_err(|e| e.to_string())?;
+    let dimensions = ImageReader::new(BufReader::new(CancellableReader {
+        inner: File::open(path).map_err(|e| e.to_string())?,
+        cancel,
+    }))
+    .with_guessed_format()
+    .map_err(|e| e.to_string())?
+    .into_dimensions()
+    .map_err(|e| e.to_string())?;
     Document::validate_size(dimensions.0, dimensions.1)?;
-    let mut reader = ImageReader::new(BufReader::new(File::open(path).map_err(|e| e.to_string())?))
-        .with_guessed_format()
-        .map_err(|e| e.to_string())?;
+    let mut reader = ImageReader::new(BufReader::new(CancellableReader {
+        inner: File::open(path).map_err(|e| e.to_string())?,
+        cancel,
+    }))
+    .with_guessed_format()
+    .map_err(|e| e.to_string())?;
     let mut limits = image::Limits::default();
     limits.max_alloc = Some(256 * 1024 * 1024);
     limits.max_image_width = Some(16384);
@@ -41,7 +52,7 @@ pub fn open(path: &Path) -> Result<Document, String> {
     Document::from_pixels(
         image.width(),
         image.height(),
-        image.pixels().map(|p| p.0).collect(),
+        collect_pixels(&image, cancel)?,
     )
 }
 
@@ -53,6 +64,40 @@ fn check_cancel(cancel: &AtomicBool) -> Result<(), String> {
     } else {
         Ok(())
     }
+}
+
+// Bound each read so cancellation is checked even for large payload requests.
+struct CancellableReader<'a, R> {
+    inner: R,
+    cancel: &'a AtomicBool,
+}
+impl<R: Read> Read for CancellableReader<'_, R> {
+    fn read(&mut self, buffer: &mut [u8]) -> std::io::Result<usize> {
+        if self.cancel.load(Ordering::Relaxed) {
+            return Err(std::io::Error::other(CANCELLED));
+        }
+        let length = buffer.len().min(64 * 1024);
+        self.inner.read(&mut buffer[..length])
+    }
+}
+impl<R: Seek> Seek for CancellableReader<'_, R> {
+    fn seek(&mut self, position: SeekFrom) -> std::io::Result<u64> {
+        if self.cancel.load(Ordering::Relaxed) {
+            return Err(std::io::Error::other(CANCELLED));
+        }
+        self.inner.seek(position)
+    }
+}
+
+fn collect_pixels(image: &image::RgbaImage, cancel: &AtomicBool) -> Result<Vec<[u8; 4]>, String> {
+    check_cancel(cancel)?;
+    let mut pixels = Vec::with_capacity(image.width() as usize * image.height() as usize);
+    for row in image.rows() {
+        check_cancel(cancel)?;
+        pixels.extend(row.map(|pixel| pixel.0));
+    }
+    check_cancel(cancel)?;
+    Ok(pixels)
 }
 
 struct CancellableWriter<'a, W> {
@@ -259,7 +304,15 @@ fn read_array<const N: usize>(reader: &mut impl Read) -> Result<[u8; N], String>
 }
 
 pub fn open_project(path: &Path) -> Result<Document, String> {
-    let mut reader = BufReader::new(File::open(path).map_err(|e| e.to_string())?);
+    open_project_cancellable(path, &AtomicBool::new(false))
+}
+
+pub fn open_project_cancellable(path: &Path, cancel: &AtomicBool) -> Result<Document, String> {
+    check_cancel(cancel)?;
+    let mut reader = BufReader::new(CancellableReader {
+        inner: File::open(path).map_err(|e| e.to_string())?,
+        cancel,
+    });
     let magic = read_array::<8>(&mut reader)?;
     if magic[..6] != PROJECT_MAGIC[..6] || magic[7] != 0 || !matches!(magic[6], 1 | 2) {
         return Err("Unsupported project signature or version.".into());
@@ -278,6 +331,7 @@ pub fn open_project(path: &Path) -> Result<Document, String> {
     }
     let mut layers = Vec::new();
     for _ in 0..count {
+        check_cancel(cancel)?;
         let length = u32::from_le_bytes(read_array(&mut reader)?) as usize;
         if length > 4096 {
             return Err("Layer name is too long.".into());
@@ -315,12 +369,18 @@ pub fn open_project(path: &Path) -> Result<Document, String> {
         if dimensions != (width, height) {
             return Err("Layer dimensions do not match the document.".into());
         }
-        let mut image_reader = ImageReader::with_format(Cursor::new(png), image::ImageFormat::Png);
+        let mut image_reader = ImageReader::with_format(
+            BufReader::new(CancellableReader {
+                inner: Cursor::new(png),
+                cancel,
+            }),
+            image::ImageFormat::Png,
+        );
         let mut limits = image::Limits::default();
         limits.max_alloc = Some(128 * 1024 * 1024);
         image_reader.limits(limits);
         let image = image_reader.decode().map_err(|e| e.to_string())?.to_rgba8();
-        let mut layer = Layer::new(name, image.pixels().map(|p| p.0).collect());
+        let mut layer = Layer::new(name, collect_pixels(&image, cancel)?);
         layer.visible = flags[0] != 0;
         layer.opacity = flags[1];
         layer.blend_mode = mode;
@@ -329,12 +389,84 @@ pub fn open_project(path: &Path) -> Result<Document, String> {
     if reader.read(&mut [0; 1]).map_err(|e| e.to_string())? != 0 {
         return Err("Unexpected data after the project.".into());
     }
+    check_cancel(cancel)?;
     Document::from_layers(width, height, layers, active)
 }
 
 #[cfg(test)]
 mod cancellation_tests {
     use super::*;
+    #[test]
+    fn cancelled_open_does_not_access_missing_input() {
+        let cancel = AtomicBool::new(true);
+        let path = Path::new("missing-cancelled-input.prust");
+        assert_eq!(open_cancellable(path, &cancel).err().unwrap(), CANCELLED);
+        assert_eq!(
+            open_project_cancellable(path, &cancel).err().unwrap(),
+            CANCELLED
+        );
+    }
+
+    #[test]
+    fn cancellation_reader_stops_between_chunks_and_rejects_seeking() {
+        struct Trigger<'a> {
+            cancel: &'a AtomicBool,
+            bytes: Cursor<Vec<u8>>,
+        }
+        impl Read for Trigger<'_> {
+            fn read(&mut self, buffer: &mut [u8]) -> std::io::Result<usize> {
+                let read = self.bytes.read(buffer)?;
+                self.cancel.store(true, Ordering::Relaxed);
+                Ok(read)
+            }
+        }
+        let cancel = AtomicBool::new(false);
+        let mut reader = CancellableReader {
+            inner: Trigger {
+                cancel: &cancel,
+                bytes: Cursor::new(vec![42; 128 * 1024]),
+            },
+            cancel: &cancel,
+        };
+        let mut output = vec![0; 128 * 1024];
+        assert_eq!(reader.read(&mut output).unwrap(), 64 * 1024);
+        assert_eq!(reader.read(&mut output).unwrap_err().to_string(), CANCELLED);
+        let mut reader = CancellableReader {
+            inner: Cursor::new(output),
+            cancel: &cancel,
+        };
+        assert_eq!(
+            reader.seek(SeekFrom::Start(0)).unwrap_err().to_string(),
+            CANCELLED
+        );
+    }
+
+    #[test]
+    fn cancellable_open_preserves_project_and_raster_pixels() {
+        let dir = tempfile::tempdir().unwrap();
+        let doc = Document::from_pixels(2, 1, vec![[1, 2, 3, 4], [250, 0, 128, 255]]).unwrap();
+        let cancel = AtomicBool::new(false);
+        let path = dir.path().join("image.prust");
+        save_project_cancellable(&doc, &path, &cancel).unwrap();
+        assert_eq!(
+            open_cancellable(&path, &cancel).unwrap().pixels(),
+            doc.pixels()
+        );
+        let path = dir.path().join("image.png");
+        image::save_buffer(
+            &path,
+            &[1, 2, 3, 4, 250, 0, 128, 255],
+            2,
+            1,
+            image::ColorType::Rgba8,
+        )
+        .unwrap();
+        assert_eq!(
+            open_cancellable(&path, &cancel).unwrap().pixels(),
+            doc.pixels()
+        );
+    }
+
     #[test]
     fn cancellation_before_atomic_replace_keeps_old_file_and_removes_temporary() {
         let directory = tempfile::tempdir().unwrap();

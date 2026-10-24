@@ -194,8 +194,11 @@ impl Editor {
     }
 
     fn load(&mut self, path: PathBuf) {
-        self.start_file_job("open image", move || {
-            Ok(Outcome::Opened(Box::new(files::open(&path)?), path))
+        self.start_cancellable_file_job("open image", move |cancel| {
+            Ok(Outcome::Opened(
+                Box::new(files::open_cancellable(&path, cancel)?),
+                path,
+            ))
         });
     }
 
@@ -288,10 +291,12 @@ impl Editor {
 
     fn import_layer_from_path(&mut self, path: &std::path::Path) {
         let path = path.to_path_buf();
-        self.start_file_job("import image", move || {
-            let image = files::open(&path)?;
+        self.start_cancellable_file_job("import image", move |cancel| {
+            let image = files::open_cancellable(&path, cancel)?;
             Ok(Outcome::Imported(
-                image.composite(),
+                image
+                    .composite_cancellable(cancel)
+                    .ok_or(files::CANCELLED)?,
                 image.width,
                 image.height,
                 path,
@@ -1584,8 +1589,11 @@ impl Editor {
             if let Some((index, recover)) = chosen {
                 if recover {
                     let path = self.recoverable[index].path.clone();
-                    self.start_file_job("recover project", move || {
-                        Ok(Outcome::Recovered(Box::new(files::open(&path)?), index))
+                    self.start_cancellable_file_job("recover project", move |cancel| {
+                        Ok(Outcome::Recovered(
+                            Box::new(files::open_cancellable(&path, cancel)?),
+                            index,
+                        ))
                     });
                 } else {
                     let candidate = self.recoverable.remove(index);
@@ -3109,6 +3117,40 @@ mod tests {
         assert_eq!(std::fs::read(&path).unwrap(), b"previous data");
         assert_eq!(editor.status, "Cancelled: save project");
     }
+    #[test]
+    fn cancelled_background_open_keeps_document_path_and_history() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.document = Document::new(2, 2, [10, 20, 30, 255]).unwrap();
+        editor.document.invert();
+        let before = editor.document.pixels().to_vec();
+        editor.path = Some(PathBuf::from("current.prust"));
+        let (release, wait) = std::sync::mpsc::channel();
+        editor.start_cancellable_file_job("open image", move |cancel| {
+            wait.recv().unwrap();
+            let path = PathBuf::from("missing.prust");
+            Ok(Outcome::Opened(
+                Box::new(files::open_cancellable(&path, cancel)?),
+                path,
+            ))
+        });
+        editor
+            .file_job
+            .as_ref()
+            .unwrap()
+            .cancel
+            .as_ref()
+            .unwrap()
+            .store(true, std::sync::atomic::Ordering::Relaxed);
+        release.send(()).unwrap();
+        wait_for_files(&mut editor, &ctx);
+        assert_eq!(editor.document.pixels(), before);
+        assert_eq!(editor.path, Some(PathBuf::from("current.prust")));
+        assert!(editor.document.dirty());
+        assert!(editor.document.can_undo());
+        assert_eq!(editor.status, "Cancelled: open image");
+    }
+
     #[test]
     fn cancelled_background_geometry_never_publishes_the_worker_image() {
         let ctx = egui::Context::default();
