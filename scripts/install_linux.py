@@ -8,7 +8,9 @@ import shutil
 import subprocess
 import tempfile
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parent
+if not (ROOT / "packaging").is_dir():
+    ROOT = ROOT.parent
 APP_ID = "net.trelak.PaintRust"
 
 
@@ -70,7 +72,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--prefix", type=Path, help="Install under this prefix (default: ~/.local)")
     parser.add_argument("--data-dir", type=Path, help="Override the desktop data directory")
-    parser.add_argument("--binary", type=Path, default=ROOT / "target/release/paint-rust")
+    parser.add_argument("--binary", type=Path, default=ROOT / "bin/paint-rust" if (ROOT / "bin/paint-rust").is_file() else ROOT / "target/release/paint-rust")
     parser.add_argument("--no-refresh", action="store_true", help="Skip desktop and MIME cache updates")
     args = parser.parse_args()
     prefix = (args.prefix or Path.home() / ".local").expanduser().absolute()

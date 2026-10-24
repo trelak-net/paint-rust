@@ -40,7 +40,7 @@ Development roadmap
 [x] Store and restore disk-backed history outside the UI thread.
 [x] Compress temporary history streams losslessly to reduce storage volume.
 [x] Share unchanged buffers across disk history states.
-[ ] Final distribution validation.
+[x] Native Linux release archive, checksums and isolated installation validation.
 [ ] Deferred until all other roadmap tasks are complete: resolve AT-SPI runtime
     integration issues and perform the full screen-reader workflow audit.
 

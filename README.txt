@@ -546,3 +546,22 @@ selection, dimensions, active layer and history. A result already completed when
 cancellation arrives may still be published.
 Validation: 144 Rust tests and strict Clippy pass, including rollback after the
 first layer, cancellation from another thread and guarded background publication.
+
+Native Linux release archives
+-----------------------------
+Run `python3 scripts/package_linux.py` to build a native release and create a
+.tar.gz archive plus its SHA-256 sidecar under dist/. The packager verifies pinned
+dependency notices, resolves the executable from Cargo's artifact report and
+checks that the build host can resolve its linked libraries. BUILD_INFO.json
+records the source revision, dirty state, compiler, target, libc and binary hash.
+The archive contains licenses, icons, desktop integration, internal checksums and
+a standalone installer: extract it and run `python3 install.py`, or run
+`./bin/paint-rust` directly. See INSTALL.txt for installation options.
+This build uses system libraries and graphics drivers; compatibility with other
+distributions has not been established. Checksums are not publisher signatures.
+Archive serialization is deterministic for identical inputs and timestamp; this
+does not claim that independent compiler builds produce identical binaries.
+Validation: six Python tests pass, including installation from an extracted
+archive, checksum verification, deterministic archives and unsafe-path rejection.
+The actual release archive was extracted, verified, installed into an isolated
+prefix containing spaces, and launched with a visible net.trelak.PaintRust window.
