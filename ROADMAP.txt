@@ -19,7 +19,7 @@ Development roadmap
 [x] Eight layer blend modes with project persistence.
 [x] Lossless visible-image flattening with complete layer restoration on undo.
 [x] Brightness/contrast, saturation, grayscale, sepia and box blur previews.
-[x] Linear and radial gradients.
+[x] Linear and radial gradients with cancellable background previews and final rendering.
 [x] Pixelation and posterization with cancellable previews.
 [x] Sharpening and separate menus for adjustments and spatial effects.
 [x] Background recovery snapshots and interrupted-session recovery.

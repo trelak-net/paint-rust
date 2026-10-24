@@ -3,6 +3,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Effect {
+    Gradient(crate::gradient::Gradient),
     FreeTransform(crate::affine::FreeTransform),
     BrightnessContrast { brightness: i16, contrast: i16 },
     Saturation(f32),
@@ -16,6 +17,7 @@ pub enum Effect {
 impl Effect {
     pub fn name(self) -> &'static str {
         match self {
+            Self::Gradient(_) => "Gradient",
             Self::FreeTransform(_) => "Free transform",
             Self::BrightnessContrast { .. } => "Brightness / Contrast",
             Self::Saturation(_) => "Saturation",
@@ -43,6 +45,16 @@ pub fn render(
         || u64::from(width) * u64::from(height) != source.len() as u64
     {
         return None;
+    }
+    if let Effect::Gradient(parameters) = effect {
+        return crate::gradient::render(
+            source,
+            width,
+            height,
+            selection.as_ref(),
+            parameters,
+            cancel,
+        );
     }
     if let Effect::FreeTransform(parameters) = effect {
         return crate::affine::render(
@@ -111,7 +123,10 @@ pub fn render(
                         let steps = f64::from(levels.clamp(2, 32) - 1);
                         (f64::from(*channel) * steps / 255.0).round() * 255.0 / steps
                     }
-                    Effect::BoxBlur(_) | Effect::Pixelate(_) | Effect::FreeTransform(_) => continue,
+                    Effect::BoxBlur(_)
+                    | Effect::Pixelate(_)
+                    | Effect::FreeTransform(_)
+                    | Effect::Gradient(_) => continue,
                 };
                 output[i][c] = value.round().clamp(0.0, 255.0) as u8;
             }

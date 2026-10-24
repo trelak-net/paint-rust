@@ -74,6 +74,30 @@ impl EffectPreview {
             cancel: self.cancel.clone(),
         });
     }
+    /// Wait on a background thread for the final requested generation.
+    pub fn wait(self, cancel: &AtomicBool) -> Result<Vec<Pixel>, String> {
+        loop {
+            if cancel.load(Ordering::Relaxed) {
+                return Err(paint_rust::files::CANCELLED.into());
+            }
+            match self
+                .results
+                .recv_timeout(std::time::Duration::from_millis(10))
+            {
+                Ok((generation, pixels)) if generation == self.generation => {
+                    if cancel.load(Ordering::Relaxed) {
+                        return Err(paint_rust::files::CANCELLED.into());
+                    }
+                    return Ok(pixels);
+                }
+                Ok(_) | Err(mpsc::RecvTimeoutError::Timeout) => {}
+                Err(mpsc::RecvTimeoutError::Disconnected) => {
+                    return Err("Preview worker stopped before completing the image".into());
+                }
+            }
+        }
+    }
+
     pub fn poll(&mut self) -> Option<Vec<Pixel>> {
         let mut latest = None;
         while let Ok((generation, pixels)) = self.results.try_recv() {
@@ -94,6 +118,22 @@ impl Drop for EffectPreview {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn waiting_for_final_preview_can_be_cancelled() {
+        let preview = EffectPreview::new(
+            egui::Context::default(),
+            Arc::new(vec![[100; 4]; 128 * 128]),
+            128,
+            128,
+            None,
+            Effect::BoxBlur(64),
+        );
+        assert_eq!(
+            preview.wait(&AtomicBool::new(true)).unwrap_err(),
+            paint_rust::files::CANCELLED
+        );
+    }
+
     #[test]
     fn only_the_latest_request_becomes_ready() {
         let mut preview = EffectPreview::new(

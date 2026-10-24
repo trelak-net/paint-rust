@@ -2,6 +2,7 @@ pub mod affine;
 pub mod document;
 pub mod effects;
 pub mod files;
+pub mod gradient;
 pub mod recovery;
 pub mod selection;
 pub mod text;

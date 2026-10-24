@@ -28,6 +28,35 @@ fn main() {
     let mut document = Document::from_layers(size, size, layers, 3).unwrap();
     println!("{size} x {size}, four layers, three Multiply blends");
     drop(measure("Full composite", || document.composite()));
+    for radial in [false, true] {
+        drop(measure(
+            if radial {
+                "Radial gradient kernel"
+            } else {
+                "Linear gradient kernel"
+            },
+            || {
+                paint_rust::gradient::render(
+                    document.pixels(),
+                    size,
+                    size,
+                    None,
+                    paint_rust::gradient::Gradient {
+                        from: (0.0, 0.0),
+                        to: (size as f32, size as f32),
+                        style: paint_rust::document::GradientStyle {
+                            start: [255, 50, 20, 200],
+                            end: [20, 50, 255, 100],
+                            radial,
+                        },
+                    },
+                    &std::sync::atomic::AtomicBool::new(false),
+                )
+                .unwrap()
+            },
+        ));
+    }
+
     document.begin("Stroke");
     let snapshot = document.snapshot();
     measure("Brush frame with a renderer snapshot", || {

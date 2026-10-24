@@ -602,3 +602,18 @@ cancellation in the Working dialog. Computation checks between rows and while
 packing the resulting mask. Cancellation retains the previous selection, without
 changing pixels or creating history. Validation: 153 Rust tests and strict Clippy
 pass, including all pre-cancelled combination modes and guarded UI publication.
+
+Background gradient gestures
+----------------------------
+Linear and radial gradient previews use a coalescing worker. New pointer positions
+cancel obsolete requests; unchanged positions do not restart work. Releasing the
+pointer commits the latest completed preview, or waits for the final generation
+in the cancellable Working dialog. Escape discards the entire gesture. Commands
+that could alter the document are disabled during the drag, as for selection
+gestures; the canvas keeps accepting pointer movement. One completed gradient
+creates one undo step. The pixel kernel checks cancellation between rows and
+within wide rows, retaining premultiplied color interpolation and selection masks.
+On the 4096 x 4096 benchmark, linear and radial kernels took approximately 478 ms
+and 557 ms respectively; these computations now run outside the UI thread.
+Validation: 157 Rust tests and strict Clippy pass, covering final-generation
+publication, undo, Escape during a real gesture, invalid input and cancellation.

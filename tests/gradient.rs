@@ -83,3 +83,36 @@ fn radial_gradient_uses_distance_from_center() {
     assert_eq!(doc.pixels()[3], doc.pixels()[5]);
     assert_eq!(doc.pixels()[1], doc.pixels()[7]);
 }
+
+#[test]
+fn gradient_renderer_rejects_invalid_inputs_and_cancellation() {
+    use paint_rust::gradient::{Gradient, render};
+    use std::sync::atomic::AtomicBool;
+    let source = [[17; 4]; 4];
+    let parameters = Gradient {
+        from: (0.0, 0.0),
+        to: (2.0, 2.0),
+        style: GradientStyle {
+            start: [255; 4],
+            end: [0; 4],
+            radial: true,
+        },
+    };
+    assert!(render(&source, 2, 2, None, parameters, &AtomicBool::new(true)).is_none());
+    assert!(render(&source, 3, 2, None, parameters, &AtomicBool::new(false)).is_none());
+    assert!(
+        render(
+            &source,
+            2,
+            2,
+            None,
+            Gradient {
+                from: (f32::NAN, 0.0),
+                ..parameters
+            },
+            &AtomicBool::new(false)
+        )
+        .is_none()
+    );
+    assert_eq!(source, [[17; 4]; 4]);
+}
