@@ -88,3 +88,37 @@ fn clipped_moves_cancel_cleanly_and_zero_offset_is_exact() {
     assert!(!doc.dirty());
     assert!(doc.pixels().iter().all(|p| *p == [12, 34, 56, 0]));
 }
+
+#[test]
+fn movement_kernel_rejects_cancelled_and_out_of_bounds_requests() {
+    use paint_rust::movement::{Parameters, render};
+    use std::sync::atomic::AtomicBool;
+    let source = [[17; 4]; 16];
+    let parameters = Parameters {
+        dx: 1,
+        dy: -1,
+        copy: false,
+    };
+    assert!(render(&source, 4, 4, None, parameters, &AtomicBool::new(true)).is_none());
+    let area = Selection {
+        x: 3,
+        y: 0,
+        width: 2,
+        height: 1,
+        mask: None,
+        ellipse: None,
+    };
+    assert!(
+        render(
+            &source,
+            4,
+            4,
+            Some(&area),
+            parameters,
+            &AtomicBool::new(false)
+        )
+        .is_none()
+    );
+    assert!(render(&source, 3, 4, None, parameters, &AtomicBool::new(false)).is_none());
+    assert_eq!(source, [[17; 4]; 16]);
+}

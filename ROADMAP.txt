@@ -10,7 +10,7 @@ Development roadmap
 [x] Clipboard image copy/cut/paste.
 [x] Import image files and project composites as layers.
 [x] Raster text with editable preview.
-[x] Move/copy selected pixels and move selection bounds.
+[x] Background move/copy pixel previews and nudges; immediate movement of selection bounds.
 [x] Elliptical selections with masked editing, clipboard and movement.
 [x] Cancellable background selection union, subtraction and intersection with explicit empty masks.
 [x] Cancellable polygon selections with editable point input and even-odd coverage.

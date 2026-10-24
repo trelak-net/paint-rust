@@ -639,3 +639,13 @@ from about 36.3 ms to 0.36 ms on the same machine. The initial copy of a shared
 64 MiB layer still costs about 22 ms and is reported separately by the benchmark.
 Validation: 159 Rust tests and strict Clippy pass, including full-canvas reference
 coverage for reversed, clipped, horizontal, vertical, zero-length and wide strokes.
+
+Background pixel movement
+-------------------------
+Moving and copying selected pixels, including keyboard nudges, now use the
+cancellable gesture worker. Rendering keeps the original source immutable and
+checks cancellation while clearing and placing pixels. The final pixel buffer and
+translated selection are published together; undo and redo restore both. Moving
+only selection bounds remains immediate because it changes metadata, not pixels.
+Validation: 161 Rust tests and strict Clippy pass, including overlapping movement,
+masked coverage, latest-generation publication, nudges and Escape during dragging.

@@ -3,6 +3,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Effect {
+    Move(crate::movement::Parameters),
     Shape(crate::shapes::Parameters),
     Gradient(crate::gradient::Gradient),
     FreeTransform(crate::affine::FreeTransform),
@@ -18,6 +19,13 @@ pub enum Effect {
 impl Effect {
     pub fn name(self) -> &'static str {
         match self {
+            Self::Move(parameters) => {
+                if parameters.copy {
+                    "Copy pixels"
+                } else {
+                    "Move pixels"
+                }
+            }
             Self::Shape(parameters) => match parameters.shape {
                 crate::document::Shape::Line => "Line",
                 crate::document::Shape::Rectangle => "Rectangle",
@@ -51,6 +59,16 @@ pub fn render(
         || u64::from(width) * u64::from(height) != source.len() as u64
     {
         return None;
+    }
+    if let Effect::Move(parameters) = effect {
+        return crate::movement::render(
+            source,
+            width,
+            height,
+            selection.as_ref(),
+            parameters,
+            cancel,
+        );
     }
     if let Effect::Shape(parameters) = effect {
         return crate::shapes::render(
@@ -143,7 +161,8 @@ pub fn render(
                     | Effect::Pixelate(_)
                     | Effect::FreeTransform(_)
                     | Effect::Gradient(_)
-                    | Effect::Shape(_) => continue,
+                    | Effect::Shape(_)
+                    | Effect::Move(_) => continue,
                 };
                 output[i][c] = value.round().clamp(0.0, 255.0) as u8;
             }

@@ -1028,82 +1028,53 @@ impl Document {
         }
     }
 
+    pub fn publish_move_preview(
+        &mut self,
+        pixels: Vec<Pixel>,
+        dx: i32,
+        dy: i32,
+    ) -> Result<(), String> {
+        let before = self
+            .pending
+            .as_ref()
+            .ok_or("Begin a move transaction first")?;
+        let selection = crate::movement::translated_selection(
+            self.width,
+            self.height,
+            before.selection.as_ref(),
+            dx,
+            dy,
+        );
+        self.publish_preview(pixels)?;
+        self.selection = selection;
+        Ok(())
+    }
+
     pub fn preview_move(&mut self, dx: i32, dy: i32, copy: bool, selection_only: bool) {
         let before = self
             .pending
             .as_ref()
             .expect("Begin a move transaction first");
-        self.layers = before.layers.clone();
-        self.active = before.active;
-        self.selection = before.selection.clone();
-        if dx == 0 && dy == 0 {
-            return;
-        }
-        let area = before.selection.clone().unwrap_or(Selection {
-            mask: None,
-            ellipse: None,
-            x: 0,
-            y: 0,
-            width: self.width,
-            height: self.height,
-        });
-        if area.width == 0 || area.height == 0 {
-            return;
-        }
-        let left = i64::from(area.x) + i64::from(dx);
-        let top = i64::from(area.y) + i64::from(dy);
-        let x = left.clamp(0, i64::from(self.width)) as u32;
-        let y = top.clamp(0, i64::from(self.height)) as u32;
-        let right = (left + i64::from(area.width)).clamp(0, i64::from(self.width)) as u32;
-        let bottom = (top + i64::from(area.height)).clamp(0, i64::from(self.height)) as u32;
-        self.selection = (right > x && bottom > y).then_some(Selection {
-            mask: area.mask.clone().map(|mut mask| {
-                mask.x = mask.x.saturating_add(i64::from(dx));
-                mask.y = mask.y.saturating_add(i64::from(dy));
-                mask
-            }),
-            ellipse: area.ellipse.map(|mut ellipse| {
-                ellipse.x = ellipse.x.saturating_add(i64::from(dx));
-                ellipse.y = ellipse.y.saturating_add(i64::from(dy));
-                ellipse
-            }),
-            x,
-            y,
-            width: right - x,
-            height: bottom - y,
-        });
         if selection_only {
-            return;
-        }
-        let source = before.layers[before.active].pixels.clone();
-        let output = Arc::make_mut(&mut self.layers[self.active].pixels);
-        if !copy {
-            for y in area.y..area.y + area.height {
-                let start = y as usize * self.width as usize + area.x as usize;
-                for x in 0..area.width as usize {
-                    if area.contains(area.x as usize + x, y as usize) {
-                        output[start + x] = [0; 4];
-                    }
-                }
-            }
-        }
-        for sy in area.y..area.y + area.height {
-            for sx in area.x..area.x + area.width {
-                if !area.contains(sx as usize, sy as usize) {
-                    continue;
-                }
-                let x = i64::from(sx) + i64::from(dx);
-                let y = i64::from(sy) + i64::from(dy);
-                if x < 0 || y < 0 || x >= i64::from(self.width) || y >= i64::from(self.height) {
-                    continue;
-                }
-                let dst = y as usize * self.width as usize + x as usize;
-                output[dst] = blend(
-                    output[dst],
-                    source[sy as usize * self.width as usize + sx as usize],
-                    255,
-                );
-            }
+            self.layers = before.layers.clone();
+            self.active = before.active;
+            self.selection = crate::movement::translated_selection(
+                self.width,
+                self.height,
+                before.selection.as_ref(),
+                dx,
+                dy,
+            );
+        } else if let Some(pixels) = crate::movement::render(
+            &before.layers[before.active].pixels,
+            self.width,
+            self.height,
+            before.selection.as_ref(),
+            crate::movement::Parameters { dx, dy, copy },
+            &std::sync::atomic::AtomicBool::new(false),
+        ) {
+            self.publish_move_preview(pixels, dx, dy)
+                .expect("Move transaction is active");
         }
     }
 

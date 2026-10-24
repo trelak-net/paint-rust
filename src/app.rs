@@ -465,9 +465,15 @@ impl Editor {
             self.start_cancellable_file_job("finish drawing", move |cancel| {
                 let pixels = gesture.preview.wait(cancel)?;
                 document.begin(label);
-                document.publish_preview(pixels)?;
+                let moved = if let Effect::Move(parameters) = gesture.effect {
+                    document.publish_move_preview(pixels, parameters.dx, parameters.dy)?;
+                    true
+                } else {
+                    document.publish_preview(pixels)?;
+                    false
+                };
                 document.commit();
-                Ok(Outcome::Edited(Box::new(document), label.into()))
+                Ok(Outcome::Edited(Box::new(document), label.into(), moved))
             });
             return;
         }
@@ -647,19 +653,25 @@ impl Editor {
                     } else {
                         "Nudge pixels"
                     });
-                    self.document.preview_move(
-                        delta.0 * step,
-                        delta.1 * step,
-                        modifiers.command,
-                        self.move_selection_only,
-                    );
-                    let changed = self.document.commit();
-                    self.texture_dirty |= changed;
-                    self.status = if self.move_selection_only {
-                        "Moved selection bounds".into()
+                    if self.move_selection_only {
+                        self.document.preview_move(
+                            delta.0 * step,
+                            delta.1 * step,
+                            modifiers.command,
+                            true,
+                        );
+                        self.document.commit();
+                        self.status = "Moved selection bounds".into();
                     } else {
-                        "Moved selected pixels".into()
-                    };
+                        self.request_gesture_preview(Effect::Move(
+                            paint_rust::movement::Parameters {
+                                dx: delta.0 * step,
+                                dy: delta.1 * step,
+                                copy: modifiers.command,
+                            },
+                        ));
+                        self.finish_stroke();
+                    }
                     return;
                 }
             }
@@ -1188,13 +1200,18 @@ impl Editor {
                                 dx = 0;
                             }
                         }
-                        self.document.preview_move(
-                            dx,
-                            dy,
-                            ui.input(|i| i.modifiers.command),
-                            self.move_selection_only,
-                        );
-                        self.texture_dirty = true;
+                        if self.move_selection_only {
+                            self.document.preview_move(dx, dy, false, true);
+                            self.texture_dirty = true;
+                        } else {
+                            self.request_gesture_preview(Effect::Move(
+                                paint_rust::movement::Parameters {
+                                    dx,
+                                    dy,
+                                    copy: ui.input(|i| i.modifiers.command),
+                                },
+                            ));
+                        }
                     }
                     if self.tool == Tool::Select {
                         let origin = self.shape_origin.unwrap_or(point);
@@ -1709,10 +1726,16 @@ impl Editor {
 
 impl Editor {
     fn show(&mut self, ctx: &egui::Context) {
-        if let Some(gradient) = &mut self.gesture_preview
-            && let Some(pixels) = gradient.preview.poll()
+        if let Some(gesture) = &mut self.gesture_preview
+            && let Some(pixels) = gesture.preview.poll()
         {
-            match self.document.publish_preview(pixels) {
+            let result = if let Effect::Move(parameters) = gesture.effect {
+                self.document
+                    .publish_move_preview(pixels, parameters.dx, parameters.dy)
+            } else {
+                self.document.publish_preview(pixels)
+            };
+            match result {
                 Ok(()) => self.texture_dirty = true,
                 Err(error) => self.status = error,
             }
@@ -3130,6 +3153,7 @@ mod tests {
         };
         frame(&mut editor, &ctx, vec![]);
         frame(&mut editor, &ctx, vec![key(egui::Modifiers::NONE)]);
+        wait_for_files(&mut editor, &ctx);
         assert_eq!(editor.document.selection().unwrap().x, 2);
         assert_eq!(editor.document.pixels()[21], [0; 4]);
         editor.document.undo();
@@ -3144,6 +3168,7 @@ mod tests {
             ..Default::default()
         };
         let _ = ctx.run(input, |ctx| editor.show(ctx));
+        wait_for_files(&mut editor, &ctx);
         assert_eq!(editor.document.selection().unwrap().x, 11);
         assert!(!editor.document.dirty());
         editor.move_selection_only = false;
@@ -3155,6 +3180,7 @@ mod tests {
             ..Default::default()
         };
         let _ = ctx.run(input, |ctx| editor.show(ctx));
+        wait_for_files(&mut editor, &ctx);
         assert_eq!(editor.document.selection().unwrap().x, 12);
         assert_eq!(editor.document.pixels()[31], [200, 50, 30, 255]);
         assert_eq!(editor.document.pixels()[32], [200, 50, 30, 255]);
@@ -3289,6 +3315,55 @@ mod tests {
     }
 
     #[test]
+    fn background_move_publishes_latest_pixels_and_selection_together() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        let original = vec![
+            [10, 0, 0, 255],
+            [20, 0, 0, 255],
+            [30, 0, 0, 255],
+            [40, 0, 0, 255],
+        ];
+        editor.document = Document::from_pixels(4, 1, original.clone()).unwrap();
+        let selection = Selection {
+            x: 0,
+            y: 0,
+            width: 2,
+            height: 1,
+            mask: None,
+            ellipse: None,
+        };
+        editor.document.set_selection(Some(selection.clone()));
+        editor.document.begin("Move pixels");
+        editor.request_gesture_preview(Effect::Move(paint_rust::movement::Parameters {
+            dx: 1,
+            dy: 0,
+            copy: false,
+        }));
+        editor.request_gesture_preview(Effect::Move(paint_rust::movement::Parameters {
+            dx: 2,
+            dy: 0,
+            copy: false,
+        }));
+        editor.finish_stroke();
+        assert_eq!(editor.document.pixels(), original);
+        assert_eq!(editor.document.selection(), Some(selection.clone()));
+        wait_for_files(&mut editor, &ctx);
+        assert_eq!(
+            editor.document.pixels(),
+            &[[0; 4], [0; 4], [10, 0, 0, 255], [20, 0, 0, 255]]
+        );
+        assert_eq!(editor.document.selection().unwrap().x, 2);
+        assert_eq!(editor.document.history().count(), 1);
+        editor.undo();
+        assert_eq!(editor.document.pixels(), original);
+        assert_eq!(editor.document.selection(), Some(selection));
+        assert!(!editor.document.dirty());
+        editor.redo();
+        assert_eq!(editor.document.selection().unwrap().x, 2);
+    }
+
+    #[test]
     fn finishing_gradient_waits_for_latest_request_and_commits_one_edit() {
         let ctx = egui::Context::default();
         let mut editor = Editor::blank(&ctx);
@@ -3344,7 +3419,13 @@ mod tests {
 
     #[test]
     fn escape_during_drawing_gesture_discards_worker_and_pixels() {
-        for tool in [Tool::Gradient, Tool::Line, Tool::Rectangle, Tool::Ellipse] {
+        for tool in [
+            Tool::Gradient,
+            Tool::Line,
+            Tool::Rectangle,
+            Tool::Ellipse,
+            Tool::Move,
+        ] {
             let ctx = egui::Context::default();
             let mut editor = Editor::blank(&ctx);
             editor.tool = tool;

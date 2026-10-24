@@ -16,7 +16,7 @@ pub(super) enum Outcome {
     Exported(PathBuf),
     Transformed(Box<Document>, String),
     Selection(Selection),
-    Edited(Box<Document>, String),
+    Edited(Box<Document>, String, bool),
     History(Box<Document>, usize, bool),
 }
 
@@ -89,7 +89,7 @@ impl Editor {
             if !completed {
                 return Err(files::CANCELLED.into());
             }
-            Ok(Outcome::Edited(Box::new(document), label.into()))
+            Ok(Outcome::Edited(Box::new(document), label.into(), false))
         });
     }
 
@@ -103,7 +103,11 @@ impl Editor {
                 return Err(files::CANCELLED.into());
             }
             document.commit();
-            Ok(Outcome::Edited(Box::new(document), "Flood fill".into()))
+            Ok(Outcome::Edited(
+                Box::new(document),
+                "Flood fill".into(),
+                false,
+            ))
         });
     }
 
@@ -242,13 +246,18 @@ impl Editor {
                     Err(error) => self.status = format!("Could not {operation}: {error}"),
                 }
             }
-            Ok(Outcome::Edited(document, label)) => {
-                let selection = self.document.selection();
+            Ok(Outcome::Edited(document, label, moved)) => {
+                let selection = if moved {
+                    document.selection()
+                } else {
+                    self.document.selection()
+                };
+                let selection_changed = selection != self.document.selection();
                 match self.document.apply_transformed(*document, &label) {
                     Ok(changed) => {
                         self.document.set_selection(selection);
                         self.texture_dirty |= changed;
-                        self.status = if changed {
+                        self.status = if changed || selection_changed {
                             format!("{label} completed")
                         } else {
                             "Image unchanged".into()
