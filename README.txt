@@ -487,7 +487,7 @@ Temporary history files use streaming zlib compression with a fast setting. Read
 validate the compressed stream, exact decoded size and pixel checksum. On the
 four-layer 4096 x 4096 uniform-image benchmark, three states used about 3.8 MiB
 instead of 768 MiB. Compression ratios depend on image content; noisy images can
-remain close to their original size. No cross-state disk deduplication is used.
+remain close to their original size. Unchanged buffers are shared across stored states as described below.
 Validation: 134 Rust tests, strict Clippy and the dependency-notice check pass;
 round trips cover varied pixel bytes, transparent pixels and compressed corruption.
 
@@ -522,3 +522,16 @@ registry before claiming screen-reader workflow support.
 The normal desktop release starts successfully with the net.trelak.PaintRust
 window class. All 137 Rust tests, strict Clippy, four installer tests and the
 dependency-notice consistency check pass.
+
+Shared history buffers
+----------------------
+Disk history stores each distinct shared layer or selection-mask buffer once,
+with separate metadata for every state. Disk usage counts unique files rather
+than counting shared buffers once per state. Restored states reuse live decoded
+buffers; weak caches retain neither pixel data nor otherwise unused files. Failed
+multi-buffer writes retain the original snapshot and release newly created files.
+The four-layer 4096 x 4096 benchmark retains three edits in about 1.9 MiB rather
+than 3.8 MiB. Independently allocated buffers with identical contents are not
+content-deduplicated. Files are released after the last referring state disappears.
+Validation: 140 Rust tests and strict Clippy pass, including shared layer/mask
+storage, undo/redo, partial-write failure and obsolete redo-file cleanup.

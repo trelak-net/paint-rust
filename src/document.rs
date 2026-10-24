@@ -120,6 +120,7 @@ pub struct Document {
     pending: Option<Snapshot>,
     history_error: Option<String>,
     deferred_history: bool,
+    history_pool: history::Pool,
     revision: u64,
     next_revision: u64,
     saved_revision: u64,
@@ -184,6 +185,7 @@ impl Document {
             pending: None,
             history_error: None,
             deferred_history: false,
+            history_pool: history::Pool::default(),
             revision: 0,
             next_revision: 1,
             saved_revision: 0,
@@ -723,10 +725,11 @@ impl Document {
     }
 
     pub fn history_disk_bytes(&self) -> u64 {
+        let mut seen = HashSet::new();
         self.undo
             .iter()
             .chain(self.redo.iter())
-            .map(Entry::disk_bytes)
+            .map(|entry| entry.disk_bytes(&mut seen))
             .sum()
     }
 
@@ -784,7 +787,7 @@ impl Document {
             let Some(entry) = entry else {
                 break;
             };
-            if let Err(error) = entry.spill(&mut create) {
+            if let Err(error) = entry.spill(&mut self.history_pool, &mut create) {
                 self.history_error = Some(format!(
                     "Could not store undo history: {error}. History remains in RAM above its normal limit."
                 ));
@@ -822,7 +825,7 @@ impl Document {
             return false;
         };
         // Load and validate before touching the current document or either stack.
-        let target = match entry.load() {
+        let target = match entry.load(&mut self.history_pool) {
             Ok(target) => target,
             Err(error) => {
                 self.history_error = Some(format!(
