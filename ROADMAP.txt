@@ -39,7 +39,13 @@ Development roadmap
 [x] Store and restore disk-backed history outside the UI thread.
 [x] Compress temporary history streams losslessly to reduce storage volume.
 [ ] Share unchanged buffers across disk history states.
-[ ] Full screen-reader workflow audit and final distribution validation.
+[ ] Final distribution validation.
+[ ] Deferred until all other roadmap tasks are complete: resolve AT-SPI runtime
+    integration issues and perform the full screen-reader workflow audit.
+
+The AT-SPI runtime audit is intentionally deferred and does not block other
+implementation or distribution-validation work. Existing accessibility labels and
+the native bridge remain in place; full screen-reader support is not yet verified.
 
 Each completed increment receives regression checks and its own commit. Keep the
 source and artwork self-contained; preserve project files and unsaved user edits.

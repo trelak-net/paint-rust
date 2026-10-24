@@ -506,8 +506,12 @@ stale-base protection and regional/full compositing parity for all blend modes.
 
 Runtime accessibility audit status
 ----------------------------------
-The headless accessibility-tree test passes, but the system screen-reader audit
-remains blocked. In an isolated dbus-run-session, automatic org.a11y.Bus activation
+The system screen-reader audit and related AT-SPI runtime fixes are intentionally
+deferred until all other roadmap tasks are complete. They do not block other
+implementation or distribution-validation work. The existing native bridge and
+accessibility labels remain in place, and the headless accessibility-tree test
+passes. The runtime audit encountered the following environment issue:
+in an isolated dbus-run-session, automatic org.a11y.Bus activation
 failed with Permission denied. Starting its launcher directly allowed the bus to
 start, but org.a11y.atspi.Registry activation then failed because the isolated
 session could not activate org.freedesktop.systemd1. AccessKit's Unix adapter
