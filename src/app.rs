@@ -1358,11 +1358,11 @@ impl Editor {
                             dialog.anchor,
                             dialog.smooth,
                         );
-                        if self.transform_in_background("resize image", move |document| {
+                        if self.transform_in_background("resize image", move |document, cancel| {
                             if canvas {
-                                document.resize_canvas(width, height, anchor)
+                                document.resize_canvas_cancellable(width, height, anchor, cancel)
                             } else {
-                                document.resize_image(width, height, smooth)
+                                document.resize_image_cancellable(width, height, smooth, cancel)
                             }
                         }) {
                             keep = false;
@@ -1822,9 +1822,12 @@ impl Editor {
                     ] {
                         if ui.button(label).clicked() {
                             self.finish_stroke();
-                            self.transform_in_background("transform image", move |document| {
-                                document.reorient(operation)
-                            });
+                            self.transform_in_background(
+                                "transform image",
+                                move |document, cancel| {
+                                    document.reorient_cancellable(operation, cancel)
+                                },
+                            );
                             ui.close();
                         }
                     }
@@ -2969,7 +2972,10 @@ mod tests {
         editor.document = Document::new(4, 3, [20, 40, 60, 255]).unwrap();
         editor.document.invert();
         editor.document.mark_saved();
-        assert!(editor.transform_in_background("resize image", |doc| doc.resize_image(8, 6, true)));
+        assert!(
+            editor.transform_in_background("resize image", |doc, cancel| doc
+                .resize_image_cancellable(8, 6, true, cancel))
+        );
         assert_eq!((editor.document.width, editor.document.height), (4, 3));
         wait_for_files(&mut editor, &ctx);
         assert_eq!((editor.document.width, editor.document.height), (8, 6));
@@ -2977,7 +2983,10 @@ mod tests {
         editor.document.undo();
         assert!(!editor.document.dirty());
         assert_eq!((editor.document.width, editor.document.height), (4, 3));
-        assert!(editor.transform_in_background("resize image", |doc| doc.resize_image(0, 6, true)));
+        assert!(
+            editor.transform_in_background("resize image", |doc, cancel| doc
+                .resize_image_cancellable(0, 6, true, cancel))
+        );
         wait_for_files(&mut editor, &ctx);
         assert_eq!((editor.document.width, editor.document.height), (4, 3));
         assert!(!editor.document.dirty());
@@ -3100,6 +3109,35 @@ mod tests {
         assert_eq!(std::fs::read(&path).unwrap(), b"previous data");
         assert_eq!(editor.status, "Cancelled: save project");
     }
+    #[test]
+    fn cancelled_background_geometry_never_publishes_the_worker_image() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.document = Document::new(4, 3, [10, 20, 30, 255]).unwrap();
+        let (release, wait) = std::sync::mpsc::channel();
+        assert!(
+            editor.transform_in_background("resize image", move |document, cancel| {
+                wait.recv().unwrap();
+                document.resize_image_cancellable(8, 6, true, cancel)
+            })
+        );
+        editor
+            .file_job
+            .as_ref()
+            .unwrap()
+            .cancel
+            .as_ref()
+            .unwrap()
+            .store(true, std::sync::atomic::Ordering::Relaxed);
+        release.send(()).unwrap();
+        wait_for_files(&mut editor, &ctx);
+        assert_eq!((editor.document.width, editor.document.height), (4, 3));
+        assert_eq!(editor.document.pixels(), &[[10, 20, 30, 255]; 12]);
+        assert!(!editor.document.dirty());
+        assert!(!editor.document.can_undo());
+        assert_eq!(editor.status, "Cancelled: resize image");
+    }
+
     #[test]
     fn large_history_storage_and_navigation_publish_only_completed_work() {
         let ctx = egui::Context::default();

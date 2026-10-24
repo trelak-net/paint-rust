@@ -291,12 +291,14 @@ impl Editor {
     pub(super) fn transform_in_background(
         &mut self,
         operation: &'static str,
-        transform: impl FnOnce(&mut Document) -> Result<bool, String> + Send + 'static,
+        transform: impl FnOnce(&mut Document, &std::sync::atomic::AtomicBool) -> Result<bool, String>
+        + Send
+        + 'static,
     ) -> bool {
         self.finish_stroke();
         let mut snapshot = self.document.snapshot();
-        self.start_file_job(operation, move || {
-            transform(&mut snapshot)?;
+        self.start_cancellable_file_job(operation, move |cancel| {
+            transform(&mut snapshot, cancel)?;
             let label = snapshot
                 .history()
                 .next()

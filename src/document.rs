@@ -282,7 +282,8 @@ impl Document {
         label: &str,
         width: u32,
         height: u32,
-        transform: impl Fn(&[Pixel]) -> Vec<Pixel>,
+        cancel: &std::sync::atomic::AtomicBool,
+        transform: impl Fn(&[Pixel]) -> Option<Vec<Pixel>>,
     ) -> Result<bool, String> {
         Self::validate_size(width, height)?;
         if self.editing() {
@@ -293,7 +294,19 @@ impl Document {
         }
         self.begin(label);
         for layer in &mut self.layers {
-            layer.pixels = Arc::new(transform(&layer.pixels));
+            if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+                self.cancel();
+                return Err(crate::files::CANCELLED.into());
+            }
+            let Some(pixels) = transform(&layer.pixels) else {
+                self.cancel();
+                return Err(crate::files::CANCELLED.into());
+            };
+            layer.pixels = Arc::new(pixels);
+        }
+        if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+            self.cancel();
+            return Err(crate::files::CANCELLED.into());
         }
         self.width = width;
         self.height = height;
@@ -301,12 +314,30 @@ impl Document {
         Ok(self.commit())
     }
     pub fn resize_image(&mut self, width: u32, height: u32, smooth: bool) -> Result<bool, String> {
+        self.resize_image_cancellable(
+            width,
+            height,
+            smooth,
+            &std::sync::atomic::AtomicBool::new(false),
+        )
+    }
+
+    pub fn resize_image_cancellable(
+        &mut self,
+        width: u32,
+        height: u32,
+        smooth: bool,
+        cancel: &std::sync::atomic::AtomicBool,
+    ) -> Result<bool, String> {
+        if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+            return Err(crate::files::CANCELLED.into());
+        }
         if (width, height) == (self.width, self.height) {
             return Ok(false);
         }
         let old = (self.width, self.height);
-        self.transform_layers("Resize image", width, height, |pixels| {
-            crate::transform::resize(pixels, old, (width, height), smooth)
+        self.transform_layers("Resize image", width, height, cancel, |pixels| {
+            crate::transform::resize_cancellable(pixels, old, (width, height), smooth, cancel)
         })
     }
     pub fn resize_canvas(
@@ -315,6 +346,24 @@ impl Document {
         height: u32,
         anchor: usize,
     ) -> Result<bool, String> {
+        self.resize_canvas_cancellable(
+            width,
+            height,
+            anchor,
+            &std::sync::atomic::AtomicBool::new(false),
+        )
+    }
+
+    pub fn resize_canvas_cancellable(
+        &mut self,
+        width: u32,
+        height: u32,
+        anchor: usize,
+        cancel: &std::sync::atomic::AtomicBool,
+    ) -> Result<bool, String> {
+        if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+            return Err(crate::files::CANCELLED.into());
+        }
         if anchor > 8 {
             return Err("Invalid canvas anchor.".into());
         }
@@ -322,11 +371,22 @@ impl Document {
             return Ok(false);
         }
         let old = (self.width, self.height);
-        self.transform_layers("Resize canvas", width, height, |pixels| {
-            crate::transform::canvas(pixels, old, (width, height), anchor)
+        self.transform_layers("Resize canvas", width, height, cancel, |pixels| {
+            crate::transform::canvas_cancellable(pixels, old, (width, height), anchor, cancel)
         })
     }
     pub fn reorient(&mut self, operation: crate::transform::Orientation) -> Result<bool, String> {
+        self.reorient_cancellable(operation, &std::sync::atomic::AtomicBool::new(false))
+    }
+
+    pub fn reorient_cancellable(
+        &mut self,
+        operation: crate::transform::Orientation,
+        cancel: &std::sync::atomic::AtomicBool,
+    ) -> Result<bool, String> {
+        if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+            return Err(crate::files::CANCELLED.into());
+        }
         use crate::transform::Orientation;
         let (width, height) = (self.width, self.height);
         let new = if matches!(
@@ -344,8 +404,8 @@ impl Document {
             Orientation::FlipHorizontal => "Flip horizontal",
             Orientation::FlipVertical => "Flip vertical",
         };
-        self.transform_layers(label, new.0, new.1, |pixels| {
-            crate::transform::orient(pixels, width, height, operation)
+        self.transform_layers(label, new.0, new.1, cancel, |pixels| {
+            crate::transform::orient_cancellable(pixels, width, height, operation, cancel)
         })
     }
 
@@ -1287,4 +1347,39 @@ fn blend_layer(dst: Pixel, src: Pixel, opacity: u8, mode: BlendMode) -> Pixel {
     }
     result[3] = (alpha * 255.0).round().clamp(0.0, 255.0) as u8;
     result
+}
+
+#[cfg(test)]
+mod transform_tests {
+    use super::*;
+    use std::{
+        cell::Cell,
+        sync::atomic::{AtomicBool, Ordering},
+    };
+
+    #[test]
+    fn cancellation_after_first_layer_restores_the_entire_transaction() {
+        let mut doc = Document::new(3, 2, [10, 20, 30, 255]).unwrap();
+        doc.add_layer(true);
+        doc.set_selection(Some(Selection::elliptical(0, 0, 2, 2)));
+        doc.mark_saved();
+        let before = doc.snapshot();
+        let selection = doc.selection();
+        let history = doc.history().count();
+        let cancel = AtomicBool::new(false);
+        let calls = Cell::new(0);
+        let result = doc.transform_layers("Resize", 4, 3, &cancel, |_| {
+            calls.set(calls.get() + 1);
+            cancel.store(true, Ordering::Relaxed);
+            Some(vec![[0; 4]; 12])
+        });
+        assert_eq!(result, Err(crate::files::CANCELLED.into()));
+        assert_eq!(calls.get(), 1);
+        assert_eq!((doc.width, doc.height), (3, 2));
+        assert!(doc.layers() == before.layers());
+        assert_eq!(doc.selection(), selection);
+        assert_eq!(doc.history().count(), history);
+        assert!(!doc.editing());
+        assert!(!doc.dirty());
+    }
 }

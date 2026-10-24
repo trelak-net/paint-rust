@@ -183,3 +183,50 @@ fn area_reduction_preserves_uniform_color_for_non_integer_scales() {
         assert!(doc.pixels().iter().all(|p| *p == [12, 90, 234, 137]));
     }
 }
+
+#[test]
+fn cancelled_geometry_keeps_dimensions_layers_selection_and_saved_state() {
+    use std::sync::atomic::AtomicBool;
+    let mut doc = numbered();
+    doc.set_selection(Some(Selection::elliptical(0, 0, 2, 2)));
+    let selection = doc.selection();
+    let before = doc.snapshot();
+    let cancel = AtomicBool::new(true);
+    assert!(doc.resize_image_cancellable(8, 6, true, &cancel).is_err());
+    assert!(doc.resize_canvas_cancellable(8, 6, 4, &cancel).is_err());
+    assert!(
+        doc.reorient_cancellable(Orientation::Clockwise, &cancel)
+            .is_err()
+    );
+    assert_eq!((doc.width, doc.height), (3, 2));
+    assert!(doc.layers() == before.layers());
+    assert_eq!(doc.selection(), selection);
+    assert!(!doc.dirty());
+    assert!(!doc.can_undo());
+}
+
+#[test]
+fn area_reduction_observes_cancellation_from_another_thread() {
+    use std::sync::{
+        Arc, Barrier,
+        atomic::{AtomicBool, Ordering},
+    };
+    let pixels = vec![[100, 120, 140, 255]; 2048 * 2048];
+    let cancel = Arc::new(AtomicBool::new(false));
+    let ready = Arc::new(Barrier::new(2));
+    let worker_cancel = cancel.clone();
+    let worker_ready = ready.clone();
+    let worker = std::thread::spawn(move || {
+        worker_ready.wait();
+        paint_rust::transform::resize_cancellable(
+            &pixels,
+            (2048, 2048),
+            (1, 1),
+            true,
+            &worker_cancel,
+        )
+    });
+    ready.wait();
+    cancel.store(true, Ordering::Relaxed);
+    assert!(worker.join().unwrap().is_none());
+}

@@ -25,6 +25,7 @@ Development roadmap
 [x] Background recovery snapshots and interrupted-session recovery.
 [x] Background open/save/export/import/recovery with guarded completion.
 [x] Background geometry computation with history-preserving publication.
+[x] Cancellable resize, canvas resize, rotation and mirroring.
 [x] Background canvas compositing with coalescing and stale-result protection.
 [x] Incremental changed-region compositing and partial texture uploads.
 [x] Cooperative cancellation of project saving and raster export.

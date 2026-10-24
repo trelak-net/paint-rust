@@ -535,3 +535,14 @@ than 3.8 MiB. Independently allocated buffers with identical contents are not
 content-deduplicated. Files are released after the last referring state disappears.
 Validation: 140 Rust tests and strict Clippy pass, including shared layer/mask
 storage, undo/redo, partial-write failure and obsolete redo-file cleanup.
+
+Cancellable image geometry
+--------------------------
+Image resize, canvas resize, rotation and mirroring now offer cancellation in the
+Working dialog. Kernels check cancellation between rows and periodically within
+wide rows; area downsampling also checks while visiting source pixels. Cancelling
+after a layer has been computed restores the whole original transaction, including
+selection, dimensions, active layer and history. A result already completed when
+cancellation arrives may still be published.
+Validation: 144 Rust tests and strict Clippy pass, including rollback after the
+first layer, cancellation from another thread and guarded background publication.
