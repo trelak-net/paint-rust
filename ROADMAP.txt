@@ -30,7 +30,12 @@ Development roadmap
 [x] PNG and lossless WebP raster export with transparency.
 [ ] Large-document performance and cancellation of remaining long operations.
 [x] Linux user-local launcher, icons, MIME registration and installation helper.
-[ ] Accessibility, distribution notices, packaging and release validation.
+[x] Native accessibility bridge and explicit palette/layer/canvas labels.
+[x] Pinned Linux dependency and standard-library notices with consistency checks.
+[x] Cancellable background flood fill, flattening and color inversion.
+[x] Large-image CPU measurements and non-starving active-stroke previews.
+[ ] Retain undo for documents whose snapshots exceed the RAM history budget.
+[ ] Full screen-reader workflow audit and final distribution validation.
 
 Each completed increment receives regression checks and its own commit. Keep the
 source and artwork self-contained; preserve project files and unsaved user edits.

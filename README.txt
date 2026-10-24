@@ -435,3 +435,12 @@ took about 23 ms, while the following frame without a new snapshot took less tha
 uploads and full-image compositing remain; tiled rendering is not implemented.
 Validation: 125 Rust tests and strict Clippy pass, including preview scheduling
 while a stroke is active and publication after it ends.
+
+Known large-document history limitation
+---------------------------------------
+The 128 MiB history cap currently counts unique buffers retained by history,
+including buffers also referenced by the active document. A snapshot larger than
+that cap is evicted immediately. In particular, a four-layer 4096 x 4096 document
+can lose even its most recent undo step, and flattening can leave no undo entry.
+The performance example exposes this case. Large-document history needs a storage
+policy change before it can guarantee undo for all supported document sizes.
