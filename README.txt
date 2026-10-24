@@ -503,3 +503,18 @@ On the four-layer 4096 x 4096 benchmark, compositing a 64 x 64 region took about
 GPU upload time. Large edits still use large rectangles; this is not tile storage.
 Validation: 137 Rust tests and strict Clippy pass, including patch reconstruction,
 stale-base protection and regional/full compositing parity for all blend modes.
+
+Runtime accessibility audit status
+----------------------------------
+The headless accessibility-tree test passes, but the system screen-reader audit
+remains blocked. In an isolated dbus-run-session, automatic org.a11y.Bus activation
+failed with Permission denied. Starting its launcher directly allowed the bus to
+start, but org.a11y.atspi.Registry activation then failed because the isolated
+session could not activate org.freedesktop.systemd1. AccessKit's Unix adapter
+0.17.2 panicked in its accessibility worker on that registry error, and the editor
+was not discoverable through AT-SPI. This does not establish behavior in a working
+accessible desktop session. Repeat the runtime audit with a functioning AT-SPI
+registry before claiming screen-reader workflow support.
+The normal desktop release starts successfully with the net.trelak.PaintRust
+window class. All 137 Rust tests, strict Clippy, four installer tests and the
+dependency-notice consistency check pass.
