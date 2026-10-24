@@ -23,7 +23,8 @@ Development roadmap
 [x] Background open/save/export/import/recovery with guarded completion.
 [x] Background geometry computation with history-preserving publication.
 [x] Background canvas compositing with coalescing and stale-result protection.
-[ ] Large-document performance and cancellable long operations.
+[x] Cooperative cancellation of project saving and PNG export.
+[ ] Large-document performance and cancellation of remaining long operations.
 [x] Linux user-local launcher, icons, MIME registration and installation helper.
 [ ] Accessibility, distribution notices, packaging and release validation.
 

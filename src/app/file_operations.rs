@@ -13,6 +13,7 @@ pub(super) enum Outcome {
 pub(super) struct FileJob {
     receiver: Receiver<Result<Outcome, String>>,
     operation: &'static str,
+    pub(super) cancel: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
 }
 
 impl Editor {
@@ -29,6 +30,7 @@ impl Editor {
         self.file_job = Some(FileJob {
             receiver,
             operation,
+            cancel: None,
         });
         self.status = format!("Working: {operation}…");
         std::thread::spawn(move || {
@@ -37,6 +39,31 @@ impl Editor {
             let _ = sender.send(result);
             ctx.request_repaint();
         });
+        true
+    }
+
+    pub(super) fn start_cancellable_file_job(
+        &mut self,
+        operation: &'static str,
+        work: impl FnOnce(&std::sync::atomic::AtomicBool) -> Result<Outcome, String> + Send + 'static,
+    ) -> bool {
+        use std::sync::{
+            Arc,
+            atomic::{AtomicBool, Ordering},
+        };
+        let cancel = Arc::new(AtomicBool::new(false));
+        let worker_cancel = cancel.clone();
+        if !self.start_file_job(operation, move || {
+            let result = work(&worker_cancel);
+            if result.is_err() && worker_cancel.load(Ordering::Relaxed) {
+                Err(files::CANCELLED.into())
+            } else {
+                result
+            }
+        }) {
+            return false;
+        }
+        self.file_job.as_mut().expect("job started").cancel = Some(cancel);
         true
     }
 
@@ -122,7 +149,11 @@ impl Editor {
                 );
             }
             Err(error) => {
-                self.status = format!("Could not {operation}: {error}");
+                self.status = if error == files::CANCELLED {
+                    format!("Cancelled: {operation}")
+                } else {
+                    format!("Could not {operation}: {error}")
+                };
                 // A failed save must not proceed to New/Open/Close.
                 if let Some(action) = self.after_save.take() {
                     self.pending = Some(action);
@@ -151,8 +182,8 @@ impl Editor {
 
     pub(super) fn save_to_path(&mut self, path: PathBuf) -> bool {
         let snapshot = self.document.snapshot();
-        self.start_file_job("save project", move || {
-            files::save_project(&snapshot, &path)?;
+        self.start_cancellable_file_job("save project", move |cancel| {
+            files::save_project_cancellable(&snapshot, &path, cancel)?;
             Ok(Outcome::Saved(path))
         })
     }

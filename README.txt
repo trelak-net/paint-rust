@@ -275,8 +275,8 @@ decoding run off the UI thread. Editing is temporarily disabled while a file job
 is active; the window continues repainting a busy indicator. Closing waits for
 the operation to finish. A Save-before-New/Open/Close action proceeds only after
 a successful write; failures keep the document and unsaved-changes choice. Export
-does not mark a project saved. Native file pickers remain modal. File operations
-currently have no cancellation or byte progress.
+does not mark a project saved. Native file pickers remain modal. Project save and PNG export can be cancelled before atomic replacement; other
+file operations currently have no cancellation or byte progress.
 
 Navigation validation: 77 tests pass. Pointer-anchored zoom preserves the image
 coordinate beneath the pointer except where canvas edges clamp scrolling. Middle
@@ -316,3 +316,11 @@ Generation checks discard stale results. The canvas displays the last completed
 preview while a new one is computed; results from an older image size are hidden.
 Texture upload remains on the UI thread. A native release smoke test confirmed
 canvas display and the net.trelak.PaintRust window class.
+
+Save cancellation validation: 94 Rust tests pass. Project saving and PNG export
+check cancellation during pixel conversion, encoding writes and before atomic
+replacement. Cancellation keeps the previous destination and removes temporary
+output. A cancelled Save-before-Close/New/Open returns to the unsaved-changes
+choice. If replacement has already completed, the operation reports success.
+Cancellation is cooperative; an in-progress encoder or filesystem call can take
+time to reach its next checkpoint.

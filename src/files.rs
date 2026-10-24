@@ -4,6 +4,7 @@ use std::{
     fs::File,
     io::{BufReader, BufWriter, Cursor, Read, Write},
     path::Path,
+    sync::atomic::{AtomicBool, Ordering},
 };
 
 const PROJECT_MAGIC: &[u8; 8] = b"PRUST\0\x02\0";
@@ -41,10 +42,41 @@ pub fn open(path: &Path) -> Result<Document, String> {
     )
 }
 
+pub const CANCELLED: &str = "Operation cancelled";
+
+fn check_cancel(cancel: &AtomicBool) -> Result<(), String> {
+    if cancel.load(Ordering::Relaxed) {
+        Err(CANCELLED.into())
+    } else {
+        Ok(())
+    }
+}
+
+struct CancellableWriter<'a, W> {
+    inner: W,
+    cancel: &'a AtomicBool,
+}
+impl<W: Write> Write for CancellableWriter<'_, W> {
+    fn write(&mut self, buffer: &[u8]) -> std::io::Result<usize> {
+        if self.cancel.load(Ordering::Relaxed) {
+            return Err(std::io::Error::other(CANCELLED));
+        }
+        self.inner.write(buffer)
+    }
+    fn flush(&mut self) -> std::io::Result<()> {
+        if self.cancel.load(Ordering::Relaxed) {
+            return Err(std::io::Error::other(CANCELLED));
+        }
+        self.inner.flush()
+    }
+}
+
 fn write_atomic(
     path: &Path,
+    cancel: &AtomicBool,
     write: impl FnOnce(&mut File) -> Result<(), String>,
 ) -> Result<(), String> {
+    check_cancel(cancel)?;
     if let Ok(metadata) = std::fs::metadata(path)
         && metadata.permissions().readonly()
     {
@@ -57,6 +89,7 @@ fn write_atomic(
     let mut temp = tempfile::NamedTempFile::new_in(parent).map_err(|e| e.to_string())?;
     write(temp.as_file_mut())?;
     temp.as_file().sync_all().map_err(|e| e.to_string())?;
+    check_cancel(cancel)?;
     temp.persist(path).map_err(|e| e.error.to_string())?;
     Ok(())
 }
@@ -66,29 +99,61 @@ fn encode_png(
     width: u32,
     height: u32,
     writer: impl Write,
+    cancel: &AtomicBool,
 ) -> Result<(), String> {
-    let bytes: Vec<u8> = pixels.iter().flatten().copied().collect();
-    PngEncoder::new(writer)
-        .write_image(&bytes, width, height, image::ExtendedColorType::Rgba8)
-        .map_err(|e| e.to_string())
+    check_cancel(cancel)?;
+    let mut bytes = Vec::with_capacity(pixels.len() * 4);
+    for chunk in pixels.chunks(4096) {
+        check_cancel(cancel)?;
+        bytes.extend(chunk.iter().flatten().copied());
+    }
+    PngEncoder::new(CancellableWriter {
+        inner: writer,
+        cancel,
+    })
+    .write_image(&bytes, width, height, image::ExtendedColorType::Rgba8)
+    .map_err(|e| e.to_string())
 }
 
 pub fn save_png(document: &Document, path: &Path) -> Result<(), String> {
-    write_atomic(path, |file| {
-        let mut writer = BufWriter::new(file);
+    save_png_cancellable(document, path, &AtomicBool::new(false))
+}
+
+pub fn save_png_cancellable(
+    document: &Document,
+    path: &Path,
+    cancel: &AtomicBool,
+) -> Result<(), String> {
+    write_atomic(path, cancel, |file| {
+        let mut writer = BufWriter::new(CancellableWriter {
+            inner: file,
+            cancel,
+        });
         encode_png(
-            &document.composite(),
+            &document.composite_cancellable(cancel).ok_or(CANCELLED)?,
             document.width,
             document.height,
             &mut writer,
+            cancel,
         )?;
         writer.flush().map_err(|e| e.to_string())
     })
 }
 
 pub fn save_project(document: &Document, path: &Path) -> Result<(), String> {
-    write_atomic(path, |file| {
-        let mut writer = BufWriter::new(file);
+    save_project_cancellable(document, path, &AtomicBool::new(false))
+}
+
+pub fn save_project_cancellable(
+    document: &Document,
+    path: &Path,
+    cancel: &AtomicBool,
+) -> Result<(), String> {
+    write_atomic(path, cancel, |file| {
+        let mut writer = BufWriter::new(CancellableWriter {
+            inner: file,
+            cancel,
+        });
         writer.write_all(PROJECT_MAGIC).map_err(|e| e.to_string())?;
         for value in [
             document.width,
@@ -101,6 +166,7 @@ pub fn save_project(document: &Document, path: &Path) -> Result<(), String> {
                 .map_err(|e| e.to_string())?;
         }
         for layer in document.layers() {
+            check_cancel(cancel)?;
             writer
                 .write_all(&(layer.name.len() as u32).to_le_bytes())
                 .map_err(|e| e.to_string())?;
@@ -115,7 +181,13 @@ pub fn save_project(document: &Document, path: &Path) -> Result<(), String> {
                 ])
                 .map_err(|e| e.to_string())?;
             let mut png = Vec::new();
-            encode_png(layer.pixels(), document.width, document.height, &mut png)?;
+            encode_png(
+                layer.pixels(),
+                document.width,
+                document.height,
+                &mut png,
+                cancel,
+            )?;
             writer
                 .write_all(&(png.len() as u64).to_le_bytes())
                 .map_err(|e| e.to_string())?;
@@ -203,4 +275,36 @@ pub fn open_project(path: &Path) -> Result<Document, String> {
         return Err("Unexpected data after the project.".into());
     }
     Document::from_layers(width, height, layers, active)
+}
+
+#[cfg(test)]
+mod cancellation_tests {
+    use super::*;
+    #[test]
+    fn cancellation_before_atomic_replace_keeps_old_file_and_removes_temporary() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("saved.prust");
+        std::fs::write(&path, b"previous version").unwrap();
+        let cancel = AtomicBool::new(false);
+        let result = write_atomic(&path, &cancel, |file| {
+            file.write_all(b"replacement version").unwrap();
+            cancel.store(true, Ordering::Relaxed);
+            Ok(())
+        });
+        assert_eq!(result.unwrap_err(), CANCELLED);
+        assert_eq!(std::fs::read(&path).unwrap(), b"previous version");
+        assert_eq!(std::fs::read_dir(directory.path()).unwrap().count(), 1);
+    }
+
+    #[test]
+    fn cancellation_writer_ends_write_all_without_retrying_interrupted_writes() {
+        let cancel = AtomicBool::new(true);
+        let mut buffer = Vec::new();
+        let mut writer = CancellableWriter {
+            inner: &mut buffer,
+            cancel: &cancel,
+        };
+        assert!(writer.write_all(b"data").is_err());
+        assert!(buffer.is_empty());
+    }
 }

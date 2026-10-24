@@ -249,8 +249,8 @@ impl Editor {
             return;
         }
         let snapshot = self.document.snapshot();
-        self.start_file_job("export image", move || {
-            files::save_png(&snapshot, &path)?;
+        self.start_cancellable_file_job("export image", move |cancel| {
+            files::save_png_cancellable(&snapshot, &path, cancel)?;
             Ok(Outcome::Exported(path))
         });
     }
@@ -938,6 +938,20 @@ impl Editor {
                         ui.spinner();
                         ui.label(&self.status);
                     });
+                    if let Some(cancel) = self.file_job.as_ref().and_then(|job| job.cancel.as_ref())
+                    {
+                        use std::sync::atomic::Ordering;
+                        if ui
+                            .add_enabled(
+                                !cancel.load(Ordering::Relaxed),
+                                egui::Button::new("Cancel"),
+                            )
+                            .clicked()
+                        {
+                            cancel.store(true, Ordering::Relaxed);
+                            self.status = "Cancelling operation…".into();
+                        }
+                    }
                 });
             return;
         }
@@ -2505,5 +2519,40 @@ mod tests {
         assert_eq!(editor.document.selection().unwrap().x, 12);
         assert_eq!(editor.document.pixels()[31], [200, 50, 30, 255]);
         assert_eq!(editor.document.pixels()[32], [200, 50, 30, 255]);
+    }
+    #[test]
+    fn cancelled_save_keeps_document_dirty_and_does_not_run_close_followup() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.document = Document::new(4, 4, [255; 4]).unwrap();
+        editor.document.invert();
+        let snapshot = editor.document.snapshot();
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("saved.prust");
+        std::fs::write(&path, b"previous data").unwrap();
+        let worker_path = path.clone();
+        let (release, wait) = std::sync::mpsc::channel();
+        editor.start_cancellable_file_job("save project", move |cancel| {
+            wait.recv().unwrap();
+            files::save_project_cancellable(&snapshot, &worker_path, cancel)?;
+            Ok(Outcome::Saved(worker_path))
+        });
+        editor.after_save = Some(Action::Close);
+        editor
+            .file_job
+            .as_ref()
+            .unwrap()
+            .cancel
+            .as_ref()
+            .unwrap()
+            .store(true, std::sync::atomic::Ordering::Relaxed);
+        release.send(()).unwrap();
+        wait_for_files(&mut editor, &ctx);
+        assert!(editor.document.dirty());
+        assert!(!editor.allow_close);
+        assert!(matches!(editor.pending, Some(Action::Close)));
+        assert!(editor.path.is_none());
+        assert_eq!(std::fs::read(&path).unwrap(), b"previous data");
+        assert_eq!(editor.status, "Cancelled: save project");
     }
 }
