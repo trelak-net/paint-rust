@@ -677,6 +677,23 @@ impl Document {
         }
     }
 
+    pub fn shared_pixels(&self) -> Arc<Vec<Pixel>> {
+        self.layers[self.active].pixels.clone()
+    }
+    pub fn publish_preview(&mut self, pixels: Vec<Pixel>) -> Result<(), String> {
+        if pixels.len() != self.width as usize * self.height as usize {
+            return Err("Invalid preview dimensions.".into());
+        }
+        let before = self
+            .pending
+            .as_ref()
+            .ok_or("No active preview transaction")?;
+        self.layers = before.layers.clone();
+        self.active = before.active;
+        self.layers[self.active].pixels = Arc::new(pixels);
+        Ok(())
+    }
+
     pub fn preview_text(&mut self, style: crate::text::TextStyle<'_>) -> Result<(), String> {
         if !style.size.is_finite()
             || style.size < 1.0

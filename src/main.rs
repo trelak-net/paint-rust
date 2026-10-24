@@ -2,6 +2,7 @@ mod app;
 mod appearance;
 mod clipboard;
 mod icons;
+mod preview;
 
 fn main() -> eframe::Result {
     let icon = image::load_from_memory(include_bytes!("../assets/app-icon.png"))

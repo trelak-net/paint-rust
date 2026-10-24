@@ -11,7 +11,8 @@ Development roadmap
 [x] Raster text with editable preview.
 [ ] Additional selection tools and transforms.
 [x] Eight layer blend modes with project persistence.
-[ ] Adjustments and effects.
+[x] Brightness/contrast, saturation, grayscale, sepia and box blur previews.
+[ ] Additional effects and gradient tools.
 [ ] Background processing, recovery and large-document performance.
 [ ] Desktop integration, accessibility, packaging and release validation.
 

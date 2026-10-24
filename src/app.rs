@@ -1,5 +1,6 @@
 use crate::icons::Icon;
 use eframe::egui::{self, Color32, Key, Pos2, Rect, Sense, TextureHandle, TextureOptions, Vec2};
+use paint_rust::effects::Effect;
 use paint_rust::transform::Orientation;
 use paint_rust::{
     document::{BlendMode, Document, Selection, Shape, ShapeStyle},
@@ -46,6 +47,11 @@ struct TextDialog {
     focus: bool,
 }
 
+struct EffectDialog {
+    effect: Effect,
+    preview: crate::preview::EffectPreview,
+}
+
 pub struct Editor {
     document: Document,
     texture: Option<TextureHandle>,
@@ -65,6 +71,7 @@ pub struct Editor {
     layer_properties: Option<(String, u8, BlendMode)>,
     resize_dialog: Option<ResizeDialog>,
     text_dialog: Option<TextDialog>,
+    effect_dialog: Option<EffectDialog>,
     new_width: u32,
     new_height: u32,
     transparent: bool,
@@ -106,6 +113,7 @@ impl Editor {
             layer_properties: None,
             resize_dialog: None,
             text_dialog: None,
+            effect_dialog: None,
             new_width: 960,
             new_height: 640,
             transparent: false,
@@ -326,7 +334,7 @@ impl Editor {
     }
 
     fn finish_stroke(&mut self) {
-        if self.text_dialog.is_some() {
+        if self.text_dialog.is_some() || self.effect_dialog.is_some() {
             return;
         }
         if self.document.editing() {
@@ -922,6 +930,80 @@ impl Editor {
                 self.shape_origin = None;
             }
         }
+        if let Some(mut dialog) = self.effect_dialog.take() {
+            let mut keep = true;
+            if let Some(pixels) = dialog.preview.poll() {
+                match self.document.publish_preview(pixels) {
+                    Ok(()) => self.texture_dirty = true,
+                    Err(error) => self.status = error,
+                }
+            }
+            if ctx.input(|i| i.key_pressed(Key::Escape)) {
+                self.document.cancel();
+                self.texture_dirty = true;
+                keep = false;
+            } else {
+                egui::Window::new(dialog.effect.name())
+                    .collapsible(false)
+                    .resizable(false)
+                    .show(ctx, |ui| {
+                        let mut changed = false;
+                        match &mut dialog.effect {
+                            Effect::BrightnessContrast {
+                                brightness,
+                                contrast,
+                            } => {
+                                changed |= ui
+                                    .add(
+                                        egui::Slider::new(brightness, -100..=100)
+                                            .text("Brightness"),
+                                    )
+                                    .changed();
+                                changed |= ui
+                                    .add(egui::Slider::new(contrast, -100..=100).text("Contrast"))
+                                    .changed();
+                            }
+                            Effect::Saturation(amount) => {
+                                changed |= ui
+                                    .add(egui::Slider::new(amount, 0.0..=2.0).text("Saturation"))
+                                    .changed();
+                            }
+                            Effect::BoxBlur(radius) => {
+                                changed |= ui
+                                    .add(egui::Slider::new(radius, 0..=32).text("Radius (px)"))
+                                    .changed();
+                            }
+                            _ => {
+                                ui.label("Preview on the active layer");
+                            }
+                        }
+                        if changed {
+                            dialog.preview.request(dialog.effect);
+                        }
+                        if !dialog.preview.ready {
+                            ui.label("Rendering preview…");
+                        }
+                        ui.horizontal(|ui| {
+                            if ui
+                                .add_enabled(dialog.preview.ready, egui::Button::new("Apply"))
+                                .clicked()
+                            {
+                                self.document.commit();
+                                self.texture_dirty = true;
+                                keep = false;
+                            }
+                            if ui.button("Cancel").clicked() {
+                                self.document.cancel();
+                                self.texture_dirty = true;
+                                keep = false;
+                            }
+                        });
+                    });
+            }
+            if keep {
+                self.effect_dialog = Some(dialog);
+            }
+        }
         if self.new_dialog {
             egui::Window::new("New image")
                 .collapsible(false)
@@ -974,6 +1056,11 @@ impl Editor {
 
 impl Editor {
     fn show(&mut self, ctx: &egui::Context) {
+        if ctx.input(|i| i.viewport().close_requested()) && self.effect_dialog.is_some() {
+            self.effect_dialog = None;
+            self.document.cancel();
+            self.texture_dirty = true;
+        }
         if ctx.input(|i| i.viewport().close_requested()) && self.text_dialog.is_some() {
             self.text_dialog = None;
             self.document.commit();
@@ -1002,7 +1089,8 @@ impl Editor {
             && !self.new_dialog
             && self.layer_properties.is_none()
             && self.resize_dialog.is_none()
-            && self.text_dialog.is_none();
+            && self.text_dialog.is_none()
+            && self.effect_dialog.is_none();
         if enabled {
             self.shortcuts(ctx);
         }
@@ -1010,7 +1098,8 @@ impl Editor {
             && !self.new_dialog
             && self.layer_properties.is_none()
             && self.resize_dialog.is_none()
-            && self.text_dialog.is_none();
+            && self.text_dialog.is_none()
+            && self.effect_dialog.is_none();
         let name = self
             .path
             .as_ref()
@@ -1156,6 +1245,33 @@ impl Editor {
                         self.document.crop_to_selection();
                         self.texture_dirty = true;
                         ui.close();
+                    }
+                });
+                ui.menu_button("Adjustments", |ui| {
+                    for effect in [
+                        Effect::BrightnessContrast {
+                            brightness: 0,
+                            contrast: 0,
+                        },
+                        Effect::Saturation(1.0),
+                        Effect::Grayscale,
+                        Effect::Sepia,
+                        Effect::BoxBlur(2),
+                    ] {
+                        if ui.button(effect.name()).clicked() {
+                            self.finish_stroke();
+                            let preview = crate::preview::EffectPreview::new(
+                                ctx.clone(),
+                                self.document.shared_pixels(),
+                                self.document.width,
+                                self.document.height,
+                                self.document.selection(),
+                                effect,
+                            );
+                            self.document.begin(effect.name());
+                            self.effect_dialog = Some(EffectDialog { effect, preview });
+                            ui.close();
+                        }
                     }
                 });
                 if ui.add(Icon::Invert.button("Invert colors")).clicked() {
@@ -1651,6 +1767,53 @@ mod tests {
         );
         assert!(editor.text_dialog.is_none());
         assert!(!editor.document.editing());
+        assert!(!editor.document.dirty());
+        assert!(editor.document.pixels().iter().all(|p| *p == [255; 4]));
+    }
+
+    #[test]
+    fn effect_preview_is_not_committed_by_idle_frames_and_escape_cancels() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        frame(&mut editor, &ctx, vec![]);
+        let effect = Effect::BrightnessContrast {
+            brightness: -50,
+            contrast: 0,
+        };
+        let preview = crate::preview::EffectPreview::new(
+            ctx.clone(),
+            editor.document.shared_pixels(),
+            editor.document.width,
+            editor.document.height,
+            None,
+            effect,
+        );
+        editor.document.begin(effect.name());
+        editor.effect_dialog = Some(EffectDialog { effect, preview });
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        loop {
+            frame(&mut editor, &ctx, vec![]);
+            if editor.effect_dialog.as_ref().unwrap().preview.ready {
+                break;
+            }
+            assert!(std::time::Instant::now() < deadline);
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+        assert!(editor.document.dirty());
+        assert!(editor.document.editing());
+        assert!(!editor.document.can_undo());
+        frame(
+            &mut editor,
+            &ctx,
+            vec![egui::Event::Key {
+                key: Key::Escape,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers::NONE,
+            }],
+        );
+        assert!(editor.effect_dialog.is_none());
         assert!(!editor.document.dirty());
         assert!(editor.document.pixels().iter().all(|p| *p == [255; 4]));
     }

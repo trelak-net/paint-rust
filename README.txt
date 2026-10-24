@@ -27,6 +27,7 @@ Features
 - Fill a contiguous area of exactly matching RGBA pixels.
 - Pick a color from the canvas, edit RGBA values, or use palette swatches.
 - Invert RGB while preserving alpha.
+- Preview brightness/contrast, saturation, grayscale, sepia and alpha-aware box blur.
 - Draw lines and outlined/filled rectangles or ellipses with cancellable previews.
 - Select a rectangular area, limit edits to it, delete pixels or crop all layers.
 - Resize all layers, change canvas size with a nine-position anchor, rotate or mirror.
@@ -182,3 +183,10 @@ Difference and Add are available in Layer properties. Blend calculations use
 encoded RGB with explicit source/backdrop alpha. Project version 2 preserves the
 mode per layer; version 1 projects remain readable with Normal mode. Unknown
 blend-mode identifiers are rejected rather than silently changed.
+
+Adjustment validation: 51 tests pass. A dedicated preview worker coalesces requests,
+cancels obsolete calculations and publishes only the latest generation. Apply is
+disabled until that generation is ready. Cancel/Escape restores original pixels.
+Effects use a frozen active-layer buffer and respect the selection. The blur uses
+a separable box kernel and premultiplied alpha. Full layer compositing and texture
+upload still happen on the UI thread; this is not yet the final performance path.
