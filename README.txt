@@ -130,10 +130,11 @@ Current boundaries
 ------------------
 This is an initial application, not a complete graphics suite. Pressure-sensitive
 input is not implemented yet. Free transforms provide numeric controls and on-canvas handles.
-File decoding/encoding, recovery copies, effect previews and image/canvas resizing,
-rotation, mirroring and layer compositing run in background workers. Fill still runs on the UI thread;
-large operations can pause the interface. Canvas updates upload the full
-image texture. Metadata, orientation tags and embedded color profiles are not
+File I/O, recovery, raster previews, geometry, fill, clipboard operations and disk
+history run in background workers with cooperative cancellation. Small brush edits
+use changed-region compositing and partial texture uploads. Initial copies of
+shared layer buffers, allocation and GPU uploads still take time on the UI thread;
+this is not a guarantee of constant frame time at the document limits. Metadata, orientation tags and embedded color profiles are not
 preserved or interpreted. PNG and lossless WebP are available for raster export. A user-local Linux installation helper is available; there is no signed
 distribution yet. Linux is the currently validated desktop target.
 
@@ -212,7 +213,7 @@ menu. The clipboard connection stays alive while the editor runs. This backend
 handles image paste on Ctrl+V release because the window integration consumes its
 press for text paste. OS clipboard interoperability still needs validation across
 target desktops; tests use an injected memory clipboard rather than replacing
-the user's clipboard contents. Clipboard decoding is currently synchronous.
+the user's clipboard contents. Clipboard decoding now runs in a background job.
 
 Text validation: 43 tests pass. Text uses the interface font, glyph coverage and
 basic kerning, including Polish characters. The canvas preview stays pending until
@@ -294,8 +295,8 @@ rotation and mirroring compute against immutable shared layer snapshots. Success
 completion publishes one history entry in the original document; undo retains
 earlier edits and the saved revision. Failed jobs leave the document unchanged.
 Unchanged results retain selection and history. Geometry jobs currently block
-editing and close requests, but keep the window repainting; cancellation remains
-to be implemented. The installer has four additional Python checks.
+editing and close requests, but keep the window repainting and now support
+cooperative cancellation. The installer has four additional Python checks.
 
 Area reduction validation: 83 Rust tests pass. Smooth reduction with neither axis
 growing integrates pixel coverage across each destination footprint. Fractional
@@ -520,8 +521,8 @@ was not discoverable through AT-SPI. This does not establish behavior in a worki
 accessible desktop session. Repeat the runtime audit with a functioning AT-SPI
 registry before claiming screen-reader workflow support.
 The normal desktop release starts successfully with the net.trelak.PaintRust
-window class. All 137 Rust tests, strict Clippy, four installer tests and the
-dependency-notice consistency check pass.
+window class. The final non-accessibility validation passes 169 Rust tests, strict
+Clippy, six installer/package tests and the dependency-notice consistency check.
 
 Shared history buffers
 ----------------------
@@ -688,3 +689,20 @@ resets the pause. Native file synchronization calls may still delay cancellation
 Validation: 169 Rust tests and strict Clippy pass, including cancellation after
 one stored buffer, temporary-file release, unchanged navigation and pause/resume
 behavior. Existing compressed corruption and shared-buffer tests remain passing.
+
+Large-document and release audit
+--------------------------------
+The remaining long raster operations now use background workers: loading/import,
+geometry/crop, fill/invert/delete/flatten, selection masks, shape/gradient/move/text
+previews, clipboard operations and disk history. Cancellation checks guard result
+publication and run within the main pixel or compression loops. Active brush
+strokes use bounded row scans; compositing updates only changed regions when safe.
+The 4096 x 4096 benchmark and its documented measurements are CPU observations on
+one host, not cross-device frame-rate guarantees. First-write buffer copies and
+full GPU uploads can still cause a short delay. Native codec, clipboard, glyph and
+file-system calls may delay cancellation until they return to a checkpoint.
+Validation: 169 Rust tests, six Python tests, strict Clippy and all 550 dependency
+notice files pass. The current clean native release archive was checksum-verified,
+installed into an isolated prefix containing spaces and launched successfully.
+The visible application window and its net.trelak.PaintRust class were inspected.
+AT-SPI screen-reader workflow validation remains the final roadmap item.

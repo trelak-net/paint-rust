@@ -31,7 +31,7 @@ Development roadmap
 [x] Incremental changed-region compositing and partial texture uploads.
 [x] Cooperative cancellation of project saving and raster export.
 [x] PNG and lossless WebP raster export with transparency.
-[ ] Large-document performance and cancellation of remaining long operations.
+[x] Large-document performance audit and cancellation of long raster/history operations.
 [x] Linux user-local launcher, icons, MIME registration and installation helper.
 [x] Native accessibility bridge and explicit palette/layer/canvas labels.
 [x] Pinned Linux dependency and standard-library notices with consistency checks.
