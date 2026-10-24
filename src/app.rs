@@ -1,7 +1,7 @@
 use crate::icons::Icon;
 use eframe::egui::{self, Color32, Key, Pos2, Rect, Sense, TextureHandle, TextureOptions, Vec2};
 use paint_rust::{
-    document::{Document, Shape, ShapeStyle},
+    document::{Document, Selection, Shape, ShapeStyle},
     files,
 };
 use std::path::PathBuf;
@@ -15,6 +15,7 @@ enum Tool {
     Line,
     Rectangle,
     Ellipse,
+    Select,
 }
 
 #[derive(Clone, Copy)]
@@ -33,6 +34,7 @@ pub struct Editor {
     brush_size: f32,
     shape_filled: bool,
     shape_origin: Option<(f32, f32)>,
+    selection_before: Option<Option<Selection>>,
     zoom: f32,
     last_point: Option<(f32, f32)>,
     path: Option<PathBuf>,
@@ -70,6 +72,7 @@ impl Editor {
             brush_size: 12.0,
             shape_filled: false,
             shape_origin: None,
+            selection_before: None,
             zoom: 1.0,
             last_point: None,
             path: None,
@@ -219,6 +222,7 @@ impl Editor {
         }
         self.last_point = None;
         self.shape_origin = None;
+        self.selection_before = None;
     }
 
     fn undo(&mut self) {
@@ -251,9 +255,18 @@ impl Editor {
                 Some(4)
             } else if i.consume_key(egui::Modifiers::COMMAND, Key::Z) {
                 Some(5)
+            } else if i.consume_key(egui::Modifiers::COMMAND | egui::Modifiers::SHIFT, Key::A) {
+                Some(8)
+            } else if i.consume_key(egui::Modifiers::COMMAND, Key::A) {
+                Some(7)
+            } else if i.consume_key(egui::Modifiers::COMMAND | egui::Modifiers::SHIFT, Key::X) {
+                Some(10)
+            } else if i.key_pressed(Key::Delete) {
+                Some(9)
             } else if i.key_pressed(Key::Escape) {
                 Some(6)
-            } else if !i.modifiers.command && !self.document.editing() {
+            } else if !i.modifiers.command && !self.document.editing() && self.last_point.is_none()
+            {
                 if i.key_pressed(Key::B) {
                     self.tool = Tool::Brush;
                 }
@@ -262,6 +275,9 @@ impl Editor {
                 }
                 if i.key_pressed(Key::F) {
                     self.tool = Tool::Fill;
+                }
+                if i.key_pressed(Key::S) {
+                    self.tool = Tool::Select;
                 }
                 if i.key_pressed(Key::L) {
                     self.tool = Tool::Line;
@@ -296,6 +312,32 @@ impl Editor {
                 self.document.cancel();
                 self.last_point = None;
                 self.shape_origin = None;
+                if let Some(previous) = self.selection_before.take() {
+                    self.document.set_selection(previous);
+                }
+                self.texture_dirty = true;
+            }
+            Some(7) => {
+                self.finish_stroke();
+                self.document.set_selection(Some(Selection {
+                    x: 0,
+                    y: 0,
+                    width: self.document.width,
+                    height: self.document.height,
+                }));
+            }
+            Some(8) => {
+                self.finish_stroke();
+                self.document.set_selection(None);
+            }
+            Some(9) => {
+                self.finish_stroke();
+                self.document.clear_pixels();
+                self.texture_dirty = true;
+            }
+            Some(10) => {
+                self.finish_stroke();
+                self.document.crop_to_selection();
                 self.texture_dirty = true;
             }
             _ => {}
@@ -362,6 +404,24 @@ impl Editor {
                         Color32::WHITE,
                     );
                 }
+                if let Some(selection) = self.document.selection() {
+                    let outline = Rect::from_min_size(
+                        rect.min + Vec2::new(selection.x as f32, selection.y as f32) * self.zoom,
+                        Vec2::new(selection.width as f32, selection.height as f32) * self.zoom,
+                    );
+                    painter.rect_stroke(
+                        outline,
+                        0.0,
+                        egui::Stroke::new(3.0_f32, Color32::BLACK),
+                        egui::StrokeKind::Inside,
+                    );
+                    painter.rect_stroke(
+                        outline,
+                        0.0,
+                        egui::Stroke::new(1.0_f32, Color32::WHITE),
+                        egui::StrokeKind::Inside,
+                    );
+                }
                 if response.hovered() && matches!(self.tool, Tool::Brush | Tool::Eraser) {
                     ui.ctx().set_cursor_icon(egui::CursorIcon::Crosshair);
                     if let Some(pos) = response.hover_pos() {
@@ -397,6 +457,9 @@ impl Editor {
                         let origin = (origin - rect.min) / self.zoom;
                         self.shape_origin = Some((origin.x, origin.y));
                         match self.tool {
+                            Tool::Select => {
+                                self.selection_before = Some(self.document.selection());
+                            }
                             Tool::Picker => {
                                 if let Some(pixel) = self
                                     .document
@@ -474,6 +537,40 @@ impl Editor {
                             },
                         );
                         self.texture_dirty = true;
+                    }
+                    if self.tool == Tool::Select {
+                        let origin = self.shape_origin.unwrap_or(point);
+                        let x = origin
+                            .0
+                            .min(point.0)
+                            .floor()
+                            .clamp(0.0, self.document.width as f32)
+                            as u32;
+                        let y = origin
+                            .1
+                            .min(point.1)
+                            .floor()
+                            .clamp(0.0, self.document.height as f32)
+                            as u32;
+                        let right = origin
+                            .0
+                            .max(point.0)
+                            .ceil()
+                            .clamp(0.0, self.document.width as f32)
+                            as u32;
+                        let bottom = origin
+                            .1
+                            .max(point.1)
+                            .ceil()
+                            .clamp(0.0, self.document.height as f32)
+                            as u32;
+                        self.document.set_selection(Some(Selection {
+                            x,
+                            y,
+                            width: right - x,
+                            height: bottom - y,
+                        }));
+                        ui.ctx().request_repaint();
                     }
                     self.last_point = Some(point);
                     if !ui.input(|i| i.pointer.primary_down()) {
@@ -669,6 +766,41 @@ impl Editor {
                 {
                     self.redo();
                 }
+                ui.menu_button("Selection", |ui| {
+                    if ui.button("Select all    Ctrl+A").clicked() {
+                        self.finish_stroke();
+                        self.document.set_selection(Some(Selection {
+                            x: 0,
+                            y: 0,
+                            width: self.document.width,
+                            height: self.document.height,
+                        }));
+                        ui.close();
+                    }
+                    if ui.button("Deselect    Ctrl+Shift+A").clicked() {
+                        self.finish_stroke();
+                        self.document.set_selection(None);
+                        ui.close();
+                    }
+                    if ui.button("Delete pixels    Del").clicked() {
+                        self.finish_stroke();
+                        self.document.clear_pixels();
+                        self.texture_dirty = true;
+                        ui.close();
+                    }
+                    if ui
+                        .add_enabled(
+                            self.document.selection().is_some(),
+                            Icon::Crop.button("Crop    Ctrl+Shift+X"),
+                        )
+                        .clicked()
+                    {
+                        self.finish_stroke();
+                        self.document.crop_to_selection();
+                        self.texture_dirty = true;
+                        ui.close();
+                    }
+                });
                 if ui.add(Icon::Invert.button("Invert colors")).clicked() {
                     self.finish_stroke();
                     self.document.invert();
@@ -720,6 +852,7 @@ impl Editor {
                         }
                         ui.heading("Tools");
                         for (tool, icon, label, shortcut) in [
+                            (Tool::Select, Icon::Select, "Select area", "S"),
                             (Tool::Brush, Icon::Brush, "Brush", "B"),
                             (Tool::Eraser, Icon::Eraser, "Eraser", "E"),
                             (Tool::Fill, Icon::Fill, "Flood fill", "F"),
@@ -1014,6 +1147,45 @@ mod tests {
         );
         editor.undo();
         assert!(!editor.document.dirty());
+    }
+
+    #[test]
+    fn selection_gesture_stays_clean_and_escape_restores_previous_selection() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.tool = Tool::Select;
+        let previous = Selection {
+            x: 5,
+            y: 6,
+            width: 7,
+            height: 8,
+        };
+        editor.document.set_selection(Some(previous));
+        frame(&mut editor, &ctx, vec![]);
+        let start = Pos2::new(350.0, 200.0);
+        let end = Pos2::new(430.0, 280.0);
+        frame(
+            &mut editor,
+            &ctx,
+            vec![egui::Event::PointerMoved(start), pointer(start, true)],
+        );
+        frame(&mut editor, &ctx, vec![egui::Event::PointerMoved(end)]);
+        assert_ne!(editor.document.selection(), Some(previous));
+        frame(
+            &mut editor,
+            &ctx,
+            vec![egui::Event::Key {
+                key: Key::Escape,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers::NONE,
+            }],
+        );
+        frame(&mut editor, &ctx, vec![pointer(end, false)]);
+        assert_eq!(editor.document.selection(), Some(previous));
+        assert!(!editor.document.dirty());
+        assert!(!editor.document.can_undo());
     }
 
     #[test]

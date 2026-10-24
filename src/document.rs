@@ -21,6 +21,27 @@ pub struct ShapeStyle {
 pub const MAX_PIXELS: usize = 4096 * 4096;
 const HISTORY_BYTES: usize = 128 * 1024 * 1024;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Selection {
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32,
+}
+
+impl Selection {
+    fn contains(self, x: usize, y: usize) -> bool {
+        x >= self.x as usize
+            && y >= self.y as usize
+            && x < self.x as usize + self.width as usize
+            && y < self.y as usize + self.height as usize
+    }
+}
+
+fn selected(selection: Option<Selection>, x: usize, y: usize) -> bool {
+    selection.is_none_or(|rect| rect.contains(x, y))
+}
+
 #[derive(Clone, PartialEq)]
 pub struct Layer {
     pub name: String,
@@ -45,6 +66,9 @@ impl Layer {
 
 #[derive(Clone)]
 struct Snapshot {
+    width: u32,
+    height: u32,
+    selection: Option<Selection>,
     layers: Vec<Layer>,
     active: usize,
     revision: u64,
@@ -54,6 +78,7 @@ struct Snapshot {
 pub struct Document {
     pub width: u32,
     pub height: u32,
+    selection: Option<Selection>,
     layers: Vec<Layer>,
     active: usize,
     undo: VecDeque<Snapshot>,
@@ -115,6 +140,7 @@ impl Document {
         Ok(Self {
             width,
             height,
+            selection: None,
             layers,
             active,
             undo: VecDeque::new(),
@@ -124,6 +150,67 @@ impl Document {
             next_revision: 1,
             saved_revision: 0,
         })
+    }
+
+    pub fn selection(&self) -> Option<Selection> {
+        self.selection
+    }
+    pub fn set_selection(&mut self, selection: Option<Selection>) {
+        if self.editing() {
+            return;
+        }
+        self.selection = selection.and_then(|s| {
+            let x = s.x.min(self.width);
+            let y = s.y.min(self.height);
+            let width = s.width.min(self.width - x);
+            let height = s.height.min(self.height - y);
+            (width > 0 && height > 0).then_some(Selection {
+                x,
+                y,
+                width,
+                height,
+            })
+        });
+    }
+    pub fn clear_pixels(&mut self) {
+        self.begin("Delete pixels");
+        let width = self.width as usize;
+        let selection = self.selection;
+        for (i, pixel) in Arc::make_mut(&mut self.layers[self.active].pixels)
+            .iter_mut()
+            .enumerate()
+        {
+            if selected(selection, i % width, i / width) {
+                *pixel = [0; 4];
+            }
+        }
+        self.commit();
+    }
+    pub fn crop_to_selection(&mut self) -> bool {
+        let Some(rect) = self.selection else {
+            return false;
+        };
+        if self.editing()
+            || (rect.x == 0
+                && rect.y == 0
+                && rect.width == self.width
+                && rect.height == self.height)
+        {
+            return false;
+        }
+        self.begin("Crop to selection");
+        for layer in &mut self.layers {
+            let mut pixels = Vec::with_capacity(rect.width as usize * rect.height as usize);
+            for y in rect.y..rect.y + rect.height {
+                let start = y as usize * self.width as usize + rect.x as usize;
+                pixels.extend_from_slice(&layer.pixels[start..start + rect.width as usize]);
+            }
+            layer.pixels = Arc::new(pixels);
+        }
+        self.width = rect.width;
+        self.height = rect.height;
+        self.selection = None;
+        self.commit()
     }
 
     pub fn layers(&self) -> &[Layer] {
@@ -242,10 +329,9 @@ impl Document {
     }
     pub fn dirty(&self) -> bool {
         self.revision != self.saved_revision
-            || self
-                .pending
-                .as_ref()
-                .is_some_and(|s| s.layers != self.layers)
+            || self.pending.as_ref().is_some_and(|s| {
+                s.layers != self.layers || s.width != self.width || s.height != self.height
+            })
     }
     pub fn mark_saved(&mut self) {
         self.saved_revision = self.revision;
@@ -276,6 +362,9 @@ impl Document {
     pub fn begin(&mut self, label: &str) {
         if self.pending.is_none() {
             self.pending = Some(Snapshot {
+                width: self.width,
+                height: self.height,
+                selection: self.selection,
                 layers: self.layers.clone(),
                 active: self.active,
                 revision: self.revision,
@@ -288,7 +377,10 @@ impl Document {
         let Some(before) = self.pending.take() else {
             return false;
         };
-        if before.layers == self.layers {
+        if before.layers == self.layers
+            && before.width == self.width
+            && before.height == self.height
+        {
             return false;
         }
         self.undo.push_back(before);
@@ -309,6 +401,9 @@ impl Document {
 
     pub fn cancel(&mut self) {
         if let Some(before) = self.pending.take() {
+            self.width = before.width;
+            self.height = before.height;
+            self.selection = before.selection;
             self.layers = before.layers;
             self.active = before.active;
         }
@@ -318,6 +413,9 @@ impl Document {
         self.cancel();
         if let Some(previous) = self.undo.pop_back() {
             self.redo.push(Snapshot {
+                width: std::mem::replace(&mut self.width, previous.width),
+                height: std::mem::replace(&mut self.height, previous.height),
+                selection: std::mem::replace(&mut self.selection, previous.selection),
                 layers: std::mem::replace(&mut self.layers, previous.layers),
                 active: std::mem::replace(&mut self.active, previous.active),
                 revision: self.revision,
@@ -332,6 +430,9 @@ impl Document {
         self.cancel();
         if let Some(next) = self.redo.pop() {
             self.undo.push_back(Snapshot {
+                width: std::mem::replace(&mut self.width, next.width),
+                height: std::mem::replace(&mut self.height, next.height),
+                selection: std::mem::replace(&mut self.selection, next.selection),
                 layers: std::mem::replace(&mut self.layers, next.layers),
                 active: std::mem::replace(&mut self.active, next.active),
                 revision: self.revision,
@@ -367,6 +468,7 @@ impl Document {
         erase: bool,
     ) {
         assert!(self.editing(), "Begin a transaction before drawing");
+        let selection = self.selection;
         let pixels = Arc::make_mut(&mut self.layers[self.active].pixels);
         let radius = diameter.max(1.0) / 2.0;
         let min_x = ((from.0.min(to.0) - radius).floor() as i32).max(0);
@@ -378,6 +480,9 @@ impl Document {
         let length_sq = dx * dx + dy * dy;
         for y in min_y..=max_y {
             for x in min_x..=max_x {
+                if !selected(selection, x as usize, y as usize) {
+                    continue;
+                }
                 let px = x as f32 + 0.5;
                 let py = y as f32 + 0.5;
                 let t = if length_sq > 0.0 {
@@ -418,6 +523,7 @@ impl Document {
         let (cx, cy) = ((left + right) * 0.5, (top + bottom) * 0.5);
         let (rx, ry) = ((right - left) * 0.5, (bottom - top) * 0.5);
         let width = style.width.max(1.0);
+        let selection = self.selection;
         let pixels = Arc::make_mut(&mut self.layers[self.active].pixels);
         for y in (top.floor() as i32).max(0)..(bottom.ceil() as i32).min(self.height as i32) {
             for x in (left.floor() as i32).max(0)..(right.ceil() as i32).min(self.width as i32) {
@@ -445,7 +551,7 @@ impl Document {
                     }
                     Shape::Line => unreachable!(),
                 };
-                if painted {
+                if painted && selected(selection, x as usize, y as usize) {
                     pixels[y as usize * self.width as usize + x as usize] = style.color;
                 }
             }
@@ -457,6 +563,10 @@ impl Document {
         let Some(start) = self.index(x, y) else {
             return;
         };
+        let selection = self.selection;
+        if !selected(selection, x as usize, y as usize) {
+            return;
+        }
         let pixels = Arc::make_mut(&mut self.layers[self.active].pixels);
         let target = pixels[start];
         if target == color {
@@ -467,7 +577,7 @@ impl Document {
         pixels[start] = color;
         while let Some(i) = stack.pop() {
             let mut visit = |n: usize| {
-                if pixels[n] == target {
+                if pixels[n] == target && selected(selection, n % width, n / width) {
                     pixels[n] = color;
                     stack.push(n);
                 }
@@ -489,7 +599,15 @@ impl Document {
 
     pub fn invert(&mut self) {
         self.begin("Invert colors");
-        for pixel in Arc::make_mut(&mut self.layers[self.active].pixels) {
+        let width = self.width as usize;
+        let selection = self.selection;
+        for (i, pixel) in Arc::make_mut(&mut self.layers[self.active].pixels)
+            .iter_mut()
+            .enumerate()
+        {
+            if !selected(selection, i % width, i / width) {
+                continue;
+            }
             for c in &mut pixel[..3] {
                 *c = 255 - *c;
             }

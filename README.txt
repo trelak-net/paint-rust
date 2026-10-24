@@ -28,6 +28,7 @@ Features
 - Pick a color from the canvas, edit RGBA values, or use palette swatches.
 - Invert RGB while preserving alpha.
 - Draw lines and outlined/filled rectangles or ellipses with cancellable previews.
+- Select a rectangular area, limit edits to it, delete pixels or crop all layers.
 - Hold Shift for 45-degree line angles or equal shape dimensions.
 - Zoom from 10% to 400%, fit the canvas, and navigate with scrollbars.
 - Undo/redo complete strokes and edits; cancel a stroke with Escape.
@@ -45,7 +46,10 @@ Ctrl+Z: undo                  Ctrl+Shift+Z or Ctrl+Y: redo
 B: brush                     E: eraser
 F: flood fill                I: color picker
 L: line                      R: rectangle
-O: ellipse
+O: ellipse                   S: rectangular selection
+Ctrl+A: select all           Ctrl+Shift+A: deselect
+Delete: clear selected pixels (or the whole active layer without a selection)
+Ctrl+Shift+X: crop all layers to the selection
 Escape: cancel the current stroke
 
 Use Command instead of Ctrl on macOS.
@@ -76,8 +80,7 @@ is session-local and is not stored in project files.
 
 Current boundaries
 ------------------
-This is an initial application, not a complete graphics suite. Selections,
-text, pressure-sensitive input, advanced effects, autosave and session
+This is an initial application, not a complete graphics suite. Text, pressure-sensitive input, advanced effects, autosave and session
 recovery are not implemented yet. Image decoding, encoding and fill run on the UI
 thread; large operations can pause the interface. Canvas updates upload the full
 image texture. Metadata, orientation tags and embedded color profiles are not
@@ -138,3 +141,8 @@ malformed project rejection.
 Shape validation: 25 tests pass. Previews replace intermediate geometry, Escape
 restores the starting layer, and pointer release commits its final position once.
 Shape edges currently use pixel-center coverage without antialiasing.
+
+Selection validation: 30 tests pass. Selection gestures do not dirty the document;
+Escape restores the previous selection. Brush, eraser, fill, shapes, invert and
+delete respect rectangular bounds. Crop affects every layer and restores geometry
+and the selection on undo. Selections are session-local, not project data.

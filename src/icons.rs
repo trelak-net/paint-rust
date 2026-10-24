@@ -2,6 +2,8 @@ use eframe::egui::{self, Button, Image, ImageSource};
 
 #[derive(Clone, Copy)]
 pub enum Icon {
+    Select,
+    Crop,
     New,
     Open,
     Save,
@@ -23,6 +25,8 @@ pub enum Icon {
 impl Icon {
     fn source(self) -> ImageSource<'static> {
         match self {
+            Self::Select => egui::include_image!("../assets/icons/select.svg"),
+            Self::Crop => egui::include_image!("../assets/icons/crop.svg"),
             Self::New => egui::include_image!("../assets/icons/new.svg"),
             Self::Open => egui::include_image!("../assets/icons/open.svg"),
             Self::Save => egui::include_image!("../assets/icons/save.svg"),

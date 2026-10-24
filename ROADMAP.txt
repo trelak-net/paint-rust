@@ -5,7 +5,7 @@ Development roadmap
 [x] Raster drawing, erasing, fill, color sampling and transaction history.
 [x] Editable layers and lossless project persistence.
 [x] Lines, rectangles and ellipses with cancellable previews.
-[ ] Rectangular selections, selected-area operations and crop.
+[x] Rectangular selections, selected-area operations and crop.
 [ ] Image/canvas resizing, rotation and mirroring.
 [ ] Text editing, clipboard integration and additional selection tools.
 [ ] Blend modes, adjustments and effects.
