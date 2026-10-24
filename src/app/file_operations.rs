@@ -55,6 +55,7 @@ impl Editor {
                 self.texture_dirty = true;
                 self.last_point = None;
                 self.zoom = 1.0;
+                self.canvas_offset = Vec2::ZERO;
                 self.status = "Image opened".into();
                 self.clear_recovery();
             }
@@ -65,6 +66,7 @@ impl Editor {
                 self.path = None;
                 self.texture_dirty = true;
                 self.zoom = 1.0;
+                self.canvas_offset = Vec2::ZERO;
                 let candidate = self.recoverable.remove(index);
                 if let Some(recovery) = &mut self.recovery {
                     recovery.adopt(candidate);

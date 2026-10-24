@@ -34,6 +34,7 @@ Features
 - Resize all layers, change canvas size with a nine-position anchor, rotate or mirror.
 - Hold Shift for 45-degree line angles or equal shape dimensions.
 - Zoom from 10% to 400%, fit the canvas, and navigate with scrollbars.
+- Use Ctrl+wheel or a pinch gesture to zoom around the pointer; middle-drag to pan.
 - Undo/redo complete strokes and edits; cancel a stroke with Escape.
 - Open PNG, JPEG, BMP and WebP; export a flattened RGBA PNG.
 - Add, duplicate, reorder, hide and delete layers; edit names, opacity and blend mode.
@@ -247,3 +248,8 @@ the operation to finish. A Save-before-New/Open/Close action proceeds only after
 a successful write; failures keep the document and unsaved-changes choice. Export
 does not mark a project saved. Native file pickers remain modal. File operations
 currently have no cancellation or byte progress.
+
+Navigation validation: 77 tests pass. Pointer-anchored zoom preserves the image
+coordinate beneath the pointer except where canvas edges clamp scrolling. Middle
+button dragging pans without creating history. Fit uses the actual canvas panel
+and resets its scroll offset. File loading and new canvases reset navigation.

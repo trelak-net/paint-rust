@@ -74,6 +74,10 @@ pub struct Editor {
     shape_origin: Option<(f32, f32)>,
     selection_before: Option<Option<Selection>>,
     zoom: f32,
+    canvas_offset: Vec2,
+    canvas_viewport: Rect,
+    panning: bool,
+    fit_canvas: bool,
     last_point: Option<(f32, f32)>,
     path: Option<PathBuf>,
     status: String,
@@ -138,6 +142,10 @@ impl Editor {
             shape_origin: None,
             selection_before: None,
             zoom: 1.0,
+            canvas_offset: Vec2::ZERO,
+            canvas_viewport: Rect::NOTHING,
+            panning: false,
+            fit_canvas: false,
             last_point: None,
             path: None,
             status: "Ready — draw on the canvas to begin".into(),
@@ -557,7 +565,45 @@ impl Editor {
             }
             self.texture_dirty = false;
         }
-        egui::ScrollArea::both()
+        let viewport = ui.available_rect_before_wrap();
+        if self.fit_canvas {
+            let available = viewport.size();
+            self.zoom = (available.x / self.document.width as f32)
+                .min(available.y / self.document.height as f32)
+                .clamp(0.1, 4.0);
+            self.canvas_offset = Vec2::ZERO;
+            self.fit_canvas = false;
+        }
+        let navigation_enabled =
+            ui.is_enabled() && !self.document.editing() && self.last_point.is_none();
+        let pointer = ui.input(|i| i.pointer.hover_pos());
+        if navigation_enabled && let Some(pointer) = pointer.filter(|p| viewport.contains(*p)) {
+            let factor = ui.input(|i| i.zoom_delta());
+            if factor != 1.0 {
+                let zoom = (self.zoom * factor).clamp(0.1, 4.0);
+                let anchor = pointer - viewport.min;
+                self.canvas_offset =
+                    ((self.canvas_offset + anchor) * (zoom / self.zoom) - anchor).max(Vec2::ZERO);
+                self.zoom = zoom;
+            }
+            if ui.input(|i| i.pointer.button_pressed(egui::PointerButton::Middle)) {
+                self.panning = true;
+            }
+        }
+        if !navigation_enabled || !ui.input(|i| i.pointer.button_down(egui::PointerButton::Middle))
+        {
+            self.panning = false;
+        }
+        if self.panning {
+            if !ui.input(|i| i.pointer.button_pressed(egui::PointerButton::Middle)) {
+                self.canvas_offset =
+                    (self.canvas_offset - ui.input(|i| i.pointer.delta())).max(Vec2::ZERO);
+            }
+            ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
+        }
+        let scroll = egui::ScrollArea::both()
+            .id_salt("canvas-scroll")
+            .scroll_offset(self.canvas_offset)
             .auto_shrink([false; 2])
             .show(ui, |ui| {
                 let size =
@@ -611,7 +657,10 @@ impl Editor {
                         egui::StrokeKind::Inside,
                     );
                 }
-                if response.hovered() && matches!(self.tool, Tool::Brush | Tool::Eraser) {
+                if response.hovered()
+                    && !self.panning
+                    && matches!(self.tool, Tool::Brush | Tool::Eraser)
+                {
                     ui.ctx().set_cursor_icon(egui::CursorIcon::Crosshair);
                     if let Some(pos) = response.hover_pos() {
                         let radius = self.brush_size * self.zoom / 2.0;
@@ -630,6 +679,7 @@ impl Editor {
                 if ui.is_enabled()
                     && ui.input(|i| i.focused)
                     && !self.suppress_stroke
+                    && !self.panning
                     && ((response.is_pointer_button_down_on()
                         && ui.input(|i| i.pointer.primary_down()))
                         || response.clicked_by(egui::PointerButton::Primary)
@@ -805,6 +855,8 @@ impl Editor {
                     }
                 }
             });
+        self.canvas_offset = scroll.state.offset;
+        self.canvas_viewport = scroll.inner_rect;
     }
 
     fn dialogs(&mut self, ctx: &egui::Context) {
@@ -1210,6 +1262,7 @@ impl Editor {
                                     self.path = None;
                                     self.texture_dirty = true;
                                     self.zoom = 1.0;
+                                    self.canvas_offset = Vec2::ZERO;
                                     self.new_dialog = false;
                                     self.status = "New image created".into();
                                     self.clear_recovery();
@@ -1480,10 +1533,7 @@ impl Editor {
                     self.zoom = 1.0;
                 }
                 if ui.add(Icon::Fit.button("Fit")).clicked() {
-                    let available = ctx.content_rect().size() - Vec2::new(470.0, 150.0);
-                    self.zoom = (available.x / self.document.width as f32)
-                        .min(available.y / self.document.height as f32)
-                        .clamp(0.1, 4.0);
+                    self.fit_canvas = true;
                 }
             });
         });
@@ -2225,5 +2275,54 @@ mod tests {
         assert_eq!(editor.document.pixels(), &[[10, 20, 30, 255]; 4]);
         assert_eq!(editor.path, Some(PathBuf::from("current.prust")));
         assert!(editor.status.starts_with("Could not open image:"));
+    }
+    #[test]
+    fn zoom_keeps_point_under_pointer_and_pan_never_edits_pixels() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.document = Document::new(1200, 1000, [255; 4]).unwrap();
+        frame(&mut editor, &ctx, vec![]);
+        let point = editor.canvas_viewport.min + Vec2::new(200.0, 150.0);
+        let local_before =
+            (point - editor.canvas_viewport.min + editor.canvas_offset) / editor.zoom;
+        frame(
+            &mut editor,
+            &ctx,
+            vec![egui::Event::PointerMoved(point), egui::Event::Zoom(2.0)],
+        );
+        assert_eq!(editor.zoom, 2.0);
+        let local_after = (point - editor.canvas_viewport.min + editor.canvas_offset) / editor.zoom;
+        assert!((local_before - local_after).length() < 0.1);
+        let offset = editor.canvas_offset;
+        let middle = |pos, pressed| egui::Event::PointerButton {
+            pos,
+            button: egui::PointerButton::Middle,
+            pressed,
+            modifiers: egui::Modifiers::NONE,
+        };
+        frame(&mut editor, &ctx, vec![middle(point, true)]);
+        let moved = point + Vec2::new(40.0, 30.0);
+        frame(&mut editor, &ctx, vec![egui::Event::PointerMoved(moved)]);
+        assert!((editor.canvas_offset - (offset - Vec2::new(40.0, 30.0))).length() < 0.1);
+        frame(&mut editor, &ctx, vec![middle(moved, false)]);
+        assert!(!editor.panning);
+        assert!(!editor.document.dirty());
+        assert!(!editor.document.can_undo());
+    }
+
+    #[test]
+    fn fitting_uses_canvas_viewport_and_resets_scroll() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.zoom = 4.0;
+        editor.canvas_offset = Vec2::splat(100.0);
+        editor.fit_canvas = true;
+        frame(&mut editor, &ctx, vec![]);
+        assert!(editor.document.width as f32 * editor.zoom <= editor.canvas_viewport.width() + 1.0);
+        assert!(
+            editor.document.height as f32 * editor.zoom <= editor.canvas_viewport.height() + 1.0
+        );
+        assert_eq!(editor.canvas_offset, Vec2::ZERO);
+        assert!(!editor.document.dirty());
     }
 }
