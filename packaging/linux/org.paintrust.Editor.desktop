@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Paint Rust
+GenericName=Raster Image Editor
+Comment=Create and edit layered images
+Exec=paint-rust %f
+Icon=org.paintrust.Editor
+Terminal=false
+Categories=Graphics;2DGraphics;RasterGraphics;
+MimeType=application/x-paint-rust;image/png;image/jpeg;image/bmp;image/webp;
+StartupNotify=true
+StartupWMClass=org.paintrust.Editor

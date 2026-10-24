@@ -21,7 +21,8 @@ Development roadmap
 [x] Background recovery snapshots and interrupted-session recovery.
 [x] Background open/save/export/import/recovery with guarded completion.
 [ ] Large-document performance and cancellable long operations.
-[ ] Desktop integration, accessibility, packaging and release validation.
+[x] Linux user-local launcher, icons, MIME registration and installation helper.
+[ ] Accessibility, distribution notices, packaging and release validation.
 
 Each completed increment receives regression checks and its own commit. Keep the
 source and artwork self-contained; preserve project files and unsaved user edits.

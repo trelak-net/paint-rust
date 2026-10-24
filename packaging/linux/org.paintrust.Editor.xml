@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/x-paint-rust">
+    <comment>Paint Rust layered image</comment>
+    <glob pattern="*.prust"/>
+    <magic priority="80">
+      <match type="string" value="PRUST" offset="0"/>
+    </magic>
+    <icon name="org.paintrust.Editor"/>
+  </mime-type>
+</mime-info>

@@ -20,6 +20,32 @@ build. Dependencies and their exact resolved versions are recorded in Cargo.lock
 The GUI uses eframe/egui 0.33.3 with the OpenGL renderer:
 https://docs.rs/eframe/0.33.3/eframe/
 
+Linux desktop installation
+--------------------------
+Build and install for the current user:
+
+    cargo build --release --locked
+    python3 scripts/install_linux.py
+
+This installs the executable under ~/.local/bin and desktop metadata under
+$XDG_DATA_HOME (default ~/.local/share). It adds a launcher, the original application
+icon and the .prust MIME type. It does not change default file associations or
+require root. Open With can select Paint Rust for supported images and projects.
+Use --prefix /path/to/prefix for an isolated installation; --data-dir overrides
+the metadata location. --no-refresh skips desktop and MIME database updates.
+The prefix must not contain percent signs, equals signs, tabs or newlines.
+
+Validate the installer without changing the user's desktop:
+
+    python3 -m unittest discover -s scripts -p 'test_*.py'
+
+The desktop launcher follows the Desktop Entry Specification:
+https://specifications.freedesktop.org/desktop-entry/latest/exec-variables.html
+This is a source-build installation helper, not a signed distribution package.
+Full third-party binary distribution notices and cross-desktop release testing
+remain outstanding. Re-running the helper replaces installed application files;
+user projects and recovery data are kept separately.
+
 Features
 --------
 - Create an opaque or transparent canvas with custom dimensions.
@@ -99,8 +125,8 @@ File decoding/encoding, recovery copies and effect previews run in background
 workers. Geometry changes, compositing and fill still run on the UI thread;
 large operations can pause the interface. Canvas updates upload the full
 image texture. Metadata, orientation tags and embedded color profiles are not
-preserved or interpreted. PNG is the only raster export format. There is no installer or
-signed distribution yet. Linux is the currently validated desktop target.
+preserved or interpreted. PNG is the only raster export format. A user-local Linux installation helper is available; there is no signed
+distribution yet. Linux is the currently validated desktop target.
 
 Validation
 ----------
