@@ -90,3 +90,54 @@ fn invalid_resize_is_transactional_and_undo_restores_selection() {
     doc.redo();
     assert_eq!((doc.width, doc.height), (6, 4));
 }
+
+#[test]
+fn publishing_background_geometry_retains_history_and_saved_state() {
+    let mut doc = Document::new(3, 2, [10, 20, 30, 255]).unwrap();
+    doc.invert();
+    doc.mark_saved();
+    doc.set_selection(Some(Selection {
+        x: 1,
+        y: 0,
+        width: 2,
+        height: 2,
+    }));
+    let selection = doc.selection();
+    let original = doc.pixels().to_vec();
+    let mut computed = doc.snapshot();
+    computed.resize_image(6, 4, false).unwrap();
+    assert!(doc.apply_transformed(computed, "Resize image").unwrap());
+    assert_eq!((doc.width, doc.height), (6, 4));
+    assert!(doc.selection().is_none());
+    assert!(doc.dirty());
+    doc.undo();
+    assert_eq!(doc.pixels(), original);
+    assert_eq!(doc.selection(), selection);
+    assert!(!doc.dirty());
+    doc.undo();
+    assert_eq!(doc.pixels(), &[[10, 20, 30, 255]; 6]);
+    doc.redo();
+    doc.redo();
+    assert_eq!((doc.width, doc.height), (6, 4));
+}
+
+#[test]
+fn unchanged_background_geometry_preserves_selection_and_pending_edit_is_rejected() {
+    let mut doc = Document::new(2, 2, [255; 4]).unwrap();
+    let selection = Some(Selection {
+        x: 1,
+        y: 0,
+        width: 1,
+        height: 1,
+    });
+    doc.set_selection(selection);
+    assert!(!doc.apply_transformed(doc.snapshot(), "Unchanged").unwrap());
+    assert_eq!(doc.selection(), selection);
+    assert!(!doc.can_undo());
+    let mut computed = doc.snapshot();
+    computed.resize_image(4, 4, false).unwrap();
+    doc.begin("Stroke");
+    assert!(doc.apply_transformed(computed, "Resize").is_err());
+    assert_eq!((doc.width, doc.height), (2, 2));
+    assert!(doc.editing());
+}

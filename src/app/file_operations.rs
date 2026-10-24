@@ -7,6 +7,7 @@ pub(super) enum Outcome {
     Imported(Vec<[u8; 4]>, u32, u32, PathBuf),
     Saved(PathBuf),
     Exported(PathBuf),
+    Transformed(Box<Document>, String),
 }
 
 pub(super) struct FileJob {
@@ -92,6 +93,19 @@ impl Editor {
                     Err(error) => self.status = format!("Could not import image: {error}"),
                 }
             }
+            Ok(Outcome::Transformed(document, label)) => {
+                match self.document.apply_transformed(*document, &label) {
+                    Ok(changed) => {
+                        self.texture_dirty |= changed;
+                        self.status = if changed {
+                            format!("{label} completed")
+                        } else {
+                            "Image unchanged".into()
+                        };
+                    }
+                    Err(error) => self.status = format!("Could not {operation}: {error}"),
+                }
+            }
             Ok(Outcome::Saved(path)) => {
                 self.document.mark_saved();
                 self.status = format!("Saved {}", path.display());
@@ -115,6 +129,24 @@ impl Editor {
                 }
             }
         }
+    }
+
+    pub(super) fn transform_in_background(
+        &mut self,
+        operation: &'static str,
+        transform: impl FnOnce(&mut Document) -> Result<bool, String> + Send + 'static,
+    ) -> bool {
+        self.finish_stroke();
+        let mut snapshot = self.document.snapshot();
+        self.start_file_job(operation, move || {
+            transform(&mut snapshot)?;
+            let label = snapshot
+                .history()
+                .next()
+                .unwrap_or("Transform image")
+                .to_owned();
+            Ok(Outcome::Transformed(Box::new(snapshot.snapshot()), label))
+        })
     }
 
     pub(super) fn save_to_path(&mut self, path: PathBuf) -> bool {

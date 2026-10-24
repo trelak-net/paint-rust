@@ -258,6 +258,26 @@ impl Document {
         self.commit()
     }
 
+    /// Publish a computed image as one edit while retaining this document's history.
+    pub fn apply_transformed(&mut self, replacement: Self, label: &str) -> Result<bool, String> {
+        if self.editing() {
+            return Err("Finish the current edit first.".into());
+        }
+        if self.width == replacement.width
+            && self.height == replacement.height
+            && self.layers == replacement.layers
+        {
+            return Ok(false);
+        }
+        self.begin(label);
+        self.width = replacement.width;
+        self.height = replacement.height;
+        self.layers = replacement.layers;
+        self.active = replacement.active;
+        self.selection = None;
+        Ok(self.commit())
+    }
+
     fn transform_layers(
         &mut self,
         label: &str,

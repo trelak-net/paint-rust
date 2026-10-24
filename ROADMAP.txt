@@ -20,6 +20,7 @@ Development roadmap
 [ ] Further effects and effect organization.
 [x] Background recovery snapshots and interrupted-session recovery.
 [x] Background open/save/export/import/recovery with guarded completion.
+[x] Background geometry computation with history-preserving publication.
 [ ] Large-document performance and cancellable long operations.
 [x] Linux user-local launcher, icons, MIME registration and installation helper.
 [ ] Accessibility, distribution notices, packaging and release validation.

@@ -861,7 +861,7 @@ impl Editor {
 
     fn dialogs(&mut self, ctx: &egui::Context) {
         if self.file_job.is_some() {
-            egui::Window::new("File operation")
+            egui::Window::new("Working")
                 .collapsible(false)
                 .resizable(false)
                 .anchor(egui::Align2::CENTER_CENTER, Vec2::ZERO)
@@ -1002,20 +1002,21 @@ impl Editor {
                 }
                 ui.horizontal(|ui| {
                     if ui.button("Apply").clicked() {
-                        let result = if dialog.canvas {
-                            self.document
-                                .resize_canvas(dialog.width, dialog.height, dialog.anchor)
-                        } else {
-                            self.document
-                                .resize_image(dialog.width, dialog.height, dialog.smooth)
-                        };
-                        match result {
-                            Ok(_) => {
-                                self.texture_dirty = true;
-                                self.status = "Image dimensions updated".into();
-                                keep = false;
+                        let (width, height, canvas, anchor, smooth) = (
+                            dialog.width,
+                            dialog.height,
+                            dialog.canvas,
+                            dialog.anchor,
+                            dialog.smooth,
+                        );
+                        if self.transform_in_background("resize image", move |document| {
+                            if canvas {
+                                document.resize_canvas(width, height, anchor)
+                            } else {
+                                document.resize_image(width, height, smooth)
                             }
-                            Err(error) => self.status = format!("Could not resize: {error}"),
+                        }) {
+                            keep = false;
                         }
                     }
                     if ui.button("Cancel").clicked() {
@@ -1441,10 +1442,9 @@ impl Editor {
                     ] {
                         if ui.button(label).clicked() {
                             self.finish_stroke();
-                            match self.document.reorient(operation) {
-                                Ok(_) => self.texture_dirty = true,
-                                Err(error) => self.status = error,
-                            }
+                            self.transform_in_background("transform image", move |document| {
+                                document.reorient(operation)
+                            });
                             ui.close();
                         }
                     }
@@ -2324,5 +2324,26 @@ mod tests {
         );
         assert_eq!(editor.canvas_offset, Vec2::ZERO);
         assert!(!editor.document.dirty());
+    }
+    #[test]
+    fn background_geometry_is_published_once_and_failure_keeps_current_image() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.document = Document::new(4, 3, [20, 40, 60, 255]).unwrap();
+        editor.document.invert();
+        editor.document.mark_saved();
+        assert!(editor.transform_in_background("resize image", |doc| doc.resize_image(8, 6, true)));
+        assert_eq!((editor.document.width, editor.document.height), (4, 3));
+        wait_for_files(&mut editor, &ctx);
+        assert_eq!((editor.document.width, editor.document.height), (8, 6));
+        assert_eq!(editor.document.history().next(), Some("Resize image"));
+        editor.document.undo();
+        assert!(!editor.document.dirty());
+        assert_eq!((editor.document.width, editor.document.height), (4, 3));
+        assert!(editor.transform_in_background("resize image", |doc| doc.resize_image(0, 6, true)));
+        wait_for_files(&mut editor, &ctx);
+        assert_eq!((editor.document.width, editor.document.height), (4, 3));
+        assert!(!editor.document.dirty());
+        assert!(editor.status.starts_with("Could not resize image:"));
     }
 }

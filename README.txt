@@ -121,8 +121,8 @@ Current boundaries
 ------------------
 This is an initial application, not a complete graphics suite. Pressure-sensitive
 input, nonrectangular selections and free transforms are not implemented yet.
-File decoding/encoding, recovery copies and effect previews run in background
-workers. Geometry changes, compositing and fill still run on the UI thread;
+File decoding/encoding, recovery copies, effect previews and image/canvas resizing,
+rotation and mirroring run in background workers. Compositing and fill still run on the UI thread;
 large operations can pause the interface. Canvas updates upload the full
 image texture. Metadata, orientation tags and embedded color profiles are not
 preserved or interpreted. PNG is the only raster export format. A user-local Linux installation helper is available; there is no signed
@@ -279,3 +279,11 @@ Navigation validation: 77 tests pass. Pointer-anchored zoom preserves the image
 coordinate beneath the pointer except where canvas edges clamp scrolling. Middle
 button dragging pans without creating history. Fit uses the actual canvas panel
 and resets its scroll offset. File loading and new canvases reset navigation.
+
+Background geometry validation: 80 Rust tests pass. Resizing, canvas expansion,
+rotation and mirroring compute against immutable shared layer snapshots. Successful
+completion publishes one history entry in the original document; undo retains
+earlier edits and the saved revision. Failed jobs leave the document unchanged.
+Unchanged results retain selection and history. Geometry jobs currently block
+editing and close requests, but keep the window repainting; cancellation remains
+to be implemented. The installer has four additional Python checks.
