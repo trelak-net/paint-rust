@@ -16,6 +16,7 @@ use std::path::PathBuf;
 enum Tool {
     Polygon,
     Brush,
+    Pencil,
     Eraser,
     Fill,
     Picker,
@@ -105,6 +106,7 @@ pub struct Editor {
     transparent: bool,
     allow_close: bool,
     suppress_stroke: bool,
+    stroke_button: egui::PointerButton,
     appearance: Option<std::sync::mpsc::Receiver<egui::Theme>>,
     clipboard: crate::clipboard::Shared,
     recovery: Option<paint_rust::recovery::Recovery>,
@@ -182,6 +184,7 @@ impl Editor {
             transparent: false,
             allow_close: false,
             suppress_stroke: false,
+            stroke_button: egui::PointerButton::Primary,
             appearance: None,
             clipboard: Default::default(),
             recovery: None,
@@ -728,6 +731,7 @@ impl Editor {
             } else if !i.modifiers.command && !self.document.editing() && self.last_point.is_none()
             {
                 if i.key_pressed(Key::P) { self.tool = Tool::Polygon; }
+                if i.key_pressed(Key::N) { self.tool = Tool::Pencil; }
                 if i.key_pressed(Key::B) {
                     self.tool = Tool::Brush;
                 }
@@ -1026,11 +1030,16 @@ impl Editor {
                 self.transform_handles(ui, rect, &painter);
                 if response.hovered()
                     && !self.panning
-                    && matches!(self.tool, Tool::Brush | Tool::Eraser)
+                    && matches!(self.tool, Tool::Brush | Tool::Pencil | Tool::Eraser)
                 {
                     ui.ctx().set_cursor_icon(egui::CursorIcon::Crosshair);
                     if let Some(pos) = response.hover_pos() {
-                        let radius = self.brush_size * self.zoom / 2.0;
+                        let diameter = if self.tool == Tool::Pencil {
+                            1.0
+                        } else {
+                            self.brush_size
+                        };
+                        let radius = diameter * self.zoom / 2.0;
                         painter.circle_stroke(
                             pos,
                             radius,
@@ -1107,15 +1116,25 @@ impl Editor {
                         self.secondary_color.to_srgba_unmultiplied(),
                     );
                 }
+                let drawing_button = if self.last_point.is_some() {
+                    self.stroke_button
+                } else if self.tool == Tool::Pencil
+                    && (ui.input(|i| i.pointer.secondary_down())
+                        || response.clicked_by(egui::PointerButton::Secondary))
+                {
+                    egui::PointerButton::Secondary
+                } else {
+                    egui::PointerButton::Primary
+                };
                 if ui.is_enabled()
                     && self.tool != Tool::Polygon
                     && ui.input(|i| i.focused)
                     && !self.suppress_stroke
                     && !self.panning
                     && ((response.is_pointer_button_down_on()
-                        && ui.input(|i| i.pointer.primary_down()))
-                        || response.clicked_by(egui::PointerButton::Primary)
-                        || (ui.input(|i| i.pointer.button_released(egui::PointerButton::Primary))
+                        && ui.input(|i| i.pointer.button_down(drawing_button)))
+                        || response.clicked_by(drawing_button)
+                        || (ui.input(|i| i.pointer.button_released(drawing_button))
                             && self.last_point.is_some()))
                     && let Some(pos) = response
                         .interact_pointer_pos()
@@ -1124,10 +1143,12 @@ impl Editor {
                     let local = (pos - rect.min) / self.zoom;
                     let point = (local.x, local.y);
                     if self.last_point.is_none() {
+                        self.stroke_button = drawing_button;
                         let origin = ui.input(|i| i.pointer.press_origin()).unwrap_or(pos);
                         let origin = (origin - rect.min) / self.zoom;
                         self.shape_origin = Some((origin.x, origin.y));
                         match self.tool {
+                            Tool::Pencil => self.document.begin("Pencil stroke"),
                             Tool::Gradient => self.document.begin("Gradient"),
                             Tool::Move => self.document.begin(if self.move_selection_only {
                                 "Move selection"
@@ -1165,6 +1186,19 @@ impl Editor {
                                 "Brush stroke"
                             }),
                         }
+                    }
+                    if self.tool == Tool::Pencil {
+                        let color = if drawing_button == egui::PointerButton::Secondary {
+                            self.secondary_color
+                        } else {
+                            self.color
+                        };
+                        self.document.pencil(
+                            self.last_point.or(self.shape_origin).unwrap_or(point),
+                            point,
+                            color.to_srgba_unmultiplied(),
+                        );
+                        self.texture_dirty = true;
                     }
                     if matches!(self.tool, Tool::Brush | Tool::Eraser) {
                         self.document.stroke(
@@ -1293,7 +1327,7 @@ impl Editor {
                         ui.ctx().request_repaint();
                     }
                     self.last_point = Some(point);
-                    if !ui.input(|i| i.pointer.primary_down()) {
+                    if !ui.input(|i| i.pointer.button_down(drawing_button)) {
                         self.finish_stroke();
                     }
                 }
@@ -2071,7 +2105,11 @@ impl Editor {
                 }
             });
             ui.horizontal(|ui| {
-                ui.add(
+                if self.tool == Tool::Pencil {
+                    ui.label("Pencil: 1 px");
+                }
+                ui.add_enabled(
+                    self.tool != Tool::Pencil,
                     egui::Slider::new(&mut self.brush_size, 1.0..=128.0)
                         .suffix(" px")
                         .text("Brush size"),
@@ -2124,6 +2162,7 @@ impl Editor {
                             (Tool::Gradient, Icon::Gradient, "Gradient", "G"),
                             (Tool::Text, Icon::Text, "Text", "T"),
                             (Tool::Brush, Icon::Brush, "Brush", "B"),
+                            (Tool::Pencil, Icon::Pencil, "Pencil", "N"),
                             (Tool::Eraser, Icon::Eraser, "Eraser", "E"),
                             (Tool::Fill, Icon::Fill, "Flood fill", "F"),
                             (Tool::Picker, Icon::Picker, "Color picker", "I"),
@@ -2457,7 +2496,7 @@ impl Editor {
             }
             ctx.request_repaint_after(std::time::Duration::from_secs(1));
         }
-        if !ctx.input(|i| i.pointer.primary_down()) {
+        if !ctx.input(|i| i.pointer.button_down(self.stroke_button)) {
             self.finish_stroke();
             self.suppress_stroke = false;
         }
@@ -2593,6 +2632,63 @@ mod tests {
             editor.undo();
             assert!(editor.document.layers() == before.layers());
             assert_eq!(editor.document.selection(), Some(selection));
+        }
+    }
+
+    #[test]
+    fn pencil_shortcut_and_both_buttons_draw_single_pixel_strokes() {
+        for button in [egui::PointerButton::Primary, egui::PointerButton::Secondary] {
+            let ctx = egui::Context::default();
+            let mut editor = Editor::blank(&ctx);
+            editor.color = Color32::BLACK;
+            editor.secondary_color = Color32::RED;
+            editor.brush_size = 48.0;
+            frame(&mut editor, &ctx, vec![]);
+            frame(
+                &mut editor,
+                &ctx,
+                vec![egui::Event::Key {
+                    key: Key::N,
+                    physical_key: None,
+                    pressed: true,
+                    repeat: false,
+                    modifiers: egui::Modifiers::NONE,
+                }],
+            );
+            assert!(editor.tool == Tool::Pencil);
+            let start = Pos2::new(350.0, 200.0);
+            let end = Pos2::new(370.0, 200.0);
+            let event = |pos, pressed| egui::Event::PointerButton {
+                pos,
+                button,
+                pressed,
+                modifiers: egui::Modifiers::NONE,
+            };
+            frame(
+                &mut editor,
+                &ctx,
+                vec![egui::Event::PointerMoved(start), event(start, true)],
+            );
+            frame(&mut editor, &ctx, vec![egui::Event::PointerMoved(end)]);
+            assert!(editor.document.editing());
+            frame(&mut editor, &ctx, vec![event(end, false)]);
+            let ink = if button == egui::PointerButton::Primary {
+                [0, 0, 0, 255]
+            } else {
+                [255, 0, 0, 255]
+            };
+            assert_eq!(
+                editor
+                    .document
+                    .pixels()
+                    .iter()
+                    .filter(|p| **p == ink)
+                    .count(),
+                21
+            );
+            assert_eq!(editor.document.history().count(), 1);
+            editor.undo();
+            assert!(editor.document.pixels().iter().all(|p| *p == [255; 4]));
         }
     }
 

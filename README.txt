@@ -713,3 +713,10 @@ notice files pass. The current clean native release archive was checksum-verifie
 installed into an isolated prefix containing spaces and launched successfully.
 The visible application window and its net.trelak.PaintRust class were inspected.
 AT-SPI screen-reader workflow validation remains the final roadmap item.
+
+Pencil
+------
+The Pencil tool (N) draws a continuous one-pixel path without antialiasing,
+independent of brush size. Left drag uses the primary color; right drag uses the
+secondary color. It replaces RGBA pixels on the active layer, respects selections,
+and records each gesture as one undo step. Escape cancels the current gesture.

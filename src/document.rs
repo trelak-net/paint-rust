@@ -1055,6 +1055,52 @@ impl Document {
         );
     }
 
+    /// Draw a single-pixel path between pointer samples without antialiasing.
+    pub fn pencil(&mut self, from: (f32, f32), to: (f32, f32), color: Pixel) {
+        assert!(self.editing(), "Begin a transaction before drawing");
+        if ![from.0, from.1, to.0, to.1].iter().all(|v| v.is_finite()) {
+            return;
+        }
+        let (mut x0, mut y0) = (f64::from(from.0).floor(), f64::from(from.1).floor());
+        let (mut x1, mut y1) = (f64::from(to.0).floor(), f64::from(to.1).floor());
+        let steep = (y1 - y0).abs() > (x1 - x0).abs();
+        if steep {
+            std::mem::swap(&mut x0, &mut y0);
+            std::mem::swap(&mut x1, &mut y1);
+        }
+        if x0 > x1 {
+            std::mem::swap(&mut x0, &mut x1);
+            std::mem::swap(&mut y0, &mut y1);
+        }
+        let major_limit = if steep { self.height } else { self.width };
+        let minor_limit = if steep { self.width } else { self.height };
+        // Clip the iteration range, so off-canvas drags never cause unbounded work.
+        let start = x0.max(0.0);
+        let end = x1.min(f64::from(major_limit) - 1.0);
+        if start > end {
+            return;
+        }
+        let pixels = Arc::make_mut(&mut self.layers[self.active].pixels);
+        for major in start as u32..=end as u32 {
+            let minor = if x0 == x1 {
+                y0
+            } else {
+                (y0 + (f64::from(major) - x0) / (x1 - x0) * (y1 - y0)).round()
+            };
+            if minor < 0.0 || minor >= f64::from(minor_limit) {
+                continue;
+            }
+            let (x, y) = if steep {
+                (minor as usize, major as usize)
+            } else {
+                (major as usize, minor as usize)
+            };
+            if self.selection.as_ref().is_none_or(|s| s.contains(x, y)) {
+                pixels[y * self.width as usize + x] = color;
+            }
+        }
+    }
+
     pub fn shared_pixels(&self) -> Arc<Vec<Pixel>> {
         self.layers[self.active].pixels.clone()
     }
