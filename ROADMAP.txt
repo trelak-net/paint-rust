@@ -26,6 +26,7 @@ Development roadmap
 [x] Background open/save/export/import/recovery with guarded completion.
 [x] Background geometry computation with history-preserving publication.
 [x] Background canvas compositing with coalescing and stale-result protection.
+[x] Incremental changed-region compositing and partial texture uploads.
 [x] Cooperative cancellation of project saving and raster export.
 [x] PNG and lossless WebP raster export with transparency.
 [ ] Large-document performance and cancellation of remaining long operations.

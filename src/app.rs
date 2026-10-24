@@ -730,15 +730,28 @@ impl Editor {
     }
 
     fn canvas(&mut self, ui: &mut egui::Ui) {
-        if let Some(image) = self.canvas_renderer.poll() {
-            if let Some(texture) = &mut self.texture {
-                texture.set(image, TextureOptions::NEAREST);
-            } else {
-                self.texture = Some(ui.ctx().load_texture(
-                    "canvas",
-                    image,
-                    TextureOptions::NEAREST,
-                ));
+        if let Some(update) = self.canvas_renderer.poll() {
+            match update {
+                crate::canvas_renderer::Update::Full(image) => {
+                    if let Some(texture) = &mut self.texture {
+                        texture.set(image, TextureOptions::NEAREST);
+                    } else {
+                        self.texture = Some(ui.ctx().load_texture(
+                            "canvas",
+                            image,
+                            TextureOptions::NEAREST,
+                        ));
+                    }
+                }
+                crate::canvas_renderer::Update::Partial { position, image } => {
+                    if let Some(texture) = &mut self.texture {
+                        texture.set_partial(position, image, TextureOptions::NEAREST);
+                    } else {
+                        self.canvas_renderer.invalidate();
+                        self.texture_dirty = true;
+                    }
+                }
+                crate::canvas_renderer::Update::Unchanged => {}
             }
         }
         // Let an in-flight stroke preview finish; cancelling it every pointer

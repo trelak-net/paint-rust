@@ -431,8 +431,8 @@ Run CPU measurements with:
 On the development machine, four 4096 x 4096 layers with three Multiply blends
 took about 1.1 seconds to composite. A brush frame sharing a renderer snapshot
 took about 23 ms, while the following frame without a new snapshot took less than
-0.01 ms. These are CPU measurements, not GUI frame-rate guarantees. Full-texture
-uploads and full-image compositing remain; tiled rendering is not implemented.
+0.01 ms. These are CPU measurements, not GUI frame-rate guarantees. The original measurement used full-image compositing; incremental updates are
+described below.
 Validation: 125 Rust tests and strict Clippy pass, including preview scheduling
 while a stroke is active and publication after it ends.
 
@@ -490,3 +490,16 @@ instead of 768 MiB. Compression ratios depend on image content; noisy images can
 remain close to their original size. No cross-state disk deduplication is used.
 Validation: 134 Rust tests, strict Clippy and the dependency-notice check pass;
 round trips cover varied pixel bytes, transparent pixels and compressed corruption.
+
+Incremental canvas updates
+--------------------------
+The compositor compares immutable layer snapshots in the worker, finds changed
+rows and composites only their bounding rectangle. The UI uploads that rectangle
+with a partial texture update. Geometry, layer visibility, opacity, blend-mode or
+layer-count changes trigger a full refresh. Cancelled or superseded results cannot
+be used as patch bases: the worker checks which generation the UI consumed.
+On the four-layer 4096 x 4096 benchmark, compositing a 64 x 64 region took about
+0.29 ms versus 1.1 s for the whole image. This excludes difference scanning and
+GPU upload time. Large edits still use large rectangles; this is not tile storage.
+Validation: 137 Rust tests and strict Clippy pass, including patch reconstruction,
+stale-base protection and regional/full compositing parity for all blend modes.

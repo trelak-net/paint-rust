@@ -37,6 +37,15 @@ fn main() {
     measure("Next brush frame without a new snapshot", || {
         document.stroke((30.0, 30.0), (50.0, 50.0), 12.0, [0, 0, 0, 255], false)
     });
+    drop(measure("Composite 64 x 64 brush region", || {
+        document.composite_region(
+            0,
+            0,
+            size.min(64),
+            size.min(64),
+            &std::sync::atomic::AtomicBool::new(false),
+        )
+    }));
     measure("Commit stroke", || document.commit());
     measure("Invert active layer", || document.invert());
     measure("Flatten layers", || document.flatten());

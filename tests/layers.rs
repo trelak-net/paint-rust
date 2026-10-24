@@ -226,3 +226,39 @@ fn cancellable_composite_matches_normal_rendering_and_honors_cancellation() {
     );
     assert!(doc.composite_cancellable(&AtomicBool::new(true)).is_none());
 }
+
+#[test]
+fn region_compositing_matches_full_image_for_every_blend_mode() {
+    use paint_rust::document::{BlendMode, Layer};
+    use std::sync::atomic::AtomicBool;
+    let cancel = AtomicBool::new(false);
+    for mode in BlendMode::ALL {
+        let bottom = Layer::new(
+            "Bottom".into(),
+            (0..63).map(|i| [i as u8, 90, 200, (i * 4) as u8]).collect(),
+        );
+        let mut top = Layer::new(
+            "Top".into(),
+            (0..63)
+                .map(|i| [200, i as u8, 80, (255 - i * 3) as u8])
+                .collect(),
+        );
+        top.blend_mode = mode;
+        top.opacity = 173;
+        let doc = Document::from_layers(9, 7, vec![bottom, top], 1).unwrap();
+        let full = doc.composite();
+        let region = doc.composite_region(2, 1, 4, 5, &cancel).unwrap();
+        for row in 0..5 {
+            assert_eq!(
+                &region[row * 4..row * 4 + 4],
+                &full[(row + 1) * 9 + 2..(row + 1) * 9 + 6]
+            );
+        }
+        assert!(doc.composite_region(8, 0, 2, 1, &cancel).is_none());
+        assert!(doc.composite_region(u32::MAX, 0, 2, 1, &cancel).is_none());
+        assert!(
+            doc.composite_region(0, 0, 1, 1, &AtomicBool::new(true))
+                .is_none()
+        );
+    }
+}

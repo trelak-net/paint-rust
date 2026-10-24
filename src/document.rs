@@ -590,22 +590,44 @@ impl Document {
         &self,
         cancel: &std::sync::atomic::AtomicBool,
     ) -> Option<Vec<Pixel>> {
+        self.composite_region(0, 0, self.width, self.height, cancel)
+    }
+
+    /// Composite a bounded rectangle using the same blending as a full image.
+    pub fn composite_region(
+        &self,
+        x: u32,
+        y: u32,
+        width: u32,
+        height: u32,
+        cancel: &std::sync::atomic::AtomicBool,
+    ) -> Option<Vec<Pixel>> {
         use std::sync::atomic::Ordering;
-        if cancel.load(Ordering::Relaxed) {
+        if cancel.load(Ordering::Relaxed)
+            || width == 0
+            || height == 0
+            || x.checked_add(width)? > self.width
+            || y.checked_add(height)? > self.height
+        {
             return None;
         }
-        let mut pixels = vec![[0; 4]; self.width as usize * self.height as usize];
+        let mut pixels = vec![[0; 4]; width as usize * height as usize];
         let mut first = true;
         for layer in self.layers.iter().filter(|l| l.visible && l.opacity != 0) {
-            for (output, source) in pixels.chunks_mut(4096).zip(layer.pixels.chunks(4096)) {
-                if cancel.load(Ordering::Relaxed) {
-                    return None;
-                }
-                if first && layer.opacity == 255 {
-                    output.copy_from_slice(source);
-                } else {
-                    for (dst, src) in output.iter_mut().zip(source) {
-                        *dst = blend_layer(*dst, *src, layer.opacity, layer.blend_mode);
+            for row in 0..height as usize {
+                let start = (y as usize + row) * self.width as usize + x as usize;
+                let source = &layer.pixels[start..start + width as usize];
+                let output = &mut pixels[row * width as usize..(row + 1) * width as usize];
+                for (output, source) in output.chunks_mut(4096).zip(source.chunks(4096)) {
+                    if cancel.load(Ordering::Relaxed) {
+                        return None;
+                    }
+                    if first && layer.opacity == 255 {
+                        output.copy_from_slice(source);
+                    } else {
+                        for (dst, src) in output.iter_mut().zip(source) {
+                            *dst = blend_layer(*dst, *src, layer.opacity, layer.blend_mode);
+                        }
                     }
                 }
             }
