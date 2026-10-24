@@ -214,7 +214,8 @@ Session locks exclude running instances, and discarded snapshots cannot reappear
 when an older background write finishes. Pending tool previews are not copied.
 Recent edits since the last completed copy can be lost after a crash. Recovery
 does not overwrite project files and is not a substitute for regular saves.
-Old empty session directories are currently retained.
+Discarded snapshots are reclaimed after pending writes finish, or when the next
+instance discovers an unlocked session. Empty session lock directories are retained.
 
 Flatten validation: 65 tests pass. Flatten bakes visible layers, opacity and blend
 modes into a single normal RGBA layer while preserving the exact composite. Hidden

@@ -114,6 +114,8 @@ impl Recovery {
                     continue;
                 }
                 if group.path().join("discarded").exists() {
+                    // The session lock proves no worker can still write here.
+                    fs::remove_dir_all(group.path()).map_err(|e| e.to_string())?;
                     continue;
                 }
                 let path = group.path().join("snapshot.prust");
@@ -154,6 +156,9 @@ impl Recovery {
         self.has_work = false;
         self.last_attempt = Instant::now();
         // An older worker may still finish; its epoch remains tombstoned.
+        if self.pending.is_none() {
+            fs::remove_dir_all(&group).map_err(|e| e.to_string())?;
+        }
         for candidate in self.adopted.drain(..) {
             candidate.discard()?;
         }

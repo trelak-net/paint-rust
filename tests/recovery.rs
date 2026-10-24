@@ -96,3 +96,50 @@ fn uncommitted_previews_are_not_autosaved() {
     drop(recovery);
     assert!(Recovery::discover(dir.path()).unwrap().is_empty());
 }
+
+#[test]
+fn clearing_completed_work_reclaims_its_snapshot_immediately() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut recovery = Recovery::new(dir.path()).unwrap();
+    let mut doc = Document::new(8, 8, [255; 4]).unwrap();
+    doc.invert();
+    recovery.schedule(&doc, || {}).unwrap();
+    wait(&mut recovery);
+    let session = std::fs::read_dir(dir.path())
+        .unwrap()
+        .next()
+        .unwrap()
+        .unwrap()
+        .path();
+    let group = session.join("doc-0");
+    assert!(group.join("snapshot.prust").is_file());
+    recovery.clear().unwrap();
+    assert!(!group.exists());
+}
+
+#[test]
+fn discovery_reclaims_only_discarded_data_from_unlocked_sessions() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut recovery = Recovery::new(dir.path()).unwrap();
+    let mut doc = Document::new(8, 8, [255; 4]).unwrap();
+    doc.invert();
+    recovery.schedule(&doc, || {}).unwrap();
+    wait(&mut recovery);
+    let session = std::fs::read_dir(dir.path())
+        .unwrap()
+        .next()
+        .unwrap()
+        .unwrap()
+        .path();
+    let abandoned = session.join("doc-older");
+    std::fs::create_dir(&abandoned).unwrap();
+    std::fs::write(abandoned.join("discarded"), b"discarded").unwrap();
+    std::fs::write(abandoned.join("snapshot.prust"), b"old snapshot").unwrap();
+    assert!(Recovery::discover(dir.path()).unwrap().is_empty());
+    assert!(abandoned.exists());
+    drop(recovery);
+    let candidates = Recovery::discover(dir.path()).unwrap();
+    assert_eq!(candidates.len(), 1);
+    assert!(!abandoned.exists());
+    assert!(candidates[0].path.is_file());
+}
