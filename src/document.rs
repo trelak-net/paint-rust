@@ -27,59 +27,9 @@ pub struct GradientStyle {
 pub const MAX_PIXELS: usize = 4096 * 4096;
 const HISTORY_BYTES: usize = 128 * 1024 * 1024;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Selection {
-    pub ellipse: Option<EllipseSelection>,
-    pub x: u32,
-    pub y: u32,
-    pub width: u32,
-    pub height: u32,
-}
+pub use crate::selection::{EllipseSelection, Selection};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct EllipseSelection {
-    pub x: i64,
-    pub y: i64,
-    pub width: u32,
-    pub height: u32,
-}
-
-impl Selection {
-    pub fn elliptical(x: u32, y: u32, width: u32, height: u32) -> Self {
-        Self {
-            x,
-            y,
-            width,
-            height,
-            ellipse: Some(EllipseSelection {
-                x: i64::from(x),
-                y: i64::from(y),
-                width,
-                height,
-            }),
-        }
-    }
-
-    pub(crate) fn contains(self, x: usize, y: usize) -> bool {
-        if x < self.x as usize
-            || y < self.y as usize
-            || x >= self.x as usize + self.width as usize
-            || y >= self.y as usize + self.height as usize
-        {
-            return false;
-        }
-        self.ellipse.is_none_or(|ellipse| {
-            if ellipse.width == 0 || ellipse.height == 0 {
-                return false;
-            }
-            let nx = 2.0 * (x as f64 + 0.5 - ellipse.x as f64) / f64::from(ellipse.width) - 1.0;
-            let ny = 2.0 * (y as f64 + 0.5 - ellipse.y as f64) / f64::from(ellipse.height) - 1.0;
-            nx * nx + ny * ny <= 1.0
-        })
-    }
-}
-
-fn selected(selection: Option<Selection>, x: usize, y: usize) -> bool {
+fn selected(selection: Option<&Selection>, x: usize, y: usize) -> bool {
     selection.is_none_or(|rect| rect.contains(x, y))
 }
 
@@ -233,7 +183,7 @@ impl Document {
     }
 
     pub fn selection(&self) -> Option<Selection> {
-        self.selection
+        self.selection.clone()
     }
     pub fn set_selection(&mut self, selection: Option<Selection>) {
         if self.editing() {
@@ -244,8 +194,9 @@ impl Document {
             let y = s.y.min(self.height);
             let width = s.width.min(self.width - x);
             let height = s.height.min(self.height - y);
-            (width > 0 && height > 0).then_some(Selection {
+            ((width > 0 && height > 0) || s.mask.is_some()).then_some(Selection {
                 ellipse: s.ellipse,
+                mask: s.mask,
                 x,
                 y,
                 width,
@@ -256,22 +207,24 @@ impl Document {
     pub fn clear_pixels(&mut self) {
         self.begin("Delete pixels");
         let width = self.width as usize;
-        let selection = self.selection;
+        let selection = self.selection.clone();
         for (i, pixel) in Arc::make_mut(&mut self.layers[self.active].pixels)
             .iter_mut()
             .enumerate()
         {
-            if selected(selection, i % width, i / width) {
+            if selected(selection.as_ref(), i % width, i / width) {
                 *pixel = [0; 4];
             }
         }
         self.commit();
     }
     pub fn crop_to_selection(&mut self) -> bool {
-        let Some(rect) = self.selection else {
+        let Some(rect) = self.selection.clone() else {
             return false;
         };
         if self.editing()
+            || rect.width == 0
+            || rect.height == 0
             || (rect.x == 0
                 && rect.y == 0
                 && rect.width == self.width
@@ -387,7 +340,8 @@ impl Document {
     }
 
     pub fn copy_pixels(&self, merged: bool) -> (u32, u32, Vec<Pixel>) {
-        let rect = self.selection.unwrap_or(Selection {
+        let rect = self.selection.clone().unwrap_or(Selection {
+            mask: None,
             ellipse: None,
             x: 0,
             y: 0,
@@ -451,7 +405,7 @@ impl Document {
         if self.editing() || !self.can_add_layer() {
             return Err("Cannot add another layer to this document.".into());
         }
-        let (x, y) = self.selection.map(|s| (s.x, s.y)).unwrap_or((
+        let (x, y) = self.selection.as_ref().map(|s| (s.x, s.y)).unwrap_or((
             (self.width.saturating_sub(width)) / 2,
             (self.height.saturating_sub(height)) / 2,
         ));
@@ -474,6 +428,7 @@ impl Document {
         self.layers
             .insert(self.active, Layer::new(name.into(), output));
         self.selection = Some(Selection {
+            mask: None,
             ellipse: None,
             x,
             y,
@@ -673,13 +628,23 @@ impl Document {
 
     pub fn history_bytes(&self) -> usize {
         let mut buffers = HashSet::new();
+        let mut masks = HashSet::new();
+        let mask_bytes: usize = self
+            .undo
+            .iter()
+            .chain(self.redo.iter())
+            .filter_map(|s| s.selection.as_ref().and_then(|s| s.mask.as_ref()))
+            .filter(|mask| masks.insert(Arc::as_ptr(&mask.pixels)))
+            .map(|mask| mask.pixels.len())
+            .sum();
         self.undo
             .iter()
             .chain(self.redo.iter())
             .flat_map(|s| &s.layers)
             .filter(|layer| buffers.insert(Arc::as_ptr(&layer.pixels)))
             .map(|layer| layer.pixels.len() * 4)
-            .sum()
+            .sum::<usize>()
+            + mask_bytes
     }
     pub fn editing(&self) -> bool {
         self.pending.is_some()
@@ -690,7 +655,7 @@ impl Document {
             self.pending = Some(Snapshot {
                 width: self.width,
                 height: self.height,
-                selection: self.selection,
+                selection: self.selection.clone(),
                 layers: self.layers.clone(),
                 active: self.active,
                 revision: self.revision,
@@ -729,7 +694,7 @@ impl Document {
         if let Some(before) = self.pending.take() {
             self.width = before.width;
             self.height = before.height;
-            self.selection = before.selection;
+            self.selection = before.selection.clone();
             self.layers = before.layers;
             self.active = before.active;
         }
@@ -794,7 +759,7 @@ impl Document {
         erase: bool,
     ) {
         assert!(self.editing(), "Begin a transaction before drawing");
-        let selection = self.selection;
+        let selection = self.selection.clone();
         let pixels = Arc::make_mut(&mut self.layers[self.active].pixels);
         let radius = diameter.max(1.0) / 2.0;
         let min_x = ((from.0.min(to.0) - radius).floor() as i32).max(0);
@@ -806,7 +771,7 @@ impl Document {
         let length_sq = dx * dx + dy * dy;
         for y in min_y..=max_y {
             for x in min_x..=max_x {
-                if !selected(selection, x as usize, y as usize) {
+                if !selected(selection.as_ref(), x as usize, y as usize) {
                     continue;
                 }
                 let px = x as f32 + 0.5;
@@ -851,13 +816,13 @@ impl Document {
             .expect("Begin a gradient transaction first");
         self.layers = before.layers.clone();
         self.active = before.active;
-        let selection = self.selection;
+        let selection = self.selection.clone();
         let output = Arc::make_mut(&mut self.layers[self.active].pixels);
         let (dx, dy) = (f64::from(to.0 - from.0), f64::from(to.1 - from.1));
         let distance = dx * dx + dy * dy;
         for y in 0..self.height {
             for x in 0..self.width {
-                if !selected(selection, x as usize, y as usize) {
+                if !selected(selection.as_ref(), x as usize, y as usize) {
                     continue;
                 }
                 let (px, py) = (
@@ -898,17 +863,21 @@ impl Document {
             .expect("Begin a move transaction first");
         self.layers = before.layers.clone();
         self.active = before.active;
-        self.selection = before.selection;
+        self.selection = before.selection.clone();
         if dx == 0 && dy == 0 {
             return;
         }
-        let area = before.selection.unwrap_or(Selection {
+        let area = before.selection.clone().unwrap_or(Selection {
+            mask: None,
             ellipse: None,
             x: 0,
             y: 0,
             width: self.width,
             height: self.height,
         });
+        if area.width == 0 || area.height == 0 {
+            return;
+        }
         let left = i64::from(area.x) + i64::from(dx);
         let top = i64::from(area.y) + i64::from(dy);
         let x = left.clamp(0, i64::from(self.width)) as u32;
@@ -916,9 +885,14 @@ impl Document {
         let right = (left + i64::from(area.width)).clamp(0, i64::from(self.width)) as u32;
         let bottom = (top + i64::from(area.height)).clamp(0, i64::from(self.height)) as u32;
         self.selection = (right > x && bottom > y).then_some(Selection {
+            mask: area.mask.clone().map(|mut mask| {
+                mask.x = mask.x.saturating_add(i64::from(dx));
+                mask.y = mask.y.saturating_add(i64::from(dy));
+                mask
+            }),
             ellipse: area.ellipse.map(|mut ellipse| {
-                ellipse.x += i64::from(dx);
-                ellipse.y += i64::from(dy);
+                ellipse.x = ellipse.x.saturating_add(i64::from(dx));
+                ellipse.y = ellipse.y.saturating_add(i64::from(dy));
                 ellipse
             }),
             x,
@@ -976,7 +950,13 @@ impl Document {
         self.layers = before.layers.clone();
         self.active = before.active;
         let pixels = Arc::make_mut(&mut self.layers[self.active].pixels);
-        crate::text::render(pixels, self.width, self.height, self.selection, style);
+        crate::text::render(
+            pixels,
+            self.width,
+            self.height,
+            self.selection.clone(),
+            style,
+        );
         Ok(())
     }
 
@@ -1002,7 +982,7 @@ impl Document {
         let (cx, cy) = ((left + right) * 0.5, (top + bottom) * 0.5);
         let (rx, ry) = ((right - left) * 0.5, (bottom - top) * 0.5);
         let width = style.width.max(1.0);
-        let selection = self.selection;
+        let selection = self.selection.clone();
         let pixels = Arc::make_mut(&mut self.layers[self.active].pixels);
         for y in (top.floor() as i32).max(0)..(bottom.ceil() as i32).min(self.height as i32) {
             for x in (left.floor() as i32).max(0)..(right.ceil() as i32).min(self.width as i32) {
@@ -1030,7 +1010,7 @@ impl Document {
                     }
                     Shape::Line => unreachable!(),
                 };
-                if painted && selected(selection, x as usize, y as usize) {
+                if painted && selected(selection.as_ref(), x as usize, y as usize) {
                     pixels[y as usize * self.width as usize + x as usize] = style.color;
                 }
             }
@@ -1042,8 +1022,8 @@ impl Document {
         let Some(start) = self.index(x, y) else {
             return;
         };
-        let selection = self.selection;
-        if !selected(selection, x as usize, y as usize) {
+        let selection = self.selection.clone();
+        if !selected(selection.as_ref(), x as usize, y as usize) {
             return;
         }
         let pixels = Arc::make_mut(&mut self.layers[self.active].pixels);
@@ -1056,7 +1036,7 @@ impl Document {
         pixels[start] = color;
         while let Some(i) = stack.pop() {
             let mut visit = |n: usize| {
-                if pixels[n] == target && selected(selection, n % width, n / width) {
+                if pixels[n] == target && selected(selection.as_ref(), n % width, n / width) {
                     pixels[n] = color;
                     stack.push(n);
                 }
@@ -1079,12 +1059,12 @@ impl Document {
     pub fn invert(&mut self) {
         self.begin("Invert colors");
         let width = self.width as usize;
-        let selection = self.selection;
+        let selection = self.selection.clone();
         for (i, pixel) in Arc::make_mut(&mut self.layers[self.active].pixels)
             .iter_mut()
             .enumerate()
         {
-            if !selected(selection, i % width, i / width) {
+            if !selected(selection.as_ref(), i % width, i / width) {
                 continue;
             }
             for c in &mut pixel[..3] {

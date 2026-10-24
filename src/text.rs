@@ -52,7 +52,10 @@ pub fn render(
                     if x < 0 || y < 0 || x >= i64::from(width) || y >= i64::from(height) {
                         return;
                     }
-                    if selection.is_some_and(|r| !r.contains(x as usize, y as usize)) {
+                    if selection
+                        .as_ref()
+                        .is_some_and(|r| !r.contains(x as usize, y as usize))
+                    {
                         return;
                     }
                     let i = y as usize * width as usize + x as usize;

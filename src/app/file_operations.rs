@@ -8,6 +8,7 @@ pub(super) enum Outcome {
     Saved(PathBuf),
     Exported(PathBuf),
     Transformed(Box<Document>, String),
+    Selection(Selection),
 }
 
 pub(super) struct FileJob {
@@ -132,6 +133,15 @@ impl Editor {
                     }
                     Err(error) => self.status = format!("Could not {operation}: {error}"),
                 }
+            }
+            Ok(Outcome::Selection(selection)) => {
+                let empty = selection.width == 0 || selection.height == 0;
+                self.document.set_selection(Some(selection));
+                self.status = if empty {
+                    "Selection is empty".into()
+                } else {
+                    "Selection updated".into()
+                };
             }
             Ok(Outcome::Saved(path)) => {
                 self.document.mark_saved();

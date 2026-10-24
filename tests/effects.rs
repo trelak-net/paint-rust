@@ -38,13 +38,14 @@ fn identity_adjustments_preserve_every_channel_and_cancellation_stops_work() {
 fn adjustments_respect_selection_alpha_and_transaction_cancellation() {
     let mut doc = Document::new(2, 2, [200, 100, 50, 123]).unwrap();
     let selection = Selection {
+        mask: None,
         ellipse: None,
         x: 0,
         y: 0,
         width: 1,
         height: 1,
     };
-    doc.set_selection(Some(selection));
+    doc.set_selection(Some(selection.clone()));
     let output = effects::render(
         doc.pixels(),
         2,
@@ -100,6 +101,7 @@ fn pixelation_averages_premultiplied_colors_and_partial_edge_blocks() {
         [[255, 0, 0, 128], [255, 0, 0, 128], [0, 0, 255, 100]]
     );
     let selection = Selection {
+        mask: None,
         ellipse: None,
         x: 1,
         y: 0,
@@ -122,6 +124,7 @@ fn pixelation_averages_premultiplied_colors_and_partial_edge_blocks() {
 fn posterization_quantizes_channels_without_changing_alpha_or_unselected_pixels() {
     let source = [[40, 120, 240, 123], [67, 80, 90, 0]];
     let selection = Selection {
+        mask: None,
         ellipse: None,
         x: 0,
         y: 0,

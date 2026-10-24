@@ -43,6 +43,7 @@ fn linear_gradient_hits_endpoints_and_replaces_older_preview() {
 fn transparent_gradient_does_not_bleed_hidden_rgb_and_respects_selection() {
     let mut doc = Document::new(3, 1, [0; 4]).unwrap();
     doc.set_selection(Some(Selection {
+        mask: None,
         ellipse: None,
         x: 1,
         y: 0,

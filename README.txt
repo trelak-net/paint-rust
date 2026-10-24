@@ -59,6 +59,7 @@ Features
 - Pixelate with alpha-aware block averages or posterize individual color channels.
 - Draw lines and outlined/filled rectangles or ellipses with cancellable previews.
 - Select a rectangular or elliptical area, limit edits to it, delete pixels or crop all layers.
+- Add, subtract or intersect selections; combined areas use a blue mask overlay.
 - Resize all layers, change canvas size with a nine-position anchor, rotate or mirror.
 - Hold Shift for 45-degree line angles or equal shape dimensions.
 - Zoom from 10% to 400%, fit the canvas, and navigate with scrollbars.
@@ -108,7 +109,7 @@ tests/editor.rs: image operations, history semantics and file round trips.
 The document stores up to 32 RGBA layers with configurable blend modes.
 Brush strokes replace RGBA values on the active layer; repeated samples do not
 accumulate opacity. Transparent pixels are displayed over a checkerboard. History
-shares unchanged layer buffers and retains up to 128 MiB of unique pixel buffers
+shares unchanged layer buffers and retains up to 128 MiB of unique pixel and selection-mask buffers
 across undo/redo; history labels and metadata are additional allocations. Oldest
 undo entries are evicted first, then farthest redo entries when necessary. The
 active document is limited to 256 MiB of layer pixels, excluding previews/history.
@@ -124,7 +125,7 @@ is session-local and is not stored in project files.
 Current boundaries
 ------------------
 This is an initial application, not a complete graphics suite. Pressure-sensitive
-input, selection boolean operations and free transforms are not implemented yet.
+input, polygon selections and free transforms are not implemented yet.
 File decoding/encoding, recovery copies, effect previews and image/canvas resizing,
 rotation, mirroring and layer compositing run in background workers. Fill still runs on the UI thread;
 large operations can pause the interface. Canvas updates upload the full
@@ -327,7 +328,7 @@ Cancellation is cooperative; an in-progress encoder or filesystem call can take
 time to reach its next checkpoint.
 
 History panel validation: 95 Rust tests pass. The panel lists retained undo and
-redo operations in traversal order and reports retained pixel-buffer memory.
+redo operations in traversal order and reports retained pixel and selection-mask memory.
 Choosing an entry traverses every operation through that entry. Saved revisions
 remain recognizable, and new edits invalidate the redo branch. History is bounded
 by the existing memory budget, so evicted operations are unavailable.
@@ -336,3 +337,13 @@ WebP export validation: 97 Rust tests pass. The Export menu offers PNG and lossl
 WebP with transparency. Both export the visible composite through a cancellable
 background job and atomic replacement. Export does not change project layers,
 history, path or saved state. Format-specific file dialogs validate the extension.
+
+Combined selection validation: 104 Rust tests pass. Replace, Add, Subtract and
+Intersect are available in selection-tool options. Combination runs in a worker
+and publishes session-local masks without dirtying image pixels. With no prior
+selection, Add starts from empty; Subtract and Intersect start from the canvas.
+An empty result remains explicitly empty, so drawing, fill, delete and move cannot
+affect the whole image accidentally. Combined selections use a translucent blue
+overlay that is not exported. Mask buffers are shared and cropped to their bounds;
+retained history masks count toward the 128 MiB budget. Undo/cancel, clipboard and
+clipped movement preserve mask geometry. Crop still uses rectangular bounds.

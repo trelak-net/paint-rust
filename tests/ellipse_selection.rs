@@ -8,7 +8,7 @@ use std::sync::atomic::AtomicBool;
 fn ellipse_limits_fill_delete_and_clipboard_without_rectangular_corners() {
     let mut doc = Document::new(5, 5, [255; 4]).unwrap();
     let selection = Selection::elliptical(0, 0, 5, 5);
-    doc.set_selection(Some(selection));
+    doc.set_selection(Some(selection.clone()));
     assert!(!doc.dirty());
     doc.begin("Fill");
     doc.fill(2, 2, [10, 20, 30, 255]);
@@ -51,7 +51,7 @@ fn clipped_ellipse_keeps_original_geometry_when_selection_moves() {
 fn moving_elliptical_pixels_leaves_unselected_corners_and_cancels_exactly() {
     let mut doc = Document::new(8, 5, [12, 24, 36, 255]).unwrap();
     let selection = Selection::elliptical(0, 0, 5, 5);
-    doc.set_selection(Some(selection));
+    doc.set_selection(Some(selection.clone()));
     let before = doc.pixels().to_vec();
     doc.begin("Move");
     doc.preview_move(3, 0, false, false);

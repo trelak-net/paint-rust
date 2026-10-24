@@ -71,13 +71,14 @@ fn smooth_resize_uses_premultiplied_alpha_to_avoid_transparent_color_bleed() {
 fn invalid_resize_is_transactional_and_undo_restores_selection() {
     let mut doc = numbered();
     let selection = Selection {
+        mask: None,
         ellipse: None,
         x: 1,
         y: 0,
         width: 2,
         height: 2,
     };
-    doc.set_selection(Some(selection));
+    doc.set_selection(Some(selection.clone()));
     assert!(doc.resize_image(0, 1, true).is_err());
     assert!(!doc.dirty());
     assert!(!doc.can_undo());
@@ -98,6 +99,7 @@ fn publishing_background_geometry_retains_history_and_saved_state() {
     doc.invert();
     doc.mark_saved();
     doc.set_selection(Some(Selection {
+        mask: None,
         ellipse: None,
         x: 1,
         y: 0,
@@ -127,13 +129,14 @@ fn publishing_background_geometry_retains_history_and_saved_state() {
 fn unchanged_background_geometry_preserves_selection_and_pending_edit_is_rejected() {
     let mut doc = Document::new(2, 2, [255; 4]).unwrap();
     let selection = Some(Selection {
+        mask: None,
         ellipse: None,
         x: 1,
         y: 0,
         width: 1,
         height: 1,
     });
-    doc.set_selection(selection);
+    doc.set_selection(selection.clone());
     assert!(!doc.apply_transformed(doc.snapshot(), "Unchanged").unwrap());
     assert_eq!(doc.selection(), selection);
     assert!(!doc.can_undo());

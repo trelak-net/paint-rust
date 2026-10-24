@@ -16,13 +16,14 @@ fn moving_overlapping_pixels_uses_frozen_source_and_undo_restores_selection() {
     .unwrap();
     let before = doc.pixels().to_vec();
     let area = Selection {
+        mask: None,
         ellipse: None,
         x: 0,
         y: 0,
         width: 3,
         height: 1,
     };
-    doc.set_selection(Some(area));
+    doc.set_selection(Some(area.clone()));
     doc.begin("Move");
     doc.preview_move(1, 0, false, false);
     assert_eq!(
@@ -45,6 +46,7 @@ fn moving_overlapping_pixels_uses_frozen_source_and_undo_restores_selection() {
 fn copy_and_selection_only_moves_do_not_clear_source_pixels() {
     let mut doc = Document::new(4, 4, [255; 4]).unwrap();
     doc.set_selection(Some(Selection {
+        mask: None,
         ellipse: None,
         x: 0,
         y: 0,
@@ -62,6 +64,7 @@ fn copy_and_selection_only_moves_do_not_clear_source_pixels() {
     assert_eq!(
         doc.selection(),
         Some(Selection {
+            mask: None,
             ellipse: None,
             x: 2,
             y: 2,

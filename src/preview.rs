@@ -42,7 +42,7 @@ impl EffectPreview {
                     &source,
                     width,
                     height,
-                    selection,
+                    selection.clone(),
                     request.effect,
                     &request.cancel,
                 ) {

@@ -3,6 +3,7 @@ use crate::icons::Icon;
 use eframe::egui::{self, Color32, Key, Pos2, Rect, Sense, TextureHandle, TextureOptions, Vec2};
 use file_operations::{FileJob, Outcome};
 use paint_rust::effects::Effect;
+use paint_rust::selection::CombineMode;
 use paint_rust::transform::Orientation;
 use paint_rust::{
     document::{BlendMode, Document, GradientStyle, Selection, Shape, ShapeStyle},
@@ -73,6 +74,8 @@ pub struct Editor {
     shape_filled: bool,
     move_selection_only: bool,
     ellipse_selection: bool,
+    selection_mode: CombineMode,
+    selection_texture: Option<(std::sync::Arc<Vec<u8>>, TextureHandle)>,
     shape_origin: Option<(f32, f32)>,
     selection_before: Option<Option<Selection>>,
     zoom: f32,
@@ -143,6 +146,8 @@ impl Editor {
             shape_filled: false,
             move_selection_only: false,
             ellipse_selection: false,
+            selection_mode: CombineMode::Replace,
+            selection_texture: None,
             shape_origin: None,
             selection_before: None,
             zoom: 1.0,
@@ -325,6 +330,10 @@ impl Editor {
     fn copy(&mut self, cut: bool, merged: bool) {
         self.finish_stroke();
         let (width, height, pixels) = self.document.copy_pixels(merged);
+        if width == 0 || height == 0 {
+            self.status = "Selection is empty".into();
+            return;
+        }
         match self
             .clipboard()
             .and_then(|c| c.write(width, height, &pixels))
@@ -412,6 +421,30 @@ impl Editor {
             self.document.commit();
             self.texture_dirty = true;
         }
+        if self.tool == Tool::Select
+            && self.selection_mode != CombineMode::Replace
+            && let Some(previous) = self.selection_before.take()
+        {
+            let candidate = self.document.selection();
+            self.document.set_selection(previous.clone());
+            if let Some(candidate) = candidate {
+                let (width, height, mode) = (
+                    self.document.width,
+                    self.document.height,
+                    self.selection_mode,
+                );
+                self.start_file_job("combine selections", move || {
+                    paint_rust::selection::combine(
+                        width,
+                        height,
+                        previous.as_ref(),
+                        &candidate,
+                        mode,
+                    )
+                    .map(Outcome::Selection)
+                });
+            }
+        }
         self.last_point = None;
         self.shape_origin = None;
         self.selection_before = None;
@@ -455,6 +488,12 @@ impl Editor {
 
     fn shortcuts(&mut self, ctx: &egui::Context) {
         if ctx.wants_keyboard_input() {
+            return;
+        }
+        if self.tool == Tool::Select
+            && self.last_point.is_some()
+            && !ctx.input(|i| i.key_pressed(Key::Escape))
+        {
             return;
         }
         if self.tool == Tool::Move && !self.document.editing() && self.last_point.is_none() {
@@ -590,6 +629,7 @@ impl Editor {
             Some(7) => {
                 self.finish_stroke();
                 self.document.set_selection(Some(Selection {
+                    mask: None,
                     ellipse: None,
                     x: 0,
                     y: 0,
@@ -633,6 +673,9 @@ impl Editor {
         if self.texture_dirty {
             self.canvas_renderer.request(&self.document);
             self.texture_dirty = false;
+        }
+        if self.document.selection().is_none() {
+            self.selection_texture = None;
         }
         let viewport = ui.available_rect_before_wrap();
         if self.fit_canvas {
@@ -712,6 +755,48 @@ impl Editor {
                     );
                 }
                 if let Some(selection) = self.document.selection() {
+                    if let Some(mask) = &selection.mask {
+                        if self
+                            .selection_texture
+                            .as_ref()
+                            .is_none_or(|(pixels, _)| !std::sync::Arc::ptr_eq(pixels, &mask.pixels))
+                        {
+                            let pixels = mask
+                                .pixels
+                                .iter()
+                                .map(|value| {
+                                    if *value == 0 {
+                                        Color32::TRANSPARENT
+                                    } else {
+                                        Color32::from_rgba_unmultiplied(40, 120, 255, 60)
+                                    }
+                                })
+                                .collect();
+                            let texture = ui.ctx().load_texture(
+                                "selection-mask",
+                                egui::ColorImage::new(
+                                    [mask.width as usize, mask.height as usize],
+                                    pixels,
+                                ),
+                                TextureOptions::NEAREST,
+                            );
+                            self.selection_texture = Some((mask.pixels.clone(), texture));
+                        }
+                        if let Some((_, texture)) = &self.selection_texture {
+                            let area = Rect::from_min_size(
+                                rect.min + Vec2::new(mask.x as f32, mask.y as f32) * self.zoom,
+                                Vec2::new(mask.width as f32, mask.height as f32) * self.zoom,
+                            );
+                            painter.image(
+                                texture.id(),
+                                area,
+                                Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
+                                Color32::WHITE,
+                            );
+                        }
+                    } else {
+                        self.selection_texture = None;
+                    }
                     let outline = Rect::from_min_size(
                         rect.min + Vec2::new(selection.x as f32, selection.y as f32) * self.zoom,
                         Vec2::new(selection.width as f32, selection.height as f32) * self.zoom,
@@ -935,6 +1020,7 @@ impl Editor {
                             Selection::elliptical(x, y, right - x, bottom - y)
                         } else {
                             Selection {
+                                mask: None,
                                 ellipse: None,
                                 x,
                                 y,
@@ -942,7 +1028,7 @@ impl Editor {
                                 height: bottom - y,
                             }
                         };
-                        self.document.set_selection(Some(selection));
+                        self.document.set_selection(Some(selection.clone()));
                         ui.ctx().request_repaint();
                     }
                     self.last_point = Some(point);
@@ -1569,6 +1655,7 @@ impl Editor {
                     if ui.button("Select all    Ctrl+A").clicked() {
                         self.finish_stroke();
                         self.document.set_selection(Some(Selection {
+                            mask: None,
                             ellipse: None,
                             x: 0,
                             y: 0,
@@ -1712,6 +1799,22 @@ impl Editor {
                         }
                         if self.tool == Tool::Select {
                             ui.checkbox(&mut self.ellipse_selection, "Elliptical selection");
+                            egui::ComboBox::from_label("Combine")
+                                .selected_text(self.selection_mode.label())
+                                .show_ui(ui, |ui| {
+                                    for mode in [
+                                        CombineMode::Replace,
+                                        CombineMode::Add,
+                                        CombineMode::Subtract,
+                                        CombineMode::Intersect,
+                                    ] {
+                                        ui.selectable_value(
+                                            &mut self.selection_mode,
+                                            mode,
+                                            mode.label(),
+                                        );
+                                    }
+                                });
                         }
                         if self.tool == Tool::Move {
                             ui.checkbox(&mut self.move_selection_only, "Move selection only");
@@ -1964,6 +2067,12 @@ impl Editor {
             self.finish_stroke();
             self.suppress_stroke = false;
         }
+        if self.file_job.is_some()
+            && !self.allow_close
+            && ctx.input(|i| i.viewport().close_requested())
+        {
+            ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+        }
         if self.texture_dirty {
             ctx.request_repaint();
         }
@@ -2095,13 +2204,14 @@ mod tests {
         let mut editor = Editor::blank(&ctx);
         editor.tool = Tool::Select;
         let previous = Selection {
+            mask: None,
             ellipse: None,
             x: 5,
             y: 6,
             width: 7,
             height: 8,
         };
-        editor.document.set_selection(Some(previous));
+        editor.document.set_selection(Some(previous.clone()));
         frame(&mut editor, &ctx, vec![]);
         let start = Pos2::new(350.0, 200.0);
         let end = Pos2::new(430.0, 280.0);
@@ -2111,7 +2221,7 @@ mod tests {
             vec![egui::Event::PointerMoved(start), pointer(start, true)],
         );
         frame(&mut editor, &ctx, vec![egui::Event::PointerMoved(end)]);
-        assert_ne!(editor.document.selection(), Some(previous));
+        assert_ne!(editor.document.selection(), Some(previous.clone()));
         frame(
             &mut editor,
             &ctx,
@@ -2169,6 +2279,7 @@ mod tests {
             fail: false,
         }));
         editor.document.set_selection(Some(Selection {
+            mask: None,
             ellipse: None,
             x: 0,
             y: 0,
@@ -2550,6 +2661,7 @@ mod tests {
         editor.document.fill(0, 0, [200, 50, 30, 255]);
         editor.document.commit();
         editor.document.set_selection(Some(Selection {
+            mask: None,
             ellipse: None,
             x: 1,
             y: 1,
@@ -2656,5 +2768,91 @@ mod tests {
         assert!(!editor.document.can_undo());
         editor.document.invert();
         assert!(!editor.document.can_redo());
+    }
+    #[test]
+    fn additive_selection_gesture_publishes_mask_without_image_history() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.document = Document::new(100, 100, [255; 4]).unwrap();
+        editor.document.set_selection(Some(Selection {
+            mask: None,
+            ellipse: None,
+            x: 0,
+            y: 0,
+            width: 1,
+            height: 1,
+        }));
+        editor.tool = Tool::Select;
+        editor.selection_mode = CombineMode::Add;
+        frame(&mut editor, &ctx, vec![]);
+        frame(&mut editor, &ctx, vec![]);
+        let start = editor.canvas_viewport.min + Vec2::new(10.0, 10.0);
+        let end = start + Vec2::new(20.0, 20.0);
+        frame(
+            &mut editor,
+            &ctx,
+            vec![egui::Event::PointerMoved(start), pointer(start, true)],
+        );
+        frame(
+            &mut editor,
+            &ctx,
+            vec![egui::Event::PointerMoved(end), pointer(end, false)],
+        );
+        wait_for_files(&mut editor, &ctx);
+        frame(&mut editor, &ctx, vec![]);
+        assert!(editor.document.selection().unwrap().mask.is_some());
+        assert!(editor.selection_texture.is_some());
+        let (_, _, copied) = editor.document.copy_pixels(false);
+        assert_eq!(copied.iter().filter(|p| p[3] > 0).count(), 401);
+        assert!(!editor.document.dirty());
+        assert!(!editor.document.can_undo());
+    }
+
+    #[test]
+    fn zero_size_additive_gesture_preserves_previous_selection() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        let previous = Selection::elliptical(5, 5, 10, 10);
+        editor.tool = Tool::Select;
+        editor.selection_mode = CombineMode::Add;
+        editor.selection_before = Some(Some(previous.clone()));
+        editor.document.set_selection(None);
+        editor.finish_stroke();
+        assert_eq!(editor.document.selection(), Some(previous));
+        assert!(editor.file_job.is_none());
+    }
+
+    #[test]
+    fn close_is_cancelled_when_focus_loss_starts_selection_computation() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.document = Document::new(4, 4, [255; 4]).unwrap();
+        editor.document.invert();
+        editor.tool = Tool::Select;
+        editor.selection_mode = CombineMode::Add;
+        editor.selection_before = Some(None);
+        editor
+            .document
+            .set_selection(Some(Selection::elliptical(0, 0, 3, 3)));
+        let mut input = egui::RawInput {
+            focused: false,
+            ..Default::default()
+        };
+        input
+            .viewports
+            .get_mut(&egui::ViewportId::ROOT)
+            .unwrap()
+            .events
+            .push(egui::ViewportEvent::Close);
+        let output = ctx.run(input, |ctx| editor.show(ctx));
+        assert!(
+            output.viewport_output[&egui::ViewportId::ROOT]
+                .commands
+                .iter()
+                .any(|command| matches!(command, egui::ViewportCommand::CancelClose))
+        );
+        wait_for_files(&mut editor, &ctx);
+        assert!(editor.document.dirty());
+        assert!(!editor.allow_close);
     }
 }

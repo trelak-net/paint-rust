@@ -126,13 +126,14 @@ fn flatten_preserves_composite_and_undo_restores_every_layer() {
         doc.set_visibility(2, false);
         doc.select_layer(1);
         let selection = Selection {
+            mask: None,
             ellipse: None,
             x: 1,
             y: 0,
             width: 1,
             height: 1,
         };
-        doc.set_selection(Some(selection));
+        doc.set_selection(Some(selection.clone()));
         doc.mark_saved();
         let layers = doc.layers().to_vec();
         let composite = doc.composite();
@@ -186,13 +187,14 @@ fn import_clips_at_selection_origin_and_rejects_invalid_input_atomically() {
     use paint_rust::document::Selection;
     let mut doc = Document::new(3, 2, [255; 4]).unwrap();
     let selection = Selection {
+        mask: None,
         ellipse: None,
         x: 2,
         y: 1,
         width: 1,
         height: 1,
     };
-    doc.set_selection(Some(selection));
+    doc.set_selection(Some(selection.clone()));
     assert!(
         doc.import_layer(2, 2, &[[23, 45, 67, 89]; 4], "Detail")
             .unwrap()

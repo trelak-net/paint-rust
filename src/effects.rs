@@ -55,7 +55,7 @@ pub fn render(
         }
         for x in 0..width as usize {
             let i = y * width as usize + x;
-            if selection.is_some_and(|s| !s.contains(x, y)) {
+            if selection.as_ref().is_some_and(|s| !s.contains(x, y)) {
                 output[i] = source[i];
                 continue;
             }
