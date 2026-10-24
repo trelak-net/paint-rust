@@ -9,6 +9,7 @@ pub(super) enum DocumentEdit {
 }
 
 pub(super) enum Outcome {
+    Copied(Option<Box<Document>>),
     Opened(Box<Document>, PathBuf),
     Recovered(Box<Document>, usize),
     Imported(Vec<[u8; 4]>, u32, u32, PathBuf),
@@ -244,6 +245,21 @@ impl Editor {
                         };
                     }
                     Err(error) => self.status = format!("Could not {operation}: {error}"),
+                }
+            }
+            Ok(Outcome::Copied(document)) => {
+                if let Some(document) = document {
+                    let selection = self.document.selection();
+                    match self.document.apply_transformed(*document, "Cut pixels") {
+                        Ok(changed) => {
+                            self.document.set_selection(selection);
+                            self.texture_dirty |= changed;
+                            self.status = "Cut pixels to clipboard".into();
+                        }
+                        Err(error) => self.status = format!("Could not cut image: {error}"),
+                    }
+                } else {
+                    self.status = "Copied image to clipboard".into();
                 }
             }
             Ok(Outcome::Edited(document, label, moved)) => {

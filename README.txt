@@ -660,3 +660,18 @@ characters and during glyph coverage callbacks; an in-progress glyph rasterizer
 may finish its internal work before the worker returns.
 Validation: 164 Rust tests and strict Clippy pass, including stale text requests,
 Unicode rendering, cancellation, close guarding and preservation of unapplied text.
+
+Background clipboard operations
+-------------------------------
+Copy, Cut and Paste prepare pixels and access the native clipboard on a worker.
+The shared clipboard owner stays alive between jobs. Merged Copy composites only
+the selected bounds. Cut clears pixels only after a successful write; failure or
+cancellation keeps the current document intact. Paste publishes the new layer
+and selection together as one undo step. Native clipboard calls cannot be
+interrupted internally: cancellation is checked before and after them. Cancelling
+after a clipboard write may leave the copied image on the clipboard, while the
+source pixels remain in the document.
+Validation: 167 Rust tests and strict Clippy pass, including failed writes, a
+blocked clipboard with responsive UI, cancellation before cut deletion, cut/paste
+history, and regional/full compositing parity for every blend mode. Tests use
+in-memory clipboard backends and do not replace the desktop clipboard contents.

@@ -1,7 +1,7 @@
 use paint_rust::document::{Document, Pixel};
 use std::borrow::Cow;
 
-pub trait Backend {
+pub trait Backend: Send {
     fn write(&mut self, width: u32, height: u32, pixels: &[Pixel]) -> Result<(), String>;
     fn read(&mut self) -> Result<(u32, u32, Vec<Pixel>), String>;
 }
@@ -41,4 +41,20 @@ impl Backend for Clipboard {
         let pixels = image.bytes.as_chunks::<4>().0.to_vec();
         Ok((width, height, pixels))
     }
+}
+
+/// Keep the native clipboard owner alive between background jobs.
+pub type Shared = std::sync::Arc<std::sync::Mutex<Option<Box<dyn Backend>>>>;
+
+pub fn with_backend<T>(
+    shared: &Shared,
+    work: impl FnOnce(&mut dyn Backend) -> Result<T, String>,
+) -> Result<T, String> {
+    let mut backend = shared
+        .lock()
+        .map_err(|_| "Clipboard connection lock failed")?;
+    if backend.is_none() {
+        *backend = Some(Box::new(Clipboard::connect()?));
+    }
+    work(backend.as_deref_mut().expect("Clipboard connected"))
 }

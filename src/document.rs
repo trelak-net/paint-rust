@@ -444,6 +444,19 @@ impl Document {
     }
 
     pub fn copy_pixels(&self, merged: bool) -> (u32, u32, Vec<Pixel>) {
+        self.copy_pixels_cancellable(merged, &std::sync::atomic::AtomicBool::new(false))
+            .expect("Uncancelled copy")
+    }
+
+    pub fn copy_pixels_cancellable(
+        &self,
+        merged: bool,
+        cancel: &std::sync::atomic::AtomicBool,
+    ) -> Option<(u32, u32, Vec<Pixel>)> {
+        use std::sync::atomic::Ordering;
+        if cancel.load(Ordering::Relaxed) {
+            return None;
+        }
         let rect = self.selection.clone().unwrap_or(Selection {
             mask: None,
             ellipse: None,
@@ -452,17 +465,29 @@ impl Document {
             width: self.width,
             height: self.height,
         });
-        let flattened;
-        let source = if merged {
-            flattened = self.composite();
-            &flattened[..]
+        if rect.width == 0 || rect.height == 0 {
+            return Some((0, 0, Vec::new()));
+        }
+        let flattened = if merged {
+            Some(self.composite_region(rect.x, rect.y, rect.width, rect.height, cancel)?)
         } else {
-            self.pixels()
+            None
         };
+        let source = flattened.as_deref().unwrap_or_else(|| self.pixels());
         let mut pixels = Vec::with_capacity(rect.width as usize * rect.height as usize);
         for y in rect.y..rect.y + rect.height {
-            let start = y as usize * self.width as usize + rect.x as usize;
+            if cancel.load(Ordering::Relaxed) {
+                return None;
+            }
+            let start = if merged {
+                (y - rect.y) as usize * rect.width as usize
+            } else {
+                y as usize * self.width as usize + rect.x as usize
+            };
             for x in 0..rect.width as usize {
+                if x.is_multiple_of(4096) && cancel.load(Ordering::Relaxed) {
+                    return None;
+                }
                 pixels.push(if rect.contains(rect.x as usize + x, y as usize) {
                     source[start + x]
                 } else {
@@ -470,8 +495,9 @@ impl Document {
                 });
             }
         }
-        (rect.width, rect.height, pixels)
+        (!cancel.load(Ordering::Relaxed)).then_some((rect.width, rect.height, pixels))
     }
+
     pub fn paste_layer(
         &mut self,
         width: u32,

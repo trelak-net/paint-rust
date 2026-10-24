@@ -7,7 +7,7 @@ Development roadmap
 [x] Lines, rectangles and ellipses with cancellable background previews.
 [x] Rectangular selections, selected-area operations and crop.
 [x] Image/canvas resizing, rotation and mirroring.
-[x] Clipboard image copy/cut/paste.
+[x] Background clipboard image copy/cut/paste with cancellation and guarded publication.
 [x] Import image files and project composites as layers.
 [x] Raster text with cancellable background previews and guarded application.
 [x] Background move/copy pixel previews and nudges; immediate movement of selection bounds.

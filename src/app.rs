@@ -105,7 +105,7 @@ pub struct Editor {
     allow_close: bool,
     suppress_stroke: bool,
     appearance: Option<std::sync::mpsc::Receiver<egui::Theme>>,
-    clipboard: Option<Box<dyn crate::clipboard::Backend>>,
+    clipboard: crate::clipboard::Shared,
     recovery: Option<paint_rust::recovery::Recovery>,
     recoverable: Vec<paint_rust::recovery::Candidate>,
     recovery_prompt: bool,
@@ -181,7 +181,7 @@ impl Editor {
             allow_close: false,
             suppress_stroke: false,
             appearance: None,
-            clipboard: None,
+            clipboard: Default::default(),
             recovery: None,
             recoverable: Vec::new(),
             recovery_prompt: false,
@@ -352,61 +352,62 @@ impl Editor {
         }
     }
 
-    fn clipboard(&mut self) -> Result<&mut (dyn crate::clipboard::Backend + 'static), String> {
-        if self.clipboard.is_none() {
-            self.clipboard = Some(Box::new(crate::clipboard::Clipboard::connect()?));
-        }
-        Ok(self.clipboard.as_deref_mut().expect("clipboard connected"))
-    }
     fn copy(&mut self, cut: bool, merged: bool) {
         self.finish_stroke();
-        let (width, height, pixels) = self.document.copy_pixels(merged);
-        if width == 0 || height == 0 {
-            self.status = "Selection is empty".into();
-            return;
-        }
-        match self
-            .clipboard()
-            .and_then(|c| c.write(width, height, &pixels))
-        {
-            Ok(()) => {
-                if cut {
-                    self.document.clear_pixels();
-                    self.texture_dirty = true;
+        let mut document = self.document.snapshot();
+        document.set_selection(self.document.selection());
+        let clipboard = self.clipboard.clone();
+        self.start_cancellable_file_job(
+            if cut { "cut image" } else { "copy image" },
+            move |cancel| {
+                let (width, height, pixels) = document
+                    .copy_pixels_cancellable(merged, cancel)
+                    .ok_or(files::CANCELLED)?;
+                if width == 0 || height == 0 {
+                    return Err("Selection is empty".into());
                 }
-                self.status = if cut {
-                    "Cut pixels to clipboard".into()
-                } else {
-                    "Copied image to clipboard".into()
-                };
-            }
-            Err(error) => self.status = format!("Could not copy image: {error}"),
-        }
+                if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+                    return Err(files::CANCELLED.into());
+                }
+                crate::clipboard::with_backend(&clipboard, |backend| {
+                    backend.write(width, height, &pixels)
+                })?;
+                if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+                    return Err(files::CANCELLED.into());
+                }
+                if cut && !document.clear_pixels_cancellable(cancel) {
+                    return Err(files::CANCELLED.into());
+                }
+                Ok(Outcome::Copied(cut.then(|| Box::new(document))))
+            },
+        );
     }
+
     fn paste(&mut self) {
         self.finish_stroke();
-        match self.clipboard().and_then(|c| c.read()) {
-            Ok((width, height, pixels)) => {
-                match self.document.paste_layer(width, height, &pixels) {
-                    Ok(_) => {
-                        self.texture_dirty = true;
-                        self.status = if self
-                            .document
-                            .selection()
-                            .is_some_and(|s| s.width < width || s.height < height)
-                        {
-                            "Pasted on a new layer; image clipped to the canvas".into()
-                        } else {
-                            "Pasted on a new layer".into()
-                        };
-                    }
-                    Err(error) => self.status = format!("Could not paste image: {error}"),
-                }
+        let clipboard = self.clipboard.clone();
+        let mut document = self.document.snapshot();
+        document.set_selection(self.document.selection());
+        self.start_cancellable_file_job("paste image", move |cancel| {
+            if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+                return Err(files::CANCELLED.into());
             }
-            Err(error) => {
-                self.status = format!("Could not read an image from the clipboard: {error}")
+            let (width, height, pixels) =
+                crate::clipboard::with_backend(&clipboard, |backend| backend.read())?;
+            if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+                return Err(files::CANCELLED.into());
             }
-        }
+            document.paste_layer(width, height, &pixels)?;
+            if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+                return Err(files::CANCELLED.into());
+            }
+            let label = if width > document.width || height > document.height {
+                "Paste layer (image clipped to canvas)"
+            } else {
+                "Paste layer"
+            };
+            Ok(Outcome::Edited(Box::new(document), label.into(), true))
+        });
     }
 
     fn request(&mut self, action: Action, ctx: &egui::Context) {
@@ -2754,21 +2755,73 @@ mod tests {
     fn failed_clipboard_write_never_deletes_cut_pixels() {
         let ctx = egui::Context::default();
         let mut editor = Editor::blank(&ctx);
-        editor.clipboard = Some(Box::new(MemoryClipboard {
+        *editor.clipboard.lock().unwrap() = Some(Box::new(MemoryClipboard {
             image: None,
             fail: true,
         }));
         editor.copy(true, false);
+        wait_for_files(&mut editor, &ctx);
         assert!(!editor.document.dirty());
         assert!(!editor.document.can_undo());
         assert!(editor.document.pixels().iter().all(|p| *p == [255; 4]));
     }
 
     #[test]
+    fn cancelling_cut_after_clipboard_write_preserves_pixels_and_keeps_ui_running() {
+        struct GatedClipboard {
+            entered: std::sync::mpsc::Sender<()>,
+            release: std::sync::mpsc::Receiver<()>,
+        }
+        impl crate::clipboard::Backend for GatedClipboard {
+            fn write(
+                &mut self,
+                _width: u32,
+                _height: u32,
+                _pixels: &[[u8; 4]],
+            ) -> Result<(), String> {
+                self.entered.send(()).unwrap();
+                self.release.recv().unwrap();
+                Ok(())
+            }
+            fn read(&mut self) -> Result<(u32, u32, Vec<[u8; 4]>), String> {
+                unreachable!()
+            }
+        }
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.document = Document::new(4, 4, [17; 4]).unwrap();
+        let (entered, waiting) = std::sync::mpsc::channel();
+        let (release, receiver) = std::sync::mpsc::channel();
+        *editor.clipboard.lock().unwrap() = Some(Box::new(GatedClipboard {
+            entered,
+            release: receiver,
+        }));
+        editor.copy(true, false);
+        waiting
+            .recv_timeout(std::time::Duration::from_secs(5))
+            .unwrap();
+        frame(&mut editor, &ctx, vec![]);
+        editor
+            .file_job
+            .as_ref()
+            .unwrap()
+            .cancel
+            .as_ref()
+            .unwrap()
+            .store(true, std::sync::atomic::Ordering::Relaxed);
+        release.send(()).unwrap();
+        wait_for_files(&mut editor, &ctx);
+        assert_eq!(editor.document.pixels(), &[[17; 4]; 16]);
+        assert!(!editor.document.dirty());
+        assert!(!editor.document.can_undo());
+        assert_eq!(editor.status, "Cancelled: cut image");
+    }
+
+    #[test]
     fn native_cut_event_and_paste_release_preserve_image_and_history() {
         let ctx = egui::Context::default();
         let mut editor = Editor::blank(&ctx);
-        editor.clipboard = Some(Box::new(MemoryClipboard {
+        *editor.clipboard.lock().unwrap() = Some(Box::new(MemoryClipboard {
             image: None,
             fail: false,
         }));
@@ -2782,6 +2835,7 @@ mod tests {
         }));
         frame(&mut editor, &ctx, vec![]);
         frame(&mut editor, &ctx, vec![egui::Event::Cut]);
+        wait_for_files(&mut editor, &ctx);
         assert_eq!(editor.document.pixels()[0], [0; 4]);
         frame(
             &mut editor,
@@ -2794,6 +2848,7 @@ mod tests {
                 modifiers: egui::Modifiers::COMMAND,
             }],
         );
+        wait_for_files(&mut editor, &ctx);
         assert_eq!(editor.document.layers().len(), 2);
         assert_eq!(editor.document.composite()[0], [255; 4]);
         assert_eq!(editor.document.history().count(), 2);
