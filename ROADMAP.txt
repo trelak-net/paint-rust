@@ -1,0 +1,16 @@
+Development roadmap
+===================
+
+[x] Desktop shell, original artwork and license provenance.
+[x] Raster drawing, erasing, fill, color sampling and transaction history.
+[x] Editable layers and lossless project persistence.
+[ ] Lines, rectangles and ellipses with cancellable previews.
+[ ] Rectangular selections, selected-area operations and crop.
+[ ] Image/canvas resizing, rotation and mirroring.
+[ ] Text editing, clipboard integration and additional selection tools.
+[ ] Blend modes, adjustments and effects.
+[ ] Background processing, recovery and large-document performance.
+[ ] Desktop integration, accessibility, packaging and release validation.
+
+Each completed increment receives regression checks and its own commit. Keep the
+source and artwork self-contained; preserve project files and unsaved user edits.

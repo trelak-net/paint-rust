@@ -29,14 +29,16 @@ Features
 - Invert RGB while preserving alpha.
 - Zoom from 10% to 400%, fit the canvas, and navigate with scrollbars.
 - Undo/redo complete strokes and edits; cancel a stroke with Escape.
-- Open PNG, JPEG, BMP and WebP; save RGBA PNG.
+- Open PNG, JPEG, BMP and WebP; export a flattened RGBA PNG.
+- Add, duplicate, reorder, hide and delete layers; edit names and opacity.
+- Save editable layers in a versioned .prust project.
 - Confirm unsaved changes before opening, creating or closing a document.
 - Write through a temporary sibling file before replacing the destination.
 
 Keyboard
 --------
 Ctrl+N: new image             Ctrl+O: open image
-Ctrl+S: save PNG              Ctrl+Shift+S: save PNG as
+Ctrl+S: save project          Ctrl+Shift+S: save project as
 Ctrl+Z: undo                  Ctrl+Shift+Z or Ctrl+Y: redo
 B: brush                     E: eraser
 F: flood fill                I: color picker
@@ -47,26 +49,35 @@ Use Command instead of Ctrl on macOS.
 Architecture
 ------------
 src/document.rs: pixel storage, brush/fill operations, edit transactions and history.
-src/files.rs: bounded image decoding and temporary-file PNG saving.
+src/files.rs: bounded raster/project decoding and atomic project/PNG saving.
 src/app.rs: desktop workspace, input, dialogs, canvas texture and tool controls.
 src/main.rs: native window startup.
 tests/editor.rs: image operations, history semantics and file round trips.
 
-The document has one RGBA raster. Brush strokes replace RGBA values directly;
-repeated samples do not accumulate opacity. Transparent pixels are displayed over
-a checkerboard. History retains up to 128 MiB of full-image snapshots; older
-entries are evicted first. The active image and in-progress stroke snapshot are
-additional allocations. A document is limited to 16,777,216 pixels. The New dialog
-allows dimensions up to 4096 on each axis.
+The document stores up to 32 RGBA layers with normal source-over compositing.
+Brush strokes replace RGBA values on the active layer; repeated samples do not
+accumulate opacity. Transparent pixels are displayed over a checkerboard. History
+shares unchanged layer buffers and retains up to 128 MiB of unique pixel buffers
+across undo/redo; history labels and metadata are additional allocations. Oldest
+undo entries are evicted first, then farthest redo entries when necessary. The
+active document is limited to 256 MiB of layer pixels, excluding previews/history.
+A canvas is limited to 16,777,216 pixels. The New dialog permits up to 4096 per axis.
+
+Save writes an editable .prust project. Export PNG writes only the visible composite
+and does not mark an edited project as saved. Project version 1 stores dimensions,
+layer order, the active layer, UTF-8 names, visibility, opacity and lossless PNG
+pixels for every layer. The reader bounds layer counts, decoded memory, payloads
+and names, and rejects unsupported versions, truncation and trailing data. History
+is session-local and is not stored in project files.
 
 Current boundaries
 ------------------
-This is an initial application, not a complete graphics suite. Layers, selections,
+This is an initial application, not a complete graphics suite. Selections,
 text, shapes, pressure-sensitive input, advanced effects, autosave and session
 recovery are not implemented yet. Image decoding, encoding and fill run on the UI
 thread; large operations can pause the interface. Canvas updates upload the full
 image texture. Metadata, orientation tags and embedded color profiles are not
-preserved or interpreted. PNG is the only output format. There is no installer or
+preserved or interpreted. PNG is the only raster export format. There is no installer or
 signed distribution yet. Linux is the currently validated desktop target.
 
 Validation
@@ -115,3 +126,7 @@ their own licenses. The original SVG tool/action icons and application icon are
 in assets/; assets/README.txt records their provenance and design conventions.
 Icons follow the current text color in light, dark, selected and disabled states.
 Labels and shortcut hints remain available beside the icons.
+
+Layer/project validation: 21 tests pass, including alpha/opacity/order, shared
+buffer isolation, history, Unicode layer names, editable project round trips and
+malformed project rejection.

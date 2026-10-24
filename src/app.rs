@@ -31,6 +31,7 @@ pub struct Editor {
     status: String,
     pending: Option<Action>,
     new_dialog: bool,
+    layer_properties: Option<(String, u8)>,
     new_width: u32,
     new_height: u32,
     transparent: bool,
@@ -65,6 +66,7 @@ impl Editor {
             status: "Ready — draw on the canvas to begin".into(),
             pending: None,
             new_dialog: false,
+            layer_properties: None,
             new_width: 960,
             new_height: 640,
             transparent: false,
@@ -90,27 +92,27 @@ impl Editor {
 
     fn save(&mut self, save_as: bool) -> bool {
         self.finish_stroke();
-        let existing = self
-            .path
-            .as_ref()
-            .filter(|p| p.extension().is_some_and(|e| e.eq_ignore_ascii_case("png")));
+        let existing = self.path.as_ref().filter(|p| {
+            p.extension()
+                .is_some_and(|e| e.eq_ignore_ascii_case("prust"))
+        });
         let path = if !save_as && existing.is_some() {
             existing.cloned()
         } else {
             rfd::FileDialog::new()
-                .add_filter("PNG image", &["png"])
+                .add_filter("Paint Rust project", &["prust"])
                 .set_file_name(
                     self.path
                         .as_ref()
                         .and_then(|p| p.file_stem())
                         .and_then(|s| s.to_str())
-                        .map(|s| format!("{s}.png"))
-                        .unwrap_or_else(|| "Untitled.png".into()),
+                        .map(|s| format!("{s}.prust"))
+                        .unwrap_or_else(|| "Untitled.prust".into()),
                 )
                 .save_file()
                 .map(|p| {
                     if p.extension().is_none() {
-                        p.with_extension("png")
+                        p.with_extension("prust")
                     } else {
                         p
                     }
@@ -121,12 +123,12 @@ impl Editor {
         };
         if !path
             .extension()
-            .is_some_and(|e| e.eq_ignore_ascii_case("png"))
+            .is_some_and(|e| e.eq_ignore_ascii_case("prust"))
         {
-            self.status = "Could not save image: choose a filename ending in .png".into();
+            self.status = "Could not save project: choose a filename ending in .prust".into();
             return false;
         }
-        match files::save_png(&self.document, &path) {
+        match files::save_project(&self.document, &path) {
             Ok(()) => {
                 self.document.mark_saved();
                 self.status = format!("Saved {}", path.display());
@@ -134,10 +136,40 @@ impl Editor {
                 true
             }
             Err(error) => {
-                self.status = format!("Could not save image: {error}");
+                self.status = format!("Could not save project: {error}");
                 false
             }
         }
+    }
+
+    fn export_png(&mut self) {
+        self.finish_stroke();
+        let Some(path) = rfd::FileDialog::new()
+            .add_filter("PNG image", &["png"])
+            .set_file_name("Untitled.png")
+            .save_file()
+        else {
+            return;
+        };
+        let path = if path.extension().is_none() {
+            path.with_extension("png")
+        } else {
+            path
+        };
+        if !path
+            .extension()
+            .is_some_and(|e| e.eq_ignore_ascii_case("png"))
+        {
+            self.status = "Could not export image: choose a filename ending in .png".into();
+            return;
+        }
+        self.status = match files::save_png(&self.document, &path) {
+            Ok(()) => format!(
+                "Exported {} — save the project to preserve editable layers",
+                path.display()
+            ),
+            Err(error) => format!("Could not export image: {error}"),
+        };
     }
 
     fn request(&mut self, action: Action, ctx: &egui::Context) {
@@ -154,7 +186,10 @@ impl Editor {
             Action::New => self.new_dialog = true,
             Action::Open => {
                 if let Some(path) = rfd::FileDialog::new()
-                    .add_filter("Images", &["png", "jpg", "jpeg", "bmp", "webp"])
+                    .add_filter(
+                        "Projects and images",
+                        &["prust", "png", "jpg", "jpeg", "bmp", "webp"],
+                    )
                     .pick_file()
                 {
                     self.load(path);
@@ -248,7 +283,13 @@ impl Editor {
 
     fn canvas(&mut self, ui: &mut egui::Ui) {
         if self.texture_dirty {
-            let bytes: Vec<u8> = self.document.pixels().iter().flatten().copied().collect();
+            let bytes: Vec<u8> = self
+                .document
+                .composite()
+                .iter()
+                .flatten()
+                .copied()
+                .collect();
             let image = egui::ColorImage::from_rgba_unmultiplied(
                 [self.document.width as usize, self.document.height as usize],
                 &bytes,
@@ -398,6 +439,34 @@ impl Editor {
                     }
                 });
         }
+        if let Some((mut name, mut opacity)) = self.layer_properties.take() {
+            let mut keep = true;
+            egui::Window::new("Layer properties")
+                .collapsible(false)
+                .resizable(false)
+                .anchor(egui::Align2::CENTER_CENTER, Vec2::ZERO)
+                .show(ctx, |ui| {
+                    ui.label("Name");
+                    ui.text_edit_singleline(&mut name);
+                    ui.add(egui::Slider::new(&mut opacity, 0..=255).text("Opacity"));
+                    ui.horizontal(|ui| {
+                        if ui
+                            .add_enabled(name.len() <= 4096, egui::Button::new("Apply"))
+                            .clicked()
+                        {
+                            self.document.set_layer_properties(name.clone(), opacity);
+                            self.texture_dirty = true;
+                            keep = false;
+                        }
+                        if ui.button("Cancel").clicked() {
+                            keep = false;
+                        }
+                    });
+                });
+            if keep {
+                self.layer_properties = Some((name, opacity));
+            }
+        }
         if self.new_dialog {
             egui::Window::new("New image")
                 .collapsible(false)
@@ -469,11 +538,11 @@ impl Editor {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
             self.pending = Some(Action::Close);
         }
-        let enabled = self.pending.is_none() && !self.new_dialog;
+        let enabled = self.pending.is_none() && !self.new_dialog && self.layer_properties.is_none();
         if enabled {
             self.shortcuts(ctx);
         }
-        let enabled = self.pending.is_none() && !self.new_dialog;
+        let enabled = self.pending.is_none() && !self.new_dialog && self.layer_properties.is_none();
         let name = self
             .path
             .as_ref()
@@ -514,6 +583,9 @@ impl Editor {
                 if ui.add(Icon::SaveAs.button("Save as…")).clicked() {
                     self.save(true);
                 }
+                if ui.add(Icon::SaveAs.button("Export PNG…")).clicked() {
+                    self.export_png();
+                }
                 ui.separator();
                 if ui
                     .add_enabled(self.document.can_undo(), Icon::Undo.button("Undo"))
@@ -547,7 +619,7 @@ impl Editor {
                     self.zoom = 1.0;
                 }
                 if ui.add(Icon::Fit.button("Fit")).clicked() {
-                    let available = ctx.content_rect().size() - Vec2::new(250.0, 150.0);
+                    let available = ctx.content_rect().size() - Vec2::new(470.0, 150.0);
                     self.zoom = (available.x / self.document.width as f32)
                         .min(available.y / self.document.height as f32)
                         .clamp(0.1, 4.0);
@@ -633,6 +705,102 @@ impl Editor {
                 ui.small(
                     "Drag to paint.\nEscape cancels a stroke.\nScroll to navigate the canvas.",
                 );
+            });
+        egui::SidePanel::right("layers")
+            .default_width(220.0)
+            .width_range(180.0..=320.0)
+            .show(ctx, |ui| {
+                if !enabled || self.document.editing() {
+                    ui.disable();
+                }
+                ui.heading("Layers");
+                ui.horizontal_wrapped(|ui| {
+                    if ui
+                        .add_enabled(self.document.can_add_layer(), egui::Button::new("Add"))
+                        .clicked()
+                    {
+                        self.document.add_layer(false);
+                        self.texture_dirty = true;
+                    }
+                    if ui
+                        .add_enabled(
+                            self.document.can_add_layer(),
+                            egui::Button::new("Duplicate"),
+                        )
+                        .clicked()
+                    {
+                        self.document.add_layer(true);
+                        self.texture_dirty = true;
+                    }
+                    if ui
+                        .add_enabled(
+                            self.document.layers().len() > 1,
+                            egui::Button::new("Delete"),
+                        )
+                        .clicked()
+                    {
+                        self.document.remove_layer();
+                        self.texture_dirty = true;
+                    }
+                });
+                ui.horizontal(|ui| {
+                    let active = self.document.active_layer();
+                    if ui
+                        .add_enabled(
+                            active + 1 < self.document.layers().len(),
+                            egui::Button::new("Move up"),
+                        )
+                        .clicked()
+                    {
+                        self.document.move_layer(true);
+                        self.texture_dirty = true;
+                    }
+                    if ui
+                        .add_enabled(active > 0, egui::Button::new("Move down"))
+                        .clicked()
+                    {
+                        self.document.move_layer(false);
+                        self.texture_dirty = true;
+                    }
+                });
+                ui.separator();
+                egui::ScrollArea::vertical()
+                    .max_height(320.0)
+                    .show(ui, |ui| {
+                        for index in (0..self.document.layers().len()).rev() {
+                            let layer = &self.document.layers()[index];
+                            let mut visible = layer.visible;
+                            let name = layer.name.clone();
+                            ui.horizontal(|ui| {
+                                if ui
+                                    .checkbox(&mut visible, "")
+                                    .on_hover_text("Layer visibility")
+                                    .changed()
+                                {
+                                    self.document.set_visibility(index, visible);
+                                    self.texture_dirty = true;
+                                }
+                                if ui
+                                    .selectable_label(index == self.document.active_layer(), name)
+                                    .clicked()
+                                {
+                                    self.document.select_layer(index);
+                                }
+                            });
+                        }
+                    });
+                ui.separator();
+                let layer = &self.document.layers()[self.document.active_layer()];
+                ui.label(format!(
+                    "Opacity: {:.0}%",
+                    f32::from(layer.opacity) * 100.0 / 255.0
+                ));
+                if ui.button("Layer properties…").clicked() {
+                    self.layer_properties = Some((layer.name.clone(), layer.opacity));
+                }
+                if !layer.visible {
+                    ui.small("The active layer is hidden.");
+                }
             });
         egui::CentralPanel::default()
             .frame(
