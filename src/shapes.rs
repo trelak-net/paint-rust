@@ -40,11 +40,36 @@ pub(crate) fn stroke(
     let dx = to.0 - from.0;
     let dy = to.1 - from.1;
     let length_sq = dx * dx + dy * dy;
+    // Bound candidate pixels by the segment's horizontal span in this row's
+    // radius band. A numeric margin keeps the original f32 coverage test decisive.
+    let margin = 1.0
+        + 8.0
+            * f64::from(f32::EPSILON)
+            * [from.0, from.1, to.0, to.1]
+                .iter()
+                .map(|v| f64::from(v.abs()))
+                .sum::<f64>();
+    let band = f64::from(radius) + margin;
+    let vertical = f64::from(to.1) - f64::from(from.1);
+    let horizontal = f64::from(to.0) - f64::from(from.0);
     for y in min_y..=max_y {
         if cancel.load(Ordering::Relaxed) {
             return false;
         }
-        for x in min_x..=max_x {
+        let (row_min, row_max) = if vertical.abs() > f64::from(f32::EPSILON) {
+            let py = f64::from(y) + 0.5 - f64::from(from.1);
+            let a = ((py - band) / vertical).clamp(0.0, 1.0);
+            let b = ((py + band) / vertical).clamp(0.0, 1.0);
+            let ax = f64::from(from.0) + a * horizontal;
+            let bx = f64::from(from.0) + b * horizontal;
+            (
+                min_x.max((ax.min(bx) - band).floor() as i32),
+                max_x.min((ax.max(bx) + band).ceil() as i32),
+            )
+        } else {
+            (min_x, max_x)
+        };
+        for x in row_min..=row_max {
             if (x as u32).is_multiple_of(4096) && cancel.load(Ordering::Relaxed) {
                 return false;
             }

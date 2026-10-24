@@ -66,6 +66,15 @@ fn main() {
     measure("Next brush frame without a new snapshot", || {
         document.stroke((30.0, 30.0), (50.0, 50.0), 12.0, [0, 0, 0, 255], false)
     });
+    measure("Long diagonal brush frame without a new snapshot", || {
+        document.stroke(
+            (0.0, 0.0),
+            (size as f32, size as f32),
+            12.0,
+            [0, 0, 0, 255],
+            false,
+        )
+    });
     drop(measure("Composite 64 x 64 brush region", || {
         document.composite_region(
             0,

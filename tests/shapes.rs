@@ -86,3 +86,42 @@ fn shape_kernels_reject_cancelled_or_invalid_requests() {
     }
     assert_eq!(source, [[17; 4]; 64]);
 }
+
+#[test]
+fn row_bounded_strokes_match_full_canvas_capsule_coverage() {
+    for (from, to) in [
+        ((1.5, 2.5), (125.5, 94.5)),
+        ((125.5, 94.5), (1.5, 2.5)),
+        ((64.5, -80.0), (64.5, 180.0)),
+        ((-80.0, 48.5), (200.0, 48.5)),
+        ((-1000.0, -900.0), (900.0, 950.0)),
+        ((50.5, 50.5), (50.5, 50.5)),
+        ((-1_000_000.0, -900_000.0), (1_000_000.0, 900_000.0)),
+    ] {
+        for diameter in [1.0_f32, 3.5, 12.0, 150.0] {
+            let mut doc = Document::new(128, 96, [255; 4]).unwrap();
+            doc.begin("Stroke");
+            doc.stroke(from, to, diameter, [17; 4], false);
+            let (dx, dy) = (to.0 - from.0, to.1 - from.1);
+            let length_sq = dx * dx + dy * dy;
+            for y in 0..96 {
+                for x in 0..128 {
+                    let (px, py) = (x as f32 + 0.5, y as f32 + 0.5);
+                    let t = if length_sq > 0.0 {
+                        ((px - from.0) * dx + (py - from.1) * dy) / length_sq
+                    } else {
+                        0.0
+                    }
+                    .clamp(0.0, 1.0);
+                    let covered = (px - from.0 - t * dx).powi(2) + (py - from.1 - t * dy).powi(2)
+                        <= (diameter / 2.0).powi(2);
+                    assert_eq!(
+                        doc.pixels()[y * 128 + x],
+                        if covered { [17; 4] } else { [255; 4] },
+                        "{from:?} -> {to:?}, width {diameter}, ({x}, {y})"
+                    );
+                }
+            }
+        }
+    }
+}

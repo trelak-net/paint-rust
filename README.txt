@@ -628,3 +628,14 @@ line/brush rasterizer check cancellation between rows and within wide rows.
 Validation: 158 Rust tests and strict Clippy pass, including the real release
 endpoint, Escape for every shape tool, selection masks, outlines, clipping and
 invalid inputs. Existing brush and eraser coverage tests also pass.
+
+Row-bounded brush rasterization
+-------------------------------
+Brush, eraser and line coverage now restrict candidate pixels to the segment's
+horizontal span in each row's radius band. The original capsule coverage test
+still decides which pixels change; a conservative numeric margin protects edges.
+For a 12-pixel diagonal across 4096 x 4096, the warmed brush-frame CPU time fell
+from about 36.3 ms to 0.36 ms on the same machine. The initial copy of a shared
+64 MiB layer still costs about 22 ms and is reported separately by the benchmark.
+Validation: 159 Rust tests and strict Clippy pass, including full-canvas reference
+coverage for reversed, clipped, horizontal, vertical, zero-length and wide strokes.
