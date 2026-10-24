@@ -1093,6 +1093,21 @@ impl Editor {
                     }
                 }
                 if ui.is_enabled()
+                    && self.tool == Tool::Fill
+                    && ui.input(|i| i.focused)
+                    && !self.suppress_stroke
+                    && !self.panning
+                    && response.clicked_by(egui::PointerButton::Secondary)
+                    && let Some(pos) = response.interact_pointer_pos()
+                {
+                    let local = (pos - rect.min) / self.zoom;
+                    self.start_fill(
+                        local.x.floor() as i32,
+                        local.y.floor() as i32,
+                        self.secondary_color.to_srgba_unmultiplied(),
+                    );
+                }
+                if ui.is_enabled()
                     && self.tool != Tool::Polygon
                     && ui.input(|i| i.focused)
                     && !self.suppress_stroke
@@ -1135,7 +1150,11 @@ impl Editor {
                                 }
                             }
                             Tool::Fill => {
-                                self.start_fill(local.x.floor() as i32, local.y.floor() as i32);
+                                self.start_fill(
+                                    local.x.floor() as i32,
+                                    local.y.floor() as i32,
+                                    self.color.to_srgba_unmultiplied(),
+                                );
                             }
                             Tool::Line => self.document.begin("Line"),
                             Tool::Rectangle => self.document.begin("Rectangle"),
@@ -2578,6 +2597,56 @@ mod tests {
     }
 
     #[test]
+    fn canvas_fill_uses_the_clicked_buttons_color() {
+        for (button, expected) in [
+            (egui::PointerButton::Primary, [200, 30, 40, 255]),
+            (egui::PointerButton::Secondary, [20, 80, 210, 255]),
+        ] {
+            let ctx = egui::Context::default();
+            let mut editor = Editor::blank(&ctx);
+            editor.tool = Tool::Fill;
+            editor.color = Color32::from_rgb(200, 30, 40);
+            editor.secondary_color = Color32::from_rgb(20, 80, 210);
+            frame(&mut editor, &ctx, vec![]);
+            let point = Pos2::new(350.0, 200.0);
+            for pressed in [true, false] {
+                frame(
+                    &mut editor,
+                    &ctx,
+                    vec![
+                        egui::Event::PointerMoved(point),
+                        egui::Event::PointerButton {
+                            pos: point,
+                            button,
+                            pressed,
+                            modifiers: egui::Modifiers::NONE,
+                        },
+                    ],
+                );
+            }
+            wait_for_files(&mut editor, &ctx);
+            assert!(
+                editor
+                    .document
+                    .pixels()
+                    .iter()
+                    .all(|pixel| *pixel == expected)
+            );
+            assert_eq!(editor.document.history().count(), 1);
+            assert_eq!(editor.color, Color32::from_rgb(200, 30, 40));
+            assert_eq!(editor.secondary_color, Color32::from_rgb(20, 80, 210));
+            editor.undo();
+            assert!(
+                editor
+                    .document
+                    .pixels()
+                    .iter()
+                    .all(|pixel| *pixel == [255; 4])
+            );
+        }
+    }
+
+    #[test]
     fn background_fill_preserves_selection_and_commits_one_undo_step() {
         let ctx = egui::Context::default();
         let mut editor = Editor::blank(&ctx);
@@ -2592,7 +2661,7 @@ mod tests {
         };
         editor.document.set_selection(Some(selection.clone()));
         editor.color = Color32::BLACK;
-        editor.start_fill(3, 3);
+        editor.start_fill(3, 3, editor.color.to_srgba_unmultiplied());
         assert!(!editor.document.dirty());
         wait_for_files(&mut editor, &ctx);
         assert_eq!(editor.document.selection(), Some(selection.clone()));

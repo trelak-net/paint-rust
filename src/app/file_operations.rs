@@ -97,10 +97,9 @@ impl Editor {
         });
     }
 
-    pub(super) fn start_fill(&mut self, x: i32, y: i32) {
+    pub(super) fn start_fill(&mut self, x: i32, y: i32, color: [u8; 4]) {
         let mut document = self.document.snapshot();
         document.set_selection(self.document.selection());
-        let color = self.color.to_srgba_unmultiplied();
         self.start_cancellable_file_job("fill image", move |cancel| {
             document.begin("Flood fill");
             if !document.fill_cancellable(x, y, color, cancel) {
