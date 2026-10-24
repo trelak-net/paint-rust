@@ -1,6 +1,8 @@
 Paint Rust
 ==========
 
+Application/package identifier: net.trelak.PaintRust.
+
 A native desktop raster editor written in Rust. Version 0.1 provides a small,
 usable editing workspace with an RGBA canvas and transaction-based undo/redo.
 

@@ -6,6 +6,11 @@ rust-version = "1.88"
 description = "A native desktop raster editor"
 license = "MIT OR Apache-2.0"
 
+[package.metadata.bundle]
+name = "Paint Rust"
+identifier = "net.trelak.PaintRust"
+icon = ["assets/app-icon.png"]
+
 [dependencies]
 fs2 = "0.4"
 ab_glyph = "0.2"

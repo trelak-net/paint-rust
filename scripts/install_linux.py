@@ -9,7 +9,7 @@ import subprocess
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
-APP_ID = "org.paintrust.Editor"
+APP_ID = "net.trelak.PaintRust"
 
 
 def desktop_command(executable):

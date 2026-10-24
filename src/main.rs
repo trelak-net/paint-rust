@@ -17,7 +17,7 @@ fn main() -> eframe::Result {
         viewport: eframe::egui::ViewportBuilder::default()
             .with_title("Paint Rust")
             .with_icon(icon)
-            .with_app_id("org.paintrust.Editor")
+            .with_app_id("net.trelak.PaintRust")
             .with_decorations(true)
             .with_inner_size([1180.0, 800.0])
             .with_min_inner_size([760.0, 520.0]),

@@ -6,6 +6,6 @@
     <magic priority="80">
       <match type="string" value="PRUST" offset="0"/>
     </magic>
-    <icon name="org.paintrust.Editor"/>
+    <icon name="net.trelak.PaintRust"/>
   </mime-type>
 </mime-info>
