@@ -19,6 +19,7 @@ enum Tool {
     Ellipse,
     Select,
     Text,
+    Move,
 }
 
 #[derive(Clone, Copy)]
@@ -60,6 +61,7 @@ pub struct Editor {
     color: Color32,
     brush_size: f32,
     shape_filled: bool,
+    move_selection_only: bool,
     shape_origin: Option<(f32, f32)>,
     selection_before: Option<Option<Selection>>,
     zoom: f32,
@@ -102,6 +104,7 @@ impl Editor {
             color: Color32::from_rgb(42, 113, 224),
             brush_size: 12.0,
             shape_filled: false,
+            move_selection_only: false,
             shape_origin: None,
             selection_before: None,
             zoom: 1.0,
@@ -402,6 +405,7 @@ impl Editor {
                 if i.key_pressed(Key::F) {
                     self.tool = Tool::Fill;
                 }
+                if i.key_pressed(Key::M) { self.tool=Tool::Move; }
                 if i.key_pressed(Key::T) { self.tool = Tool::Text; }
                 if i.key_pressed(Key::S) {
                     self.tool = Tool::Select;
@@ -587,6 +591,11 @@ impl Editor {
                         let origin = (origin - rect.min) / self.zoom;
                         self.shape_origin = Some((origin.x, origin.y));
                         match self.tool {
+                            Tool::Move => self.document.begin(if self.move_selection_only {
+                                "Move selection"
+                            } else {
+                                "Move pixels"
+                            }),
                             Tool::Text => self.begin_text(ui.ctx(), point),
                             Tool::Select => {
                                 self.selection_before = Some(self.document.selection());
@@ -666,6 +675,25 @@ impl Editor {
                                 width: self.brush_size,
                                 filled: self.shape_filled,
                             },
+                        );
+                        self.texture_dirty = true;
+                    }
+                    if self.tool == Tool::Move {
+                        let origin = self.shape_origin.unwrap_or(point);
+                        let mut dx = (point.0 - origin.0).round() as i32;
+                        let mut dy = (point.1 - origin.1).round() as i32;
+                        if ui.input(|i| i.modifiers.shift) {
+                            if dx.abs() >= dy.abs() {
+                                dy = 0;
+                            } else {
+                                dx = 0;
+                            }
+                        }
+                        self.document.preview_move(
+                            dx,
+                            dy,
+                            ui.input(|i| i.modifiers.command),
+                            self.move_selection_only,
                         );
                         self.texture_dirty = true;
                     }
@@ -1326,6 +1354,7 @@ impl Editor {
                         ui.heading("Tools");
                         for (tool, icon, label, shortcut) in [
                             (Tool::Select, Icon::Select, "Select area", "S"),
+                            (Tool::Move, Icon::Move, "Move", "M"),
                             (Tool::Text, Icon::Text, "Text", "T"),
                             (Tool::Brush, Icon::Brush, "Brush", "B"),
                             (Tool::Eraser, Icon::Eraser, "Eraser", "E"),
@@ -1348,6 +1377,10 @@ impl Editor {
                             if ui.add_sized([ui.available_width(), 34.0], button).clicked() {
                                 self.tool = tool;
                             }
+                        }
+                        if self.tool == Tool::Move {
+                            ui.checkbox(&mut self.move_selection_only, "Move selection only");
+                            ui.small("Ctrl: copy pixels. Shift: constrain direction.");
                         }
                         if matches!(self.tool, Tool::Rectangle | Tool::Ellipse) {
                             ui.checkbox(&mut self.shape_filled, "Filled shape");

@@ -694,6 +694,63 @@ impl Document {
         Ok(())
     }
 
+    pub fn preview_move(&mut self, dx: i32, dy: i32, copy: bool, selection_only: bool) {
+        let before = self
+            .pending
+            .as_ref()
+            .expect("Begin a move transaction first");
+        self.layers = before.layers.clone();
+        self.active = before.active;
+        self.selection = before.selection;
+        if dx == 0 && dy == 0 {
+            return;
+        }
+        let area = before.selection.unwrap_or(Selection {
+            x: 0,
+            y: 0,
+            width: self.width,
+            height: self.height,
+        });
+        let left = i64::from(area.x) + i64::from(dx);
+        let top = i64::from(area.y) + i64::from(dy);
+        let x = left.clamp(0, i64::from(self.width)) as u32;
+        let y = top.clamp(0, i64::from(self.height)) as u32;
+        let right = (left + i64::from(area.width)).clamp(0, i64::from(self.width)) as u32;
+        let bottom = (top + i64::from(area.height)).clamp(0, i64::from(self.height)) as u32;
+        self.selection = (right > x && bottom > y).then_some(Selection {
+            x,
+            y,
+            width: right - x,
+            height: bottom - y,
+        });
+        if selection_only {
+            return;
+        }
+        let source = before.layers[before.active].pixels.clone();
+        let output = Arc::make_mut(&mut self.layers[self.active].pixels);
+        if !copy {
+            for y in area.y..area.y + area.height {
+                let start = y as usize * self.width as usize + area.x as usize;
+                output[start..start + area.width as usize].fill([0; 4]);
+            }
+        }
+        for sy in area.y..area.y + area.height {
+            for sx in area.x..area.x + area.width {
+                let x = i64::from(sx) + i64::from(dx);
+                let y = i64::from(sy) + i64::from(dy);
+                if x < 0 || y < 0 || x >= i64::from(self.width) || y >= i64::from(self.height) {
+                    continue;
+                }
+                let dst = y as usize * self.width as usize + x as usize;
+                output[dst] = blend(
+                    output[dst],
+                    source[sy as usize * self.width as usize + sx as usize],
+                    255,
+                );
+            }
+        }
+    }
+
     pub fn preview_text(&mut self, style: crate::text::TextStyle<'_>) -> Result<(), String> {
         if !style.size.is_finite()
             || style.size < 1.0

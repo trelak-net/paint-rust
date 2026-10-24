@@ -51,7 +51,7 @@ B: brush                     E: eraser
 F: flood fill                I: color picker
 L: line                      R: rectangle
 O: ellipse                   S: rectangular selection
-T: text
+T: text                      M: move pixels/selection
 Ctrl+A: select all           Ctrl+Shift+A: deselect
 Delete: clear selected pixels (or the whole active layer without a selection)
 Ctrl+Shift+X: crop all layers to the selection
@@ -190,3 +190,9 @@ disabled until that generation is ready. Cancel/Escape restores original pixels.
 Effects use a frozen active-layer buffer and respect the selection. The blur uses
 a separable box kernel and premultiplied alpha. Full layer compositing and texture
 upload still happen on the UI thread; this is not yet the final performance path.
+
+Move validation: 54 tests pass. Move uses a frozen source region, so overlapping
+destinations cannot smear the input. Ctrl copies instead of clearing the source;
+Shift constrains direction. Selection-only movement does not dirty image pixels.
+Pixels outside the canvas are clipped. Escape and undo restore the prior pixels
+and selection; zero-distance movement is an exact no-op.

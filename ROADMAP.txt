@@ -9,7 +9,8 @@ Development roadmap
 [x] Image/canvas resizing, rotation and mirroring.
 [x] Clipboard image copy/cut/paste.
 [x] Raster text with editable preview.
-[ ] Additional selection tools and transforms.
+[x] Move/copy selected pixels and move selection bounds.
+[ ] Additional selection shapes, boolean operations and free transforms.
 [x] Eight layer blend modes with project persistence.
 [x] Brightness/contrast, saturation, grayscale, sepia and box blur previews.
 [ ] Additional effects and gradient tools.
