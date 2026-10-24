@@ -258,6 +258,45 @@ impl Editor {
         };
     }
 
+    fn import_layer(&mut self) {
+        self.finish_stroke();
+        let Some(path) = rfd::FileDialog::new()
+            .set_title("Import image as layer")
+            .add_filter(
+                "Images and projects",
+                &["png", "jpg", "jpeg", "bmp", "webp", "prust"],
+            )
+            .pick_file()
+        else {
+            return;
+        };
+        self.import_layer_from_path(&path);
+    }
+
+    fn import_layer_from_path(&mut self, path: &std::path::Path) {
+        let result = files::open(path).and_then(|image| {
+            let name = path.file_stem().unwrap_or_default().to_string_lossy();
+            self.document
+                .import_layer(image.width, image.height, &image.composite(), &name)?;
+            Ok((image.width, image.height))
+        });
+        match result {
+            Ok((width, height)) => {
+                self.texture_dirty = true;
+                let clipped = self
+                    .document
+                    .selection()
+                    .is_some_and(|s| s.width < width || s.height < height);
+                self.status = if clipped {
+                    "Imported image as a new layer; image clipped to the canvas".into()
+                } else {
+                    "Imported image as a new layer".into()
+                };
+            }
+            Err(error) => self.status = format!("Could not import image: {error}"),
+        }
+    }
+
     fn begin_text(&mut self, ctx: &egui::Context, origin: (f32, f32)) {
         let data = ctx.fonts(|fonts| {
             let definitions = fonts.definitions();
@@ -1627,6 +1666,16 @@ impl Editor {
                 });
                 if ui
                     .add_enabled(
+                        self.document.can_add_layer(),
+                        egui::Button::new("Import image…"),
+                    )
+                    .on_hover_text("Add an image or a project's visible image as a new layer")
+                    .clicked()
+                {
+                    self.import_layer();
+                }
+                if ui
+                    .add_enabled(
                         self.document.can_flatten(),
                         egui::Button::new("Flatten image"),
                     )
@@ -2052,5 +2101,36 @@ mod tests {
         frame(&mut editor, &ctx, vec![pointer(point, false)]);
         assert!(!editor.document.dirty());
         assert!(!editor.document.can_undo());
+    }
+    #[test]
+    fn importing_a_project_uses_its_composite_without_replacing_the_destination() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.document = Document::new(4, 4, [255; 4]).unwrap();
+        editor.path = Some(std::path::PathBuf::from("destination.prust"));
+        let mut image = Document::new(2, 2, [200, 50, 80, 123]).unwrap();
+        image.add_layer(true);
+        image.set_layer_properties("Top".into(), 80);
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("Zażółć.prust");
+        files::save_project(&image, &path).unwrap();
+        editor.import_layer_from_path(&path);
+        assert_eq!(editor.document.layers().len(), 2);
+        assert_eq!(editor.document.layers()[1].name, "Zażółć");
+        assert_eq!(editor.document.pixels()[5], image.composite()[0]);
+        assert_eq!(
+            editor.path.as_deref(),
+            Some(std::path::Path::new("destination.prust"))
+        );
+        assert_eq!((editor.document.width, editor.document.height), (4, 4));
+        editor.document.undo();
+        assert_eq!(editor.document.layers().len(), 1);
+        assert!(!editor.document.dirty());
+        editor.document.redo();
+        assert_eq!(editor.document.pixels()[5], image.composite()[0]);
+        let before = editor.document.layers().to_vec();
+        editor.import_layer_from_path(&dir.path().join("missing.png"));
+        assert!(editor.document.layers() == before);
+        assert!(editor.status.starts_with("Could not import image:"));
     }
 }

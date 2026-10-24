@@ -179,3 +179,33 @@ fn flatten_is_noop_for_plain_raster_and_refuses_pending_edits() {
     assert!(doc.flatten());
     assert_eq!(doc.pixels(), &[[23, 45, 67, 0]]);
 }
+
+#[test]
+fn import_clips_at_selection_origin_and_rejects_invalid_input_atomically() {
+    use paint_rust::document::Selection;
+    let mut doc = Document::new(3, 2, [255; 4]).unwrap();
+    let selection = Selection {
+        x: 2,
+        y: 1,
+        width: 1,
+        height: 1,
+    };
+    doc.set_selection(Some(selection));
+    assert!(
+        doc.import_layer(2, 2, &[[23, 45, 67, 89]; 4], "Detail")
+            .unwrap()
+    );
+    assert_eq!(doc.pixels()[5], [23, 45, 67, 89]);
+    assert!(doc.pixels()[..5].iter().all(|p| *p == [0; 4]));
+    assert_eq!(doc.history().next(), Some("Import image layer"));
+    doc.undo();
+    assert_eq!(doc.selection(), Some(selection));
+    assert!(!doc.dirty());
+    assert!(doc.import_layer(2, 2, &[], "Invalid").is_err());
+    assert!(
+        doc.import_layer(1, 1, &[[0; 4]], &"x".repeat(4097))
+            .is_err()
+    );
+    assert!(!doc.dirty());
+    assert_eq!(doc.layers().len(), 1);
+}

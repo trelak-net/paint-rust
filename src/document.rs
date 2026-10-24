@@ -357,9 +357,33 @@ impl Document {
         height: u32,
         pixels: &[Pixel],
     ) -> Result<bool, String> {
+        self.insert_image_layer(width, height, pixels, "Pasted image", "Paste layer")
+    }
+
+    pub fn import_layer(
+        &mut self,
+        width: u32,
+        height: u32,
+        pixels: &[Pixel],
+        name: &str,
+    ) -> Result<bool, String> {
+        self.insert_image_layer(width, height, pixels, name, "Import image layer")
+    }
+
+    fn insert_image_layer(
+        &mut self,
+        width: u32,
+        height: u32,
+        pixels: &[Pixel],
+        name: &str,
+        action: &str,
+    ) -> Result<bool, String> {
         Self::validate_size(width, height)?;
+        if name.len() > 4096 {
+            return Err("Layer name is too long.".into());
+        }
         if pixels.len() != width as usize * height as usize {
-            return Err("Invalid pasted pixel buffer.".into());
+            return Err("Invalid image pixel buffer.".into());
         }
         if self.editing() || !self.can_add_layer() {
             return Err("Cannot add another layer to this document.".into());
@@ -377,10 +401,15 @@ impl Document {
             output[dst..dst + clipped_width as usize]
                 .copy_from_slice(&pixels[src..src + clipped_width as usize]);
         }
-        self.begin("Paste layer");
+        self.begin(action);
         self.active += 1;
+        let name = if name.trim().is_empty() {
+            "Imported image"
+        } else {
+            name
+        };
         self.layers
-            .insert(self.active, Layer::new("Pasted image".into(), output));
+            .insert(self.active, Layer::new(name.into(), output));
         self.selection = Some(Selection {
             x,
             y,

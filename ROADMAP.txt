@@ -8,6 +8,7 @@ Development roadmap
 [x] Rectangular selections, selected-area operations and crop.
 [x] Image/canvas resizing, rotation and mirroring.
 [x] Clipboard image copy/cut/paste.
+[x] Import image files and project composites as layers.
 [x] Raster text with editable preview.
 [x] Move/copy selected pixels and move selection bounds.
 [ ] Additional selection shapes, boolean operations and free transforms.

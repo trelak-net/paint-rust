@@ -38,6 +38,7 @@ Features
 - Add, duplicate, reorder, hide and delete layers; edit names, opacity and blend mode.
 - Flatten the visible image into one layer, with undo restoring every original layer.
 - Copy/cut active-layer pixels or copy the merged image; paste images as new layers.
+- Import an image or a project composite as a named layer in the current document.
 - Place multiline text with a live preview, adjustable size/color and explicit Apply.
 - Save editable layers in a versioned .prust project.
 - Confirm unsaved changes before opening, creating or closing a document.
@@ -221,3 +222,10 @@ Flatten validation: 65 tests pass. Flatten bakes visible layers, opacity and ble
 modes into a single normal RGBA layer while preserving the exact composite. Hidden
 layers are removed; Undo restores them, layer settings and the active layer. The
 selection does not restrict flattening and is retained. Pending edits block it.
+
+Import validation: 69 tests pass. Imported images use the file stem as the layer
+name and preserve the current project path and canvas size. Placement follows the
+selection origin, or centers smaller images without a selection; excess pixels
+are clipped. Project imports use the visible composite. The complete insertion
+is one undo step. Failed decoding or validation leaves the document intact.
+File picking and import decoding currently run synchronously.
