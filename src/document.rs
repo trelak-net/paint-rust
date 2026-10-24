@@ -108,6 +108,7 @@ struct Snapshot {
     label: String,
 }
 
+#[derive(Clone)]
 pub struct Document {
     pub width: u32,
     pub height: u32,
@@ -118,6 +119,7 @@ pub struct Document {
     redo: Vec<Entry>,
     pending: Option<Snapshot>,
     history_error: Option<String>,
+    deferred_history: bool,
     revision: u64,
     next_revision: u64,
     saved_revision: u64,
@@ -181,6 +183,7 @@ impl Document {
             redo: Vec::new(),
             pending: None,
             history_error: None,
+            deferred_history: false,
             revision: 0,
             next_revision: 1,
             saved_revision: 0,
@@ -444,8 +447,11 @@ impl Document {
     }
 
     pub fn snapshot(&self) -> Self {
-        Self::from_layers(self.width, self.height, self.layers.clone(), self.active)
-            .expect("valid document snapshot")
+        let mut snapshot =
+            Self::from_layers(self.width, self.height, self.layers.clone(), self.active)
+                .expect("valid document snapshot");
+        snapshot.deferred_history = true;
+        snapshot
     }
     pub fn revision(&self) -> u64 {
         self.revision
@@ -706,8 +712,39 @@ impl Document {
         self.history_error.as_deref()
     }
 
-    fn trim_history(&mut self) {
+    /// Defer file writes so a GUI can call `store_history` on a worker clone.
+    pub fn defer_history_storage(&mut self, deferred: bool) {
+        self.deferred_history = deferred;
+    }
+
+    pub fn history_needs_storage(&self) -> bool {
+        self.history_bytes() > HISTORY_BYTES
+    }
+
+    pub fn history_navigation_needs_io(&self, steps: usize, redo: bool) -> bool {
+        if redo {
+            self.redo
+                .iter()
+                .rev()
+                .take(steps)
+                .any(|e| e.memory().is_none())
+        } else {
+            self.undo
+                .iter()
+                .rev()
+                .take(steps)
+                .any(|e| e.memory().is_none())
+        }
+    }
+
+    pub fn store_history(&mut self) {
         self.spill_history(HISTORY_BYTES, history::temporary_file);
+    }
+
+    fn trim_history(&mut self) {
+        if !self.deferred_history {
+            self.store_history();
+        }
     }
 
     fn spill_history(
@@ -783,6 +820,7 @@ impl Document {
             label: target.label,
         };
         self.revision = target.revision;
+        self.history_error = None;
         if redo {
             self.redo.pop();
             self.undo.push_back(Entry::Memory(current));

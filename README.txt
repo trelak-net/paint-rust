@@ -457,11 +457,26 @@ exceed its normal target rather than silently losing undo. Reads validate file
 length and a checksum before changing the document or either history stack. A
 failed read leaves the current edit and history untouched, allowing retry.
 Branching after undo releases obsolete redo files. Disk usage is not capped;
-large sessions require free cache space. Stored snapshots are currently full,
-uncompressed states, and synchronous disk I/O can delay a large commit or undo.
+large sessions require free cache space. Stored snapshots are currently full, uncompressed states. The desktop editor
+stores them and restores disk-backed history in background jobs. RAM-only undo
+remains immediate. Editing is disabled while a history job is pending; the window
+stays responsive. The library API remains synchronous unless storage is deferred.
 
 Validation: 131 Rust tests and strict Clippy pass. Tests cover spilling beyond the
 RAM budget without losing steps, exact restoration of layers/masks/revisions,
 geometry and redo, failed writes, corrupted/truncated reads and redo cleanup. The
 4096 x 4096 four-layer performance example now retains all three edit steps and
 successfully undoes and redoes flattening instead of losing its entire history.
+
+Background history I/O
+---------------------
+The editor defers history writes until a completed edit and performs storage on a
+worker clone. Disk files are shared safely between clones; the original document
+is retained until successful publication. RAM can temporarily exceed the target
+while work is pending. Disk-backed multi-step undo/redo is cancellable between
+steps and publishes all requested steps together. A read error or cancellation
+keeps the original document. Failed storage remains in RAM; the History panel
+provides Retry history storage instead of retrying continuously. Temporary render
+and effect snapshots defer storage to avoid writing histories that are discarded.
+Validation: 133 Rust tests and strict Clippy pass, including concurrent reads of
+shared history files and background storage/navigation beyond the RAM limit.

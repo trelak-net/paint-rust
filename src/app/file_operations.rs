@@ -10,6 +10,7 @@ pub(super) enum Outcome {
     Transformed(Box<Document>, String),
     Selection(Selection),
     Edited(Box<Document>, String),
+    History(Box<Document>, usize, bool),
 }
 
 pub(super) struct FileJob {
@@ -19,6 +20,50 @@ pub(super) struct FileJob {
 }
 
 impl Editor {
+    pub(super) fn store_history_async(&mut self) {
+        if self.file_job.is_some() || self.document.editing() {
+            return;
+        }
+        let mut document = self.document.clone();
+        self.start_file_job("store undo history", move || {
+            document.store_history();
+            Ok(Outcome::History(Box::new(document), 0, false))
+        });
+    }
+
+    pub(super) fn navigate_history_async(&mut self, steps: usize, redo: bool) {
+        if self.file_job.is_some() {
+            return;
+        }
+        let mut document = self.document.clone();
+        document.defer_history_storage(true);
+        self.start_cancellable_file_job("restore undo history", move |cancel| {
+            let mut count = 0;
+            for _ in 0..steps {
+                if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+                    return Err(files::CANCELLED.into());
+                }
+                let changed = if redo {
+                    document.redo()
+                } else {
+                    document.undo()
+                };
+                if !changed {
+                    break;
+                }
+                count += 1;
+            }
+            if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+                return Err(files::CANCELLED.into());
+            }
+            // A failed read never publishes a partial multi-step navigation.
+            if let Some(error) = document.history_error() {
+                return Err(error.into());
+            }
+            Ok(Outcome::History(Box::new(document), count, redo))
+        });
+    }
+
     pub(super) fn start_document_edit(&mut self, flatten: bool) {
         self.finish_stroke();
         let mut document = self.document.snapshot();
@@ -115,6 +160,25 @@ impl Editor {
         let operation = job.operation;
         self.file_job = None;
         match result {
+            Ok(Outcome::History(mut document, count, redo)) => {
+                document.defer_history_storage(true);
+                self.document = *document;
+                self.texture_dirty |= count > 0;
+                self.status = self
+                    .document
+                    .history_error()
+                    .map(str::to_owned)
+                    .unwrap_or_else(|| {
+                        if count == 0 {
+                            "Undo history stored".into()
+                        } else {
+                            format!(
+                                "{} {count} operation(s)",
+                                if redo { "Redone" } else { "Undone" }
+                            )
+                        }
+                    });
+            }
             Ok(Outcome::Opened(document, path)) => {
                 self.document = *document;
                 self.path = Some(path);

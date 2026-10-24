@@ -35,7 +35,8 @@ Development roadmap
 [x] Cancellable background flood fill, flattening and color inversion.
 [x] Large-image CPU measurements and non-starving active-stroke previews.
 [x] Retain undo beyond the RAM budget using private temporary files.
-[ ] Reduce history disk duplication and move cold-history I/O off the UI thread.
+[x] Store and restore disk-backed history outside the UI thread.
+[ ] Reduce history disk duplication and storage volume.
 [ ] Full screen-reader workflow audit and final distribution validation.
 
 Each completed increment receives regression checks and its own commit. Keep the

@@ -460,18 +460,10 @@ impl Editor {
     }
 
     fn undo(&mut self) {
-        self.finish_stroke();
-        self.texture_dirty |= self.document.undo();
-        if let Some(error) = self.document.history_error() {
-            self.status = error.into();
-        }
+        self.navigate_history(1, false);
     }
     fn redo(&mut self) {
-        self.finish_stroke();
-        self.texture_dirty |= self.document.redo();
-        if let Some(error) = self.document.history_error() {
-            self.status = error.into();
-        }
+        self.navigate_history(1, true);
     }
 
     fn navigate_history(&mut self, steps: usize, redo: bool) {
@@ -484,6 +476,10 @@ impl Editor {
         } else {
             self.document.history().count()
         };
+        if self.document.history_navigation_needs_io(steps, redo) {
+            self.navigate_history_async(steps.min(available), redo);
+            return;
+        }
         let mut count = 0;
         for _ in 0..steps.min(available) {
             let changed = if redo {
@@ -1643,7 +1639,9 @@ impl Editor {
 
 impl Editor {
     fn show(&mut self, ctx: &egui::Context) {
+        self.document.defer_history_storage(true);
         self.poll_file_job(ctx);
+        self.document.defer_history_storage(true);
         if let Some(error) = self.document.history_error() {
             self.status = error.to_owned();
         }
@@ -2206,6 +2204,11 @@ impl Editor {
                                 self.document.history_bytes() as f64 / (1024.0 * 1024.0),
                                 self.document.history_disk_bytes() as f64 / (1024.0 * 1024.0)
                             ));
+                            if self.document.history_error().is_some()
+                                && ui.button("Retry history storage").clicked()
+                            {
+                                self.store_history_async();
+                            }
                             let undo: Vec<String> =
                                 self.document.history().map(str::to_owned).collect();
                             let redo: Vec<String> =
@@ -2274,6 +2277,14 @@ impl Editor {
         if !ctx.input(|i| i.pointer.primary_down()) {
             self.finish_stroke();
             self.suppress_stroke = false;
+        }
+        if enabled
+            && !self.allow_close
+            && !self.document.editing()
+            && self.document.history_error().is_none()
+            && self.document.history_needs_storage()
+        {
+            self.store_history_async();
         }
         if self.file_job.is_some()
             && !self.allow_close
@@ -3076,6 +3087,37 @@ mod tests {
         assert_eq!(std::fs::read(&path).unwrap(), b"previous data");
         assert_eq!(editor.status, "Cancelled: save project");
     }
+    #[test]
+    fn large_history_storage_and_navigation_publish_only_completed_work() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.document = Document::new(1024, 1024, [255; 4]).unwrap();
+        editor.document.defer_history_storage(true);
+        for _ in 0..35 {
+            editor.document.invert();
+        }
+        assert!(editor.document.history_needs_storage());
+        assert_eq!(editor.document.history_disk_bytes(), 0);
+        editor.store_history_async();
+        assert!(editor.file_job.is_some());
+        assert_eq!(editor.document.history_disk_bytes(), 0);
+        wait_for_files(&mut editor, &ctx);
+        assert!(!editor.document.history_needs_storage());
+        assert!(editor.document.history_disk_bytes() > 0);
+        assert_eq!(editor.document.history().count(), 35);
+        editor.navigate_history(35, false);
+        assert!(editor.file_job.is_some());
+        assert_eq!(editor.document.pixels()[0], [0, 0, 0, 255]);
+        wait_for_files(&mut editor, &ctx);
+        assert_eq!(editor.document.pixels()[0], [255; 4]);
+        assert!(!editor.document.dirty());
+        assert_eq!(editor.document.redo_history().count(), 35);
+        editor.navigate_history(35, true);
+        wait_for_files(&mut editor, &ctx);
+        assert_eq!(editor.document.pixels()[0], [0, 0, 0, 255]);
+        assert!(editor.document.dirty());
+    }
+
     #[test]
     fn history_navigation_restores_saved_revision_and_redoes_in_order() {
         let ctx = egui::Context::default();

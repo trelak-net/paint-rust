@@ -5,7 +5,7 @@ use std::{
     fs::File,
     hash::{Hash, Hasher},
     io::{self, Read, Seek, SeekFrom, Write},
-    sync::Arc,
+    sync::{Arc, Mutex},
 };
 
 /// Use the application cache instead of /tmp, which commonly lives on tmpfs.
@@ -37,16 +37,17 @@ pub(super) fn temporary_file() -> io::Result<File> {
     tempfile::tempfile_in(directory)
 }
 
+#[derive(Clone)]
 pub(super) enum Entry {
     Memory(Snapshot),
-    Disk(Stored),
+    Disk(Arc<Stored>),
 }
 
 pub(super) struct Stored {
     metadata: Snapshot,
     lengths: Vec<usize>,
     mask_length: Option<usize>,
-    file: File,
+    file: Mutex<File>,
     bytes: u64,
     checksum: u64,
 }
@@ -107,14 +108,14 @@ impl Entry {
         if let Some(mask) = metadata.selection.as_mut().and_then(|s| s.mask.as_mut()) {
             mask.pixels = Arc::new(Vec::new());
         }
-        *self = Self::Disk(Stored {
+        *self = Self::Disk(Arc::new(Stored {
             metadata,
             lengths,
             mask_length,
-            file,
+            file: Mutex::new(file),
             bytes,
             checksum: checksum.finish(),
-        });
+        }));
         Ok(())
     }
 
@@ -122,24 +123,28 @@ impl Entry {
         let Self::Disk(stored) = self else {
             return Ok(self.memory().expect("memory entry").clone());
         };
-        if stored.file.metadata()?.len() != stored.bytes {
+        let mut file = stored
+            .file
+            .lock()
+            .map_err(|_| io::Error::other("History file lock was poisoned"))?;
+        if file.metadata()?.len() != stored.bytes {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 "Temporary history file has an unexpected length",
             ));
         }
-        stored.file.seek(SeekFrom::Start(0))?;
+        file.seek(SeekFrom::Start(0))?;
         let mut snapshot = stored.metadata.clone();
         let mut checksum = DefaultHasher::new();
         for (layer, &length) in snapshot.layers.iter_mut().zip(&stored.lengths) {
             let mut pixels: Vec<Pixel> = vec![[0; 4]; length];
-            stored.file.read_exact(pixels.as_flattened_mut())?;
+            file.read_exact(pixels.as_flattened_mut())?;
             pixels.as_flattened().hash(&mut checksum);
             layer.pixels = Arc::new(pixels);
         }
         if let Some(length) = stored.mask_length {
             let mut pixels = vec![0; length];
-            stored.file.read_exact(&mut pixels)?;
+            file.read_exact(&mut pixels)?;
             pixels.as_slice().hash(&mut checksum);
             snapshot
                 .selection
@@ -162,6 +167,29 @@ impl Entry {
 mod tests {
     use super::*;
     use crate::document::{BlendMode, Document, Selection};
+
+    #[test]
+    fn worker_clones_can_read_shared_disk_history_without_changing_source() {
+        let mut source = Document::new(32, 32, [12, 24, 36, 48]).unwrap();
+        source.invert();
+        source.spill_history(0, tempfile::tempfile);
+        let workers: Vec<_> = (0..2)
+            .map(|_| {
+                let mut document = source.clone();
+                std::thread::spawn(move || {
+                    assert!(document.undo());
+                    assert!(document.pixels().iter().all(|p| *p == [12, 24, 36, 48]));
+                    assert!(document.redo());
+                })
+            })
+            .collect();
+        for worker in workers {
+            worker.join().unwrap();
+        }
+        assert_eq!(source.history().count(), 1);
+        assert_eq!(source.pixels()[0], [243, 231, 219, 48]);
+        assert!(source.undo());
+    }
 
     #[test]
     fn disk_history_restores_layers_masks_revisions_and_redo() {
@@ -229,8 +257,13 @@ mod tests {
         let Entry::Disk(stored) = doc.undo.back_mut().unwrap() else {
             panic!("disk entry");
         };
-        stored.file.seek(SeekFrom::Start(0)).unwrap();
-        stored.file.write_all(&[0]).unwrap();
+        stored
+            .file
+            .lock()
+            .unwrap()
+            .seek(SeekFrom::Start(0))
+            .unwrap();
+        stored.file.lock().unwrap().write_all(&[0]).unwrap();
         let revision = doc.revision();
         assert!(!doc.undo());
         assert_eq!(doc.revision(), revision);
@@ -241,8 +274,13 @@ mod tests {
         let Entry::Disk(stored) = doc.undo.back_mut().unwrap() else {
             unreachable!();
         };
-        stored.file.seek(SeekFrom::Start(0)).unwrap();
-        stored.file.write_all(&[255]).unwrap();
+        stored
+            .file
+            .lock()
+            .unwrap()
+            .seek(SeekFrom::Start(0))
+            .unwrap();
+        stored.file.lock().unwrap().write_all(&[255]).unwrap();
         assert!(doc.undo());
         assert!(doc.pixels().iter().all(|p| *p == [255; 4]));
     }
@@ -255,7 +293,7 @@ mod tests {
         let Entry::Disk(stored) = doc.undo.back_mut().unwrap() else {
             panic!("disk entry");
         };
-        stored.file.set_len(1).unwrap();
+        stored.file.lock().unwrap().set_len(1).unwrap();
         doc.begin("Pending edit");
         assert!(!doc.undo());
         assert!(doc.editing());
