@@ -106,3 +106,12 @@ font description parsing and light/dark palette switching. Formatting and Clippy
 checks pass. The light interface and desktop font were visually checked on X11;
 live desktop theme changes and Wayland decorations need visual validation in their
 respective desktop sessions.
+
+License and artwork
+-------------------
+Project-authored source and artwork are available under MIT OR Apache-2.0, at your
+option. See LICENSE-MIT, LICENSE-APACHE and THIRD_PARTY_NOTICES. Dependencies retain
+their own licenses. The original SVG tool/action icons and application icon are
+in assets/; assets/README.txt records their provenance and design conventions.
+Icons follow the current text color in light, dark, selected and disabled states.
+Labels and shortcut hints remain available beside the icons.

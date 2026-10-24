@@ -1,3 +1,4 @@
+use crate::icons::Icon;
 use eframe::egui::{self, Color32, Key, Pos2, Rect, Sense, TextureHandle, TextureOptions, Vec2};
 use paint_rust::{document::Document, files};
 use std::path::PathBuf;
@@ -50,6 +51,7 @@ impl Editor {
 
     fn blank(ctx: &egui::Context) -> Self {
         crate::appearance::configure(ctx);
+        egui_extras::install_image_loaders(ctx);
         Self {
             document: Document::new(960, 640, [255; 4]).unwrap(),
             texture: None,
@@ -379,7 +381,7 @@ impl Editor {
                 .show(ctx, |ui| {
                     ui.label("Save your changes before continuing?");
                     ui.horizontal(|ui| {
-                        if ui.button("Save").clicked() && self.save(false) {
+                        if ui.add(Icon::Save.button("Save")).clicked() && self.save(false) {
                             self.pending = None;
                             self.perform(action, ctx);
                         }
@@ -487,33 +489,45 @@ impl Editor {
             if !enabled {
                 ui.disable();
             }
-            ui.horizontal(|ui| {
-                if ui.button("New").on_hover_text("Ctrl+N").clicked() {
+            ui.horizontal_wrapped(|ui| {
+                if ui
+                    .add(Icon::New.button("New"))
+                    .on_hover_text("Ctrl+N")
+                    .clicked()
+                {
                     self.request(Action::New, ctx);
                 }
-                if ui.button("Open…").on_hover_text("Ctrl+O").clicked() {
+                if ui
+                    .add(Icon::Open.button("Open…"))
+                    .on_hover_text("Ctrl+O")
+                    .clicked()
+                {
                     self.request(Action::Open, ctx);
                 }
-                if ui.button("Save").on_hover_text("Ctrl+S").clicked() {
+                if ui
+                    .add(Icon::Save.button("Save"))
+                    .on_hover_text("Ctrl+S")
+                    .clicked()
+                {
                     self.save(false);
                 }
-                if ui.button("Save as…").clicked() {
+                if ui.add(Icon::SaveAs.button("Save as…")).clicked() {
                     self.save(true);
                 }
                 ui.separator();
                 if ui
-                    .add_enabled(self.document.can_undo(), egui::Button::new("Undo"))
+                    .add_enabled(self.document.can_undo(), Icon::Undo.button("Undo"))
                     .clicked()
                 {
                     self.undo();
                 }
                 if ui
-                    .add_enabled(self.document.can_redo(), egui::Button::new("Redo"))
+                    .add_enabled(self.document.can_redo(), Icon::Redo.button("Redo"))
                     .clicked()
                 {
                     self.redo();
                 }
-                if ui.button("Invert colors").clicked() {
+                if ui.add(Icon::Invert.button("Invert colors")).clicked() {
                     self.finish_stroke();
                     self.document.invert();
                     self.texture_dirty = true;
@@ -529,10 +543,10 @@ impl Editor {
                         .logarithmic(true)
                         .custom_formatter(|v, _| format!("{:.0}%", v * 100.0)),
                 );
-                if ui.button("100%").clicked() {
+                if ui.add(Icon::ActualSize.button("100%")).clicked() {
                     self.zoom = 1.0;
                 }
-                if ui.button("Fit").clicked() {
+                if ui.add(Icon::Fit.button("Fit")).clicked() {
                     let available = ctx.content_rect().size() - Vec2::new(250.0, 150.0);
                     self.zoom = (available.x / self.document.width as f32)
                         .min(available.y / self.document.height as f32)
@@ -560,13 +574,23 @@ impl Editor {
                     ui.disable();
                 }
                 ui.heading("Tools");
-                for (tool, label) in [
-                    (Tool::Brush, "Brush                 B"),
-                    (Tool::Eraser, "Eraser                E"),
-                    (Tool::Fill, "Flood fill           F"),
-                    (Tool::Picker, "Color picker      I"),
+                for (tool, icon, label, shortcut) in [
+                    (Tool::Brush, Icon::Brush, "Brush", "B"),
+                    (Tool::Eraser, Icon::Eraser, "Eraser", "E"),
+                    (Tool::Fill, Icon::Fill, "Flood fill", "F"),
+                    (Tool::Picker, Icon::Picker, "Color picker", "I"),
                 ] {
-                    ui.selectable_value(&mut self.tool, tool, label);
+                    let button = icon
+                        .button(label)
+                        .selected(self.tool == tool)
+                        .shortcut_text(egui::RichText::new(shortcut).color(if self.tool == tool {
+                            ui.visuals().selection.stroke.color
+                        } else {
+                            ui.visuals().weak_text_color()
+                        }));
+                    if ui.add_sized([ui.available_width(), 34.0], button).clicked() {
+                        self.tool = tool;
+                    }
                 }
                 ui.separator();
                 ui.heading("Color");

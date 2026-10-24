@@ -1,10 +1,20 @@
 mod app;
 mod appearance;
+mod icons;
 
 fn main() -> eframe::Result {
+    let icon = image::load_from_memory(include_bytes!("../assets/app-icon.png"))
+        .expect("embedded application icon")
+        .into_rgba8();
+    let icon = eframe::egui::IconData {
+        width: icon.width(),
+        height: icon.height(),
+        rgba: icon.into_raw(),
+    };
     let options = eframe::NativeOptions {
         viewport: eframe::egui::ViewportBuilder::default()
             .with_title("Paint Rust")
+            .with_icon(icon)
             .with_app_id("org.paintrust.Editor")
             .with_decorations(true)
             .with_inner_size([1180.0, 800.0])

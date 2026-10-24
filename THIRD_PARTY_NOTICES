@@ -1,0 +1,28 @@
+Paint Rust third-party notices
+==============================
+
+Project-authored code and artwork are licensed under MIT OR Apache-2.0.
+This choice does not relicense dependencies or third-party fonts.
+
+Application icons
+-----------------
+No third-party application icon set is included. See assets/README.txt for the
+source and license of the project-authored action icons and application mark.
+
+Bundled fallback fonts
+----------------------
+eframe/epaint_default_fonts 0.33.3 bundles the following fallback fonts:
+Source: https://github.com/emilk/egui/tree/0.33.3/crates/epaint_default_fonts
+- Hack: notices and terms in licenses/fonts/Hack-Regular.txt.
+- Ubuntu Light: Ubuntu Font Licence, licenses/fonts/UFL.txt.
+- Noto Emoji: SIL Open Font License, licenses/fonts/OFL.txt.
+- emoji-icon-font: MIT, licenses/fonts/emoji-icon-font-mit-license.txt.
+These are library-provided font resources, not the application's action icons.
+System fonts are loaded from the host and are not copied into this repository.
+
+Rust dependencies
+-----------------
+Cargo.lock records exact dependency versions. Dependencies retain their upstream
+licenses and notices. This file currently records artwork and bundled fonts;
+it is not a complete binary-distribution license inventory. A distributable
+package must additionally include the required notices for its resolved libraries.
