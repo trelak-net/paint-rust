@@ -35,7 +35,8 @@ Features
 - Zoom from 10% to 400%, fit the canvas, and navigate with scrollbars.
 - Undo/redo complete strokes and edits; cancel a stroke with Escape.
 - Open PNG, JPEG, BMP and WebP; export a flattened RGBA PNG.
-- Add, duplicate, reorder, hide and delete layers; edit names and opacity.
+- Add, duplicate, reorder, hide and delete layers; edit names, opacity and blend mode.
+- Flatten the visible image into one layer, with undo restoring every original layer.
 - Copy/cut active-layer pixels or copy the merged image; paste images as new layers.
 - Place multiline text with a live preview, adjustable size/color and explicit Apply.
 - Save editable layers in a versioned .prust project.
@@ -214,3 +215,8 @@ when an older background write finishes. Pending tool previews are not copied.
 Recent edits since the last completed copy can be lost after a crash. Recovery
 does not overwrite project files and is not a substitute for regular saves.
 Old empty session directories are currently retained.
+
+Flatten validation: 65 tests pass. Flatten bakes visible layers, opacity and blend
+modes into a single normal RGBA layer while preserving the exact composite. Hidden
+layers are removed; Undo restores them, layer settings and the active layer. The
+selection does not restrict flattening and is retained. Pending edits block it.

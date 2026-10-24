@@ -1625,6 +1625,19 @@ impl Editor {
                         self.texture_dirty = true;
                     }
                 });
+                if ui
+                    .add_enabled(
+                        self.document.can_flatten(),
+                        egui::Button::new("Flatten image"),
+                    )
+                    .on_hover_text(
+                        "Replace all layers with the visible image. Undo restores the layers.",
+                    )
+                    .clicked()
+                {
+                    self.document.flatten();
+                    self.texture_dirty = true;
+                }
                 ui.separator();
                 egui::ScrollArea::vertical()
                     .max_height(320.0)

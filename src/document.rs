@@ -455,6 +455,22 @@ impl Document {
         self.active = self.active.min(self.layers.len() - 1);
         self.commit()
     }
+    pub fn can_flatten(&self) -> bool {
+        !self.editing()
+            && (!self.is_flat_raster() || self.layers[0].blend_mode != BlendMode::Normal)
+    }
+
+    pub fn flatten(&mut self) -> bool {
+        if !self.can_flatten() {
+            return false;
+        }
+        let pixels = self.composite();
+        self.begin("Flatten image");
+        self.layers = vec![Layer::new("Flattened image".into(), pixels)];
+        self.active = 0;
+        self.commit()
+    }
+
     pub fn move_layer(&mut self, up: bool) -> bool {
         let next = if up {
             self.active + 1

@@ -12,6 +12,7 @@ Development roadmap
 [x] Move/copy selected pixels and move selection bounds.
 [ ] Additional selection shapes, boolean operations and free transforms.
 [x] Eight layer blend modes with project persistence.
+[x] Lossless visible-image flattening with complete layer restoration on undo.
 [x] Brightness/contrast, saturation, grayscale, sepia and box blur previews.
 [x] Linear and radial gradients.
 [ ] Additional effects.

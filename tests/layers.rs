@@ -111,3 +111,71 @@ fn invalid_and_truncated_projects_are_rejected() {
     std::fs::write(&path, trailing).unwrap();
     assert!(files::open(&path).is_err());
 }
+
+#[test]
+fn flatten_preserves_composite_and_undo_restores_every_layer() {
+    use paint_rust::document::{BlendMode, Selection};
+    for mode in BlendMode::ALL {
+        let mut doc = Document::new(3, 2, [20, 50, 90, 123]).unwrap();
+        doc.add_layer(false);
+        doc.begin("Paint");
+        doc.fill(0, 0, [200, 130, 80, 180]);
+        doc.commit();
+        doc.set_layer_style("Overlay".into(), 169, mode);
+        doc.add_layer(true);
+        doc.set_visibility(2, false);
+        doc.select_layer(1);
+        let selection = Selection {
+            x: 1,
+            y: 0,
+            width: 1,
+            height: 1,
+        };
+        doc.set_selection(Some(selection));
+        doc.mark_saved();
+        let layers = doc.layers().to_vec();
+        let composite = doc.composite();
+        assert!(doc.flatten());
+        assert_eq!(doc.layers().len(), 1);
+        assert_eq!(doc.composite(), composite);
+        assert_eq!(doc.selection(), Some(selection));
+        assert!(doc.dirty());
+        doc.undo();
+        assert!(doc.layers() == layers);
+        assert_eq!(doc.active_layer(), 1);
+        assert!(!doc.dirty());
+        doc.redo();
+        assert_eq!(doc.composite(), composite);
+        assert_eq!(doc.layers().len(), 1);
+    }
+}
+
+#[test]
+fn flatten_hidden_or_translucent_single_layer_bakes_visibility_and_opacity() {
+    let mut doc = Document::new(1, 1, [200, 100, 30, 160]).unwrap();
+    doc.set_layer_properties("Translucent".into(), 128);
+    let composite = doc.composite();
+    assert!(doc.flatten());
+    assert_eq!(doc.pixels(), composite);
+    assert_eq!(doc.layers()[0].opacity, 255);
+    doc.undo();
+    doc.set_visibility(0, false);
+    assert!(doc.flatten());
+    assert_eq!(doc.pixels(), &[[0; 4]]);
+}
+
+#[test]
+fn flatten_is_noop_for_plain_raster_and_refuses_pending_edits() {
+    let mut doc = Document::new(1, 1, [23, 45, 67, 0]).unwrap();
+    assert!(!doc.flatten());
+    assert!(!doc.dirty());
+    assert!(!doc.can_undo());
+    doc.add_layer(false);
+    doc.begin("Preview");
+    assert!(!doc.flatten());
+    assert!(doc.editing());
+    assert_eq!(doc.layers().len(), 2);
+    doc.cancel();
+    assert!(doc.flatten());
+    assert_eq!(doc.pixels(), &[[23, 45, 67, 0]]);
+}
