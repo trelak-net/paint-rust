@@ -83,6 +83,7 @@ struct TextDialog {
 }
 
 struct EffectDialog {
+    output_histogram: Option<histogram::Histogram>,
     histogram: Option<histogram::Histogram>,
     effect: Effect,
     preview: crate::preview::EffectPreview,
@@ -634,6 +635,7 @@ impl Editor {
                 effect,
                 preview,
                 histogram: None,
+                output_histogram: None,
             });
         }
     }
@@ -783,6 +785,7 @@ impl Editor {
             effect,
             preview,
             histogram,
+            output_histogram: None,
         });
     }
 
@@ -2336,7 +2339,17 @@ impl Editor {
             let mut keep = true;
             if let Some(pixels) = dialog.preview.poll() {
                 match self.document.publish_preview(pixels) {
-                    Ok(()) => self.texture_dirty = true,
+                    Ok(()) => {
+                        self.texture_dirty = true;
+                        if dialog.histogram.is_some() {
+                            dialog.output_histogram = Some(histogram::Histogram::new(
+                                ctx.clone(),
+                                self.document.shared_pixels(),
+                                self.document.width,
+                                self.document.selection(),
+                            ));
+                        }
+                    }
                     Err(error) => self.status = error,
                 }
             }
@@ -2523,10 +2536,10 @@ impl Editor {
                                 ui.label("Preview on the active layer");
                             }
                         }
-                        if let Some(histogram)=&mut dialog.histogram { histogram.show(ui,self.levels_channel); }
-                        if changed {
-                            dialog.preview.request(dialog.effect);
-                        }
+                        let histogram_channel=if matches!(dialog.effect,Effect::Curves(parameters) if parameters.luminance) {4} else {self.levels_channel};
+                        if let Some(histogram)=&mut dialog.histogram { histogram.show(ui,histogram_channel,false); }
+                        if changed { dialog.output_histogram=None; dialog.preview.request(dialog.effect); }
+                        if let Some(histogram)=&mut dialog.output_histogram { histogram.show(ui,histogram_channel,true); }
                         if !dialog.preview.ready {
                             ui.label("Rendering preview…");
                         }
@@ -4321,6 +4334,7 @@ mod tests {
             effect,
             preview,
             histogram: None,
+            output_histogram: None,
         });
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
         loop {
@@ -4883,6 +4897,7 @@ mod tests {
         editor.document.begin("Gradient");
         editor.gesture_preview = Some(EffectDialog {
             histogram: None,
+            output_histogram: None,
             effect: last,
             preview,
         });

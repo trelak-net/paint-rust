@@ -1181,6 +1181,15 @@ Luminance uses weighted encoded RGB, looks up the new brightness and adds the
 resulting difference to each channel. Channel differences are retained until
 clipping; alpha and fully transparent RGB are unchanged. Presets provide Identity,
 Increase contrast, Lift shadows and Invert for the displayed curve. Mode and
-points persist across restarts; older settings default to RGB. The input
-histogram continues to describe RGB channels. Luminance/output histograms and
-external transfer-function comparisons remain pending.
+points persist across restarts; older settings default to RGB. Input and output
+histograms follow the selected RGB/luminance mode. External transfer-function
+comparisons remain pending.
+
+Output histograms
+-----------------
+Levels, automatic levels and curves show input and output distributions. Output
+bins are calculated in a background worker from the latest published preview,
+with old workers cancelled when superseded. Changing parameters clears the old
+output chart until new preview data arrives. RGB views combine three channel
+counts; luminance counts each selected nontransparent pixel once using the same
+weights as luminance curves. Both charts offer logarithmic height and hover counts.

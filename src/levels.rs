@@ -106,6 +106,17 @@ pub fn histogram(
     selection: Option<&Selection>,
     cancel: &AtomicBool,
 ) -> Option<[[u32; 256]; 3]> {
+    histogram_with_luminance(source, width, selection, cancel)
+        .map(|bins| [bins[0], bins[1], bins[2]])
+}
+
+/// Red, green, blue and weighted encoded-RGB luminance bins.
+pub fn histogram_with_luminance(
+    source: &[Pixel],
+    width: u32,
+    selection: Option<&Selection>,
+    cancel: &AtomicBool,
+) -> Option<[[u32; 256]; 4]> {
     if width == 0
         || source.len() > 16_777_216
         || !source.len().is_multiple_of(width as usize)
@@ -113,7 +124,7 @@ pub fn histogram(
     {
         return None;
     }
-    let mut histogram = [[0_u32; 256]; 3];
+    let mut histogram = [[0_u32; 256]; 4];
     for (index, pixel) in source.iter().enumerate() {
         if index.is_multiple_of(4096) && cancel.load(Ordering::Relaxed) {
             return None;
@@ -127,6 +138,11 @@ pub fn histogram(
         for channel in 0..3 {
             histogram[channel][pixel[channel] as usize] += 1;
         }
+        let luma = (0.2126 * f64::from(pixel[0])
+            + 0.7152 * f64::from(pixel[1])
+            + 0.0722 * f64::from(pixel[2]))
+        .round() as usize;
+        histogram[3][luma] += 1;
     }
     Some(histogram)
 }

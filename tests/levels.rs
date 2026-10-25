@@ -276,3 +276,41 @@ fn histogram_counts_selection_once_and_excludes_hidden_pixels() {
     assert!(paint_rust::levels::histogram(&source, 0, None, &AtomicBool::new(false)).is_none());
     assert!(paint_rust::levels::histogram(&source, 3, None, &AtomicBool::new(false)).is_none());
 }
+
+#[test]
+fn luminance_histogram_counts_selected_nontransparent_pixels_once() {
+    let pixels = [
+        [255, 0, 0, 255],
+        [0, 255, 0, 1],
+        [0, 0, 255, 128],
+        [255, 255, 255, 0],
+    ];
+    let bins =
+        paint_rust::levels::histogram_with_luminance(&pixels, 2, None, &AtomicBool::new(false))
+            .unwrap();
+    assert!(bins.iter().all(|channel| channel.iter().sum::<u32>() == 3));
+    assert_eq!(bins[3][54], 1);
+    assert_eq!(bins[3][182], 1);
+    assert_eq!(bins[3][18], 1);
+    let selection = Selection {
+        x: 0,
+        y: 0,
+        width: 1,
+        height: 2,
+        mask: None,
+        ellipse: None,
+    };
+    let bins = paint_rust::levels::histogram_with_luminance(
+        &pixels,
+        2,
+        Some(&selection),
+        &AtomicBool::new(false),
+    )
+    .unwrap();
+    assert_eq!(bins[3].iter().sum::<u32>(), 2);
+    assert_eq!(bins[3][182], 0);
+    assert!(
+        paint_rust::levels::histogram_with_luminance(&pixels, 2, None, &AtomicBool::new(true))
+            .is_none()
+    );
+}

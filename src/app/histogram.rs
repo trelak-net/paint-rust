@@ -6,9 +6,9 @@ use std::sync::{
 };
 
 pub(super) struct Histogram {
-    receiver: mpsc::Receiver<[[u32; 256]; 3]>,
+    receiver: mpsc::Receiver<[[u32; 256]; 4]>,
     cancel: Arc<AtomicBool>,
-    bins: Option<[[u32; 256]; 3]>,
+    bins: Option<[[u32; 256]; 4]>,
     logarithmic: bool,
 }
 impl Histogram {
@@ -22,9 +22,12 @@ impl Histogram {
         let cancel = Arc::new(AtomicBool::new(false));
         let worker_cancel = cancel.clone();
         std::thread::spawn(move || {
-            if let Some(bins) =
-                paint_rust::levels::histogram(&source, width, selection.as_ref(), &worker_cancel)
-            {
+            if let Some(bins) = paint_rust::levels::histogram_with_luminance(
+                &source,
+                width,
+                selection.as_ref(),
+                &worker_cancel,
+            ) {
                 let _ = sender.send(bins);
                 ctx.request_repaint();
             }
@@ -36,14 +39,15 @@ impl Histogram {
             logarithmic: false,
         }
     }
-    pub fn show(&mut self, ui: &mut egui::Ui, channel: usize) {
+    pub fn show(&mut self, ui: &mut egui::Ui, channel: usize, output: bool) {
         if let Ok(bins) = self.receiver.try_recv() {
             self.bins = Some(bins);
         }
         ui.separator();
         ui.label(format!(
-            "Input histogram — {}",
-            ["RGB", "Red", "Green", "Blue"][channel]
+            "{} histogram — {}",
+            if output { "Output" } else { "Input" },
+            ["RGB", "Red", "Green", "Blue", "Luminance"][channel]
         ));
         ui.small("Selected nontransparent pixels");
         let Some(bins) = &self.bins else {
@@ -51,7 +55,7 @@ impl Histogram {
             return;
         };
         let data: [u32; 256] = if channel == 0 {
-            std::array::from_fn(|i| bins.iter().map(|c| c[i]).sum())
+            std::array::from_fn(|i| bins[..3].iter().map(|c| c[i]).sum())
         } else {
             bins[channel - 1]
         };

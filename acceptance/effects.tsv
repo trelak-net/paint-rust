@@ -8,7 +8,7 @@ Brightness / Contrast	Adjustment	partial	CPU transfer curve and live preview	Exa
 Bulge	Distort	partial	Centered radial power warp with signed amount	Reference algorithm/ranges, center controls and color-space audit
 Clouds	Render	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
 Crystalize	Distort	partial	Seeded Voronoi cells and size control	Reference algorithm/ranges, center controls and color-space audit
-Curves	Adjustment	partial	RGB/per-channel and independent luminance curves, cubic LUT, presets and preview	External reference transfer function and output histogram
+Curves	Adjustment	partial	RGB/per-channel and independent luminance curves, cubic LUT, presets and preview	External reference transfer function and presentation audit
 Dents	Distort	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
 Black and White	Adjustment	partial	Grayscale with weighted RGB luminance	Exact transfer function, ranges, color space and reference output audit
 Drop Shadow	Object	partial	Gaussian alpha shadow with color, opacity and XY offset behind source	External reference ranges, edge behavior and large-image performance audit
@@ -25,7 +25,7 @@ Ink Sketch	Artistic	missing	No implementation yet	Kernel, parameter UI, cancella
 Invert Alpha	Adjustment	partial	Invert alpha without changing RGB	External reference output, ranges and color-space audit
 Invert Colors	Adjustment	partial	RGB inversion; preserves alpha	Exact transfer function, ranges, color space and reference output audit
 Julia Fractal	Render	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
-Levels	Adjustment	partial	Master/R/G/B input and output endpoints, gamma and background input histogram	Exact transfer function, ranges, color space and reference output audit
+Levels	Adjustment	partial	Master/R/G/B input and output endpoints, gamma and background input/output histograms	Exact transfer function, ranges, color space and reference output audit
 Mandelbrot Fractal	Render	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
 Median Blur	Blurs	partial	Sliding alpha-weighted RGB histogram; radius and percentile controls	External reference output, ranges and color-space audit
 Morphology	Distort	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases

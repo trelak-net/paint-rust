@@ -138,7 +138,7 @@ independent tasks; do not silently reduce the required scope.
 [x] Independent luminance curves and identity/contrast/shadow/invert presets.
 [x] Temperature/tint, highlights/shadows and invert-alpha adjustments.
 [x] Linear-sRGB exposure, offset and gamma with persistent parameters.
-[x] Background input histograms for levels/curves with channel and logarithmic views.
+[x] Background input/output histograms for levels/curves with RGB/luminance and logarithmic views.
 [ ] Remaining adjustment parity audit.
 [x] Gaussian and motion blur with premultiplied-alpha sampling and live previews.
 [x] Radial, zoom and fragment blur with persistent controls and alpha-aware sampling.
