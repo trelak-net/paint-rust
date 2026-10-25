@@ -124,7 +124,8 @@ independent tasks; do not silently reduce the required scope.
 8. Adjustments and effects
 [x] Hue, saturation and lightness adjustment with selection and alpha preservation.
 [x] Master/per-channel levels, gamma and automatic histogram-tail clipping.
-[ ] Levels histogram visualization, curves and remaining adjustment inventory.
+[x] Editable master/per-channel tonal curves with bounded cubic interpolation.
+[ ] Levels histogram visualization and remaining adjustment inventory.
 [ ] Complete blur, distortion, noise and stylization inventory.
 [x] Repeat last effect and restore last-applied parameters within the session.
 [ ] Persist effect parameters across restarts and complete preview/cancel parity audit.

@@ -1,4 +1,5 @@
 mod colors;
+mod curves;
 mod export;
 mod file_operations;
 mod lasso;
@@ -2081,6 +2082,8 @@ impl Editor {
                 keep = false;
             } else {
                 egui::Window::new(dialog.effect.name())
+                    .vscroll(true)
+                    .max_height((ctx.content_rect().height() - 80.0).max(180.0))
                     .collapsible(false)
                     .resizable(false)
                     .show(ctx, |ui| {
@@ -2118,6 +2121,9 @@ impl Editor {
                                 changed |= ui
                                     .add(egui::Slider::new(contrast, -100..=100).text("Contrast"))
                                     .changed();
+                            }
+                            Effect::Curves(parameters) => {
+                                changed |= curves::controls(ui, parameters, &mut self.levels_channel);
                             }
                             Effect::Levels(parameters) => {
                                 let names=["RGB","Red","Green","Blue"];
@@ -2593,6 +2599,7 @@ impl Editor {
                     (
                         "Adjustments",
                         &[
+                            Effect::Curves(Default::default()),
                             Effect::Levels(Default::default()),
                             Effect::AutoLevels(0.5),
                             Effect::BrightnessContrast {

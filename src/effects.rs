@@ -3,6 +3,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Effect {
+    Curves(crate::curves::Curves),
     Levels(crate::levels::Levels),
     AutoLevels(f32),
     Move(crate::movement::Parameters),
@@ -35,6 +36,7 @@ impl Effect {
     }
     pub fn name(self) -> &'static str {
         match self {
+            Self::Curves(_) => "Curves",
             Self::Levels(_) => "Levels",
             Self::AutoLevels(_) => "Auto levels",
             Self::Move(parameters) => {
@@ -125,6 +127,7 @@ pub fn render(
         return None;
     }
     let level_tables = match effect {
+        Effect::Curves(parameters) => Some(parameters.tables()),
         Effect::Levels(parameters) => Some(parameters.tables()?),
         Effect::AutoLevels(clip) => Some(
             crate::levels::automatic(source, width, selection.as_ref(), clip, cancel)?.tables()?,
@@ -206,7 +209,8 @@ pub fn render(
                         let steps = f64::from(levels.clamp(2, 32) - 1);
                         (f64::from(*channel) * steps / 255.0).round() * 255.0 / steps
                     }
-                    Effect::Levels(_)
+                    Effect::Curves(_)
+                    | Effect::Levels(_)
                     | Effect::AutoLevels(_)
                     | Effect::HueSaturation { .. }
                     | Effect::BoxBlur(_)

@@ -895,3 +895,14 @@ background color (white by default). PNG and lossless WebP retain alpha. Save ex
 writes the previewed bytes atomically; Cancel writes nothing. Export options are
 remembered within the session. The reduced preview is capped at 512x320 pixels.
 The project stays editable and its saved/modified state is unchanged by export.
+
+Tonal curves
+------------
+Adjustments > Curves provides master RGB and separate red/green/blue curves.
+Double-click the graph to add a point, drag to move it, or right-click to remove
+an interior point. Numeric input/output controls and explicit Add/Remove buttons
+provide keyboard editing. Each channel holds up to sixteen points with fixed
+input endpoints, unique sorted inputs and shape-preserving cubic interpolation.
+Master RGB is applied before per-channel curves. Alpha and pixels outside the
+selection are preserved. Preview, cancellation, undo and session parameter recall
+use the existing effect workflow. Luminance mode and reusable presets are pending.

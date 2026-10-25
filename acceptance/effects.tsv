@@ -8,7 +8,7 @@ Brightness / Contrast	Adjustment	partial	CPU transfer curve and live preview	Exa
 Bulge	Distort	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
 Clouds	Render	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
 Crystalize	Distort	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
-Curves	Adjustment	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Curves	Adjustment	partial	RGB/per-channel point editor, numeric controls, cubic LUT and preview	Luminance mode, presets and external reference cases
 Dents	Distort	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
 Black and White	Adjustment	partial	Grayscale with weighted RGB luminance	Exact transfer function, ranges, color space and reference output audit
 Drop Shadow	Object	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
