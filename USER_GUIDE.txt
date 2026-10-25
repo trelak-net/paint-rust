@@ -72,3 +72,11 @@ Use Selection > Transform boundary (Ctrl+Alt+M). Drag inside its box to move it,
 a corner to scale it, or the blue control to rotate it. Shift constrains movement
 and snaps rotation. Apply keeps the new boundary; Escape cancels it. Pixels do
 not move. Use the pixel transform command when you want to transform image data.
+
+Image and layer commands
+Ctrl+R resizes the image; Ctrl+Shift+R changes the canvas. Ctrl+H and Ctrl+G rotate
+the image clockwise and counterclockwise. Ctrl+Shift+F flattens it. Ctrl+Shift+N
+adds a layer, Ctrl+Shift+D duplicates it, and Ctrl+Shift+Delete deletes it. Ctrl+,
+toggles visibility. Alt+PageUp/PageDown selects adjacent layers; add Ctrl to select
+the top or bottom layer. Ctrl+Alt+F opens the last effect settings; Ctrl+F repeats
+the last effect directly.

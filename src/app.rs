@@ -14,6 +14,7 @@ mod recovery_batch;
 mod render_controls;
 mod rulers;
 mod selection_transform;
+mod structure_shortcuts;
 mod thumbnails;
 mod toolbar;
 mod transform_handles;
@@ -922,6 +923,9 @@ impl Editor {
         {
             return;
         }
+        if self.structure_shortcuts(ctx) {
+            return;
+        }
         if self.tool == Tool::Move && !self.document.editing() && self.last_point.is_none() {
             let modifiers = ctx.input(|i| i.modifiers);
             if !modifiers.alt {
@@ -1007,7 +1011,7 @@ impl Editor {
                 Some(21)
             } else if i.consume_key(egui::Modifiers::COMMAND, Key::I) {
                 Some(20)
-            } else if i.consume_key(egui::Modifiers::COMMAND | egui::Modifiers::SHIFT, Key::F) {
+            } else if i.consume_key(egui::Modifiers::COMMAND | egui::Modifiers::ALT, Key::F) {
                 Some(19)
             } else if i.consume_key(egui::Modifiers::COMMAND, Key::F) {
                 Some(18)
@@ -3167,26 +3171,16 @@ impl Editor {
                     if ui.button("Fill selection with secondary    Shift+Backspace").clicked() {self.start_document_edit(DocumentEdit::Fill(self.secondary_color.to_srgba_unmultiplied()));ui.close();}
                 });
                 ui.menu_button("Image", |ui| {
-                    for (label, canvas) in [("Resize image…", false), ("Canvas size…", true)] {
+                    for (label, canvas) in [("Resize image…    Ctrl+R", false), ("Canvas size…    Ctrl+Shift+R", true)] {
                         if ui.button(label).clicked() {
-                            self.finish_stroke();
-                            self.resize_dialog = Some(ResizeDialog {
-                                width: self.document.width,
-                                height: self.document.height,
-                                canvas,
-                                lock_ratio: !canvas,
-                                ratio: f64::from(self.document.width)
-                                    / f64::from(self.document.height),
-                                smooth: true,
-                                anchor: 4,
-                            });
+                            self.open_resize_dialog(canvas);
                             ui.close();
                         }
                     }
                     ui.separator();
                     for (label, operation) in [
-                        ("Rotate 90° clockwise", Orientation::Clockwise),
-                        ("Rotate 90° counterclockwise", Orientation::Counterclockwise),
+                        ("Rotate 90° clockwise    Ctrl+H", Orientation::Clockwise),
+                        ("Rotate 90° counterclockwise    Ctrl+G", Orientation::Counterclockwise),
                         ("Rotate 180°", Orientation::HalfTurn),
                         ("Flip horizontal", Orientation::FlipHorizontal),
                         ("Flip vertical", Orientation::FlipVertical),
@@ -3393,7 +3387,7 @@ impl Editor {
                             if ui
                                 .add_enabled(
                                     self.last_effect.is_some(),
-                                    egui::Button::new("Last effect settings…    Ctrl+Shift+F"),
+                                    egui::Button::new("Last effect settings…    Ctrl+Alt+F"),
                                 )
                                 .clicked()
                             {
@@ -3648,6 +3642,66 @@ impl eframe::App for Editor {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn image_and_layer_shortcuts_route_to_their_commands_without_collisions() {
+        use egui::Modifiers as M;
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.document = Document::new(3, 2, [40, 50, 60, 255]).unwrap();
+        let press = |editor: &mut Editor, key, modifiers| {
+            frame(
+                editor,
+                &ctx,
+                vec![egui::Event::Key {
+                    key,
+                    physical_key: None,
+                    pressed: true,
+                    repeat: false,
+                    modifiers,
+                }],
+            );
+            wait_for_files(editor, &ctx);
+        };
+        press(&mut editor, Key::N, M::COMMAND | M::SHIFT);
+        assert_eq!(editor.document.layers().len(), 2);
+        assert!(!editor.new_dialog);
+        press(&mut editor, Key::D, M::COMMAND | M::SHIFT);
+        assert_eq!(editor.document.layers().len(), 3);
+        let history = editor.document.history().count();
+        for (key, modifiers, index) in [
+            (Key::PageDown, M::ALT, 1),
+            (Key::PageUp, M::ALT, 2),
+            (Key::PageDown, M::ALT | M::COMMAND, 0),
+            (Key::PageUp, M::ALT | M::COMMAND, 2),
+        ] {
+            press(&mut editor, key, modifiers);
+            assert_eq!(editor.document.active_layer(), index);
+        }
+        assert_eq!(editor.document.history().count(), history);
+        press(&mut editor, Key::Comma, M::COMMAND);
+        assert!(!editor.document.layers()[2].visible);
+        press(&mut editor, Key::Delete, M::COMMAND | M::SHIFT);
+        assert_eq!(editor.document.layers().len(), 2);
+        press(&mut editor, Key::H, M::COMMAND);
+        assert_eq!((editor.document.width, editor.document.height), (2, 3));
+        press(&mut editor, Key::G, M::COMMAND);
+        assert_eq!((editor.document.width, editor.document.height), (3, 2));
+        editor.last_effect = Some(Effect::BrightnessContrast {
+            brightness: 10,
+            contrast: 0,
+        });
+        press(&mut editor, Key::F, M::COMMAND | M::SHIFT);
+        assert_eq!(editor.document.layers().len(), 1);
+        assert!(editor.effect_dialog.is_none());
+        press(&mut editor, Key::F, M::COMMAND | M::ALT);
+        assert!(editor.effect_dialog.is_some());
+        press(&mut editor, Key::Escape, M::NONE);
+        for (modifiers, canvas) in [(M::COMMAND, false), (M::COMMAND | M::SHIFT, true)] {
+            press(&mut editor, Key::R, modifiers);
+            assert_eq!(editor.resize_dialog.as_ref().unwrap().canvas, canvas);
+            editor.resize_dialog = None;
+        }
+    }
     #[test]
     fn selection_boundary_handles_move_preview_and_commit_clean_undo() {
         let ctx = egui::Context::default();

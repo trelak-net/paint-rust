@@ -144,7 +144,7 @@ def main():
                                     time.sleep(0.2)
                                     press_key(window, ord("m"), 12)
                                 else:
-                                    press_key(window, 0xFFBE if args.show_help else ord("f"), 0 if args.show_help else 5)
+                                    press_key(window, 0xFFBE if args.show_help else ord("f"), 0 if args.show_help else 12)
                                 time.sleep(0.5)
                             subprocess.run(["import", "-window", window, str(args.output / f"launch-{attempt}.png")], check=True, timeout=10)
                             if args.show_effect or args.show_selection_transform:

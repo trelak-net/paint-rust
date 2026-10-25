@@ -142,7 +142,10 @@ impl Editor {
         ));
     }
     pub(super) fn layer_menu_contents(&mut self, ui: &mut egui::Ui) {
-        for (label, duplicate) in [("Add layer", false), ("Duplicate layer", true)] {
+        for (label, duplicate) in [
+            ("Add layer    Ctrl+Shift+N", false),
+            ("Duplicate layer    Ctrl+Shift+D", true),
+        ] {
             if ui
                 .add_enabled(self.document.can_add_layer(), egui::Button::new(label))
                 .clicked()
@@ -155,7 +158,7 @@ impl Editor {
         if ui
             .add_enabled(
                 self.document.layers().len() > 1,
-                egui::Button::new("Delete layer"),
+                egui::Button::new("Delete layer    Ctrl+Shift+Delete"),
             )
             .clicked()
         {
@@ -163,6 +166,30 @@ impl Editor {
             self.texture_dirty = true;
             ui.close();
         }
+        let active = self.document.active_layer();
+        let last = self.document.layers().len() - 1;
+        if ui.button("Toggle visibility    Ctrl+,").clicked() {
+            self.document
+                .set_visibility(active, !self.document.layers()[active].visible);
+            self.texture_dirty = true;
+            ui.close();
+        }
+        ui.menu_button("Select layer", |ui| {
+            for (label, target) in [
+                ("Top    Ctrl+Alt+PageUp", last),
+                ("Above    Alt+PageUp", (active + 1).min(last)),
+                ("Below    Alt+PageDown", active.saturating_sub(1)),
+                ("Bottom    Ctrl+Alt+PageDown", 0),
+            ] {
+                if ui
+                    .add_enabled(target != active, egui::Button::new(label))
+                    .clicked()
+                {
+                    self.document.select_layer(target);
+                    ui.close();
+                }
+            }
+        });
         ui.separator();
         ui.horizontal(|ui| {
             let active = self.document.active_layer();
@@ -211,7 +238,7 @@ impl Editor {
         if ui
             .add_enabled(
                 self.document.can_flatten(),
-                egui::Button::new("Flatten image"),
+                egui::Button::new("Flatten image    Ctrl+Shift+F"),
             )
             .on_hover_text("Replace all layers with the visible image. Undo restores the layers.")
             .clicked()

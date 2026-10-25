@@ -92,6 +92,7 @@ independent tasks; do not silently reduce the required scope.
 2. Workspace
 [x] Movable, hideable panels with layout persistence and reset.
 [x] Separate main menu and quick-action toolbar; shared layer actions and complete raster export menu.
+[x] Resize/rotation/flatten and layer edit/navigation keyboard commands with menu/help labels.
 [ ] Remaining menu commands, keyboard map and contextual-option parity.
 [x] Compact sidebar fallback retaining floating geometry; readable 800x600 tool grid.
 [ ] Complete light/dark/high-DPI dialog and contextual-tool acceptance matrix.
