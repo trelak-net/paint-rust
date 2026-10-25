@@ -22,6 +22,7 @@ fn add_subtract_and_intersect_produce_pixel_masks_without_dirtying_selection() {
         (CombineMode::Add, 11),
         (CombineMode::Subtract, 5),
         (CombineMode::Intersect, 1),
+        (CombineMode::Xor, 10),
     ] {
         let mut doc = Document::new(5, 3, [255; 4]).unwrap();
         doc.set_selection(Some(combine(5, 3, Some(&a), &b, mode).unwrap()));
@@ -85,6 +86,7 @@ fn missing_previous_selection_has_predictable_combination_semantics() {
         (CombineMode::Add, 1),
         (CombineMode::Subtract, 8),
         (CombineMode::Intersect, 1),
+        (CombineMode::Xor, 1),
     ] {
         let mut doc = Document::new(3, 3, [255; 4]).unwrap();
         doc.set_selection(Some(combine(3, 3, None, &candidate, mode).unwrap()));
@@ -105,6 +107,7 @@ fn cancelled_selection_operations_never_return_partial_masks() {
         CombineMode::Add,
         CombineMode::Subtract,
         CombineMode::Intersect,
+        CombineMode::Xor,
     ] {
         assert_eq!(
             combine_cancellable(8, 8, None, &candidate, mode, &cancel).unwrap_err(),

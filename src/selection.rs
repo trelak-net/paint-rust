@@ -92,6 +92,7 @@ pub enum CombineMode {
     Add,
     Subtract,
     Intersect,
+    Xor,
 }
 impl CombineMode {
     pub fn label(self) -> &'static str {
@@ -100,6 +101,7 @@ impl CombineMode {
             Self::Add => "Add",
             Self::Subtract => "Subtract",
             Self::Intersect => "Intersect",
+            Self::Xor => "Exclusive or",
         }
     }
 }
@@ -149,6 +151,7 @@ pub fn combine_cancellable(
                 CombineMode::Add => old.unwrap_or(false) || new,
                 CombineMode::Subtract => old.unwrap_or(true) && !new,
                 CombineMode::Intersect => old.unwrap_or(true) && new,
+                CombineMode::Xor => old.unwrap_or(false) ^ new,
             };
             if selected {
                 pixels[y as usize * width as usize + x as usize] = 1;

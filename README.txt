@@ -867,3 +867,8 @@ the current selection. Ctrl+Shift+F reopens its settings. Each adjustment/filter
 remembers its last-applied parameters during the session. Cancelling a dialog
 does not replace these values. Geometric transforms and drawing gestures do not
 replace the last repeatable effect. Repeating runs in a cancellable worker.
+
+Exclusive or combines selections by keeping pixels in exactly one of the two
+regions. With no previous selection, it starts from the new region. Ctrl+I inverts
+the selection within the canvas; an absent selection represents the full canvas
+for inversion, producing an explicit empty mask. Ctrl+Shift+I inverts pixel colors.

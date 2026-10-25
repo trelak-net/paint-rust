@@ -101,6 +101,30 @@ impl Editor {
         });
     }
 
+    pub(super) fn invert_selection(&mut self) {
+        self.finish_stroke();
+        let (width, height) = (self.document.width, self.document.height);
+        let previous = self.document.selection().unwrap_or(Selection {
+            x: 0,
+            y: 0,
+            width,
+            height,
+            mask: None,
+            ellipse: None,
+        });
+        self.start_cancellable_file_job("invert selection", move |cancel| {
+            paint_rust::selection::combine_cancellable(
+                width,
+                height,
+                None,
+                &previous,
+                CombineMode::Subtract,
+                cancel,
+            )
+            .map(Outcome::Selection)
+        });
+    }
+
     pub(super) fn start_color_selection(&mut self, x: u32, y: u32) {
         if x >= self.document.width || y >= self.document.height {
             return;

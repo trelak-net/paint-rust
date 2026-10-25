@@ -830,6 +830,10 @@ impl Editor {
                 Some(16)
             } else if i.consume_key(egui::Modifiers::COMMAND, Key::Tab) {
                 Some(15)
+            } else if i.consume_key(egui::Modifiers::COMMAND | egui::Modifiers::SHIFT, Key::I) {
+                Some(21)
+            } else if i.consume_key(egui::Modifiers::COMMAND, Key::I) {
+                Some(20)
             } else if i.consume_key(egui::Modifiers::COMMAND | egui::Modifiers::SHIFT, Key::F) {
                 Some(19)
             } else if i.consume_key(egui::Modifiers::COMMAND, Key::F) {
@@ -904,6 +908,8 @@ impl Editor {
             }
         });
         match command {
+            Some(20) => self.invert_selection(),
+            Some(21) => self.start_document_edit(DocumentEdit::Invert),
             Some(18) => self.repeat_effect(),
             Some(19) => {
                 if let Some(effect) = self.last_effect {
@@ -1658,6 +1664,7 @@ impl Editor {
                         CombineMode::Add,
                         CombineMode::Subtract,
                         CombineMode::Intersect,
+                        CombineMode::Xor,
                     ] {
                         ui.selectable_value(&mut self.selection_mode, mode, mode.label());
                     }
@@ -2493,6 +2500,10 @@ impl Editor {
                             width: self.document.width,
                             height: self.document.height,
                         }));
+                        ui.close();
+                    }
+                    if ui.button("Invert selection    Ctrl+I").clicked() {
+                        self.invert_selection();
                         ui.close();
                     }
                     if ui.button("Deselect    Ctrl+Shift+A").clicked() {
@@ -4670,5 +4681,57 @@ mod tests {
         assert_eq!(editor.document.pixels(), once);
         editor.apply_effect(Effect::FreeTransform(Default::default()));
         assert_eq!(editor.last_effect, Some(effect));
+    }
+    #[test]
+    fn selection_inversion_keeps_empty_distinct_from_deselected_and_leaves_pixels_intact() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.document = Document::new(5, 5, [255; 4]).unwrap();
+        editor.invert_selection();
+        wait_for_files(&mut editor, &ctx);
+        assert_eq!(editor.document.selection().unwrap().width, 0);
+        editor.invert_selection();
+        wait_for_files(&mut editor, &ctx);
+        assert_eq!(
+            editor
+                .document
+                .selection()
+                .unwrap()
+                .mask
+                .unwrap()
+                .pixels
+                .as_ref(),
+            &vec![1; 25]
+        );
+        editor
+            .document
+            .set_selection(Some(Selection::elliptical(0, 0, 5, 5)));
+        editor.invert_selection();
+        wait_for_files(&mut editor, &ctx);
+        let mask = editor.document.selection().unwrap().mask.unwrap();
+        assert_eq!(
+            mask.pixels.as_ref(),
+            &vec![
+                1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1
+            ]
+        );
+        editor.invert_selection();
+        wait_for_files(&mut editor, &ctx);
+        assert_eq!(
+            editor
+                .document
+                .selection()
+                .unwrap()
+                .mask
+                .unwrap()
+                .pixels
+                .as_ref(),
+            &vec![
+                0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0
+            ]
+        );
+        assert_eq!(editor.document.pixels(), &[[255; 4]; 25]);
+        assert!(!editor.document.dirty());
+        assert!(!editor.document.can_undo());
     }
 }
