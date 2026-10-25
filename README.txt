@@ -1477,8 +1477,14 @@ Recovery can open all discovered snapshots sequentially as separate unsaved tabs
 It preserves existing documents and adopts each successful recovery copy until a
 replacement snapshot or explicit save is safe. Corrupt copies remain on disk and
 in the recovery list while other candidates continue. Cancellation stops the
-queue; summary status reports restored and failed counts. Original tab ordering,
-file destinations and viewport metadata remain outside the snapshot format.
+queue; summary status reports restored and failed counts. Versioned sidecar metadata preserves tab order within each workspace, file
+destinations/titles, active tab and zoom/pan. Older snapshots or malformed/missing
+sidecars still recover their pixels with default view settings. Only unsaved
+documents have recovery snapshots; clean tabs are not reopened automatically.
+View metadata is captured on the recovery interval and may lag the last gesture.
+View-only changes write the small sidecar without rewriting image pixels.
+Snapshots and sidecars are each atomically replaced; an interrupted pair can
+retain an older view alongside newer pixels. Restored documents remain dirty.
 
 DDS textures
 ------------

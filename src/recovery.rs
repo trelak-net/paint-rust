@@ -2,7 +2,7 @@ use crate::{document::Document, files};
 use fs2::FileExt;
 use std::{
     fs::{self, File, OpenOptions},
-    io::Write,
+    io::{Read, Write},
     path::{Path, PathBuf},
     sync::{
         Arc,
@@ -11,9 +11,49 @@ use std::{
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct Context {
+    pub version: u8,
+    pub workspace: String,
+    pub order: usize,
+    pub path: Option<PathBuf>,
+    pub zoom: f32,
+    pub offset: [f32; 2],
+    pub active: bool,
+}
+impl Context {
+    pub fn valid(&self) -> bool {
+        self.version == 1
+            && !self.workspace.is_empty()
+            && self.workspace.len() <= 256
+            && self.order < 10000
+            && self.zoom.is_finite()
+            && (0.01..=64.0).contains(&self.zoom)
+            && self.offset.iter().all(|v| v.is_finite() && v.abs() <= 1e9)
+            && self
+                .path
+                .as_ref()
+                .is_none_or(|p| p.is_absolute() && p.as_os_str().len() <= 16384)
+    }
+    fn read(path: &Path) -> Option<Self> {
+        let mut bytes = Vec::new();
+        File::open(path)
+            .ok()?
+            .take(65537)
+            .read_to_end(&mut bytes)
+            .ok()?;
+        if bytes.len() > 65536 {
+            return None;
+        }
+        let context: Self = serde_json::from_slice(&bytes).ok()?;
+        context.valid().then_some(context)
+    }
+}
+
 pub struct Candidate {
     pub path: PathBuf,
     pub modified: SystemTime,
+    pub context: Option<Context>,
     _lock: Arc<File>,
 }
 impl Candidate {
@@ -24,12 +64,16 @@ impl Candidate {
 }
 
 struct Completion {
+    context: Option<Context>,
     epoch: u64,
     revision: u64,
     result: Result<(), String>,
 }
 
 pub struct Recovery {
+    workspace: String,
+    context: Option<Context>,
+    written_context: Option<Context>,
     session: PathBuf,
     lock: Arc<File>,
     epoch: u64,
@@ -70,6 +114,9 @@ impl Recovery {
             .map_err(|e| e.to_string())?;
         FileExt::try_lock_exclusive(&lock).map_err(|e| e.to_string())?;
         Ok(Self {
+            workspace: session.file_name().unwrap().to_string_lossy().into_owned(),
+            context: None,
+            written_context: None,
             session,
             lock: Arc::new(lock),
             epoch: 0,
@@ -82,7 +129,21 @@ impl Recovery {
     }
 
     pub fn sibling(&self) -> Result<Self, String> {
-        Self::new(self.session.parent().ok_or("Invalid recovery root")?)
+        let mut sibling = Self::new(self.session.parent().ok_or("Invalid recovery root")?)?;
+        sibling.workspace = self.workspace.clone();
+        Ok(sibling)
+    }
+
+    pub fn workspace(&self) -> &str {
+        &self.workspace
+    }
+
+    pub fn set_context(&mut self, context: Context) -> Result<(), String> {
+        if !context.valid() {
+            return Err("Invalid recovery view metadata".into());
+        }
+        self.context = Some(context);
+        Ok(())
     }
 
     pub fn discover(root: &Path) -> Result<Vec<Candidate>, String> {
@@ -125,6 +186,7 @@ impl Recovery {
                 let path = group.path().join("snapshot.prust");
                 if let Ok(metadata) = fs::metadata(&path) {
                     result.push(Candidate {
+                        context: Context::read(&group.path().join("context.json")),
                         path,
                         modified: metadata.modified().unwrap_or(UNIX_EPOCH),
                         _lock: lock.clone(),
@@ -132,7 +194,22 @@ impl Recovery {
                 }
             }
         }
-        result.sort_by_key(|item| std::cmp::Reverse(item.modified));
+        let mut newest = std::collections::BTreeMap::new();
+        for item in &result {
+            if let Some(context) = &item.context {
+                let time = newest
+                    .entry(context.workspace.clone())
+                    .or_insert(item.modified);
+                *time = (*time).max(item.modified);
+            }
+        }
+        result.sort_by_key(|item| {
+            let (time, group, order) = item.context.as_ref().map_or(
+                (item.modified, item.path.to_string_lossy().into_owned(), 0),
+                |c| (newest[&c.workspace], c.workspace.clone(), c.order),
+            );
+            (std::cmp::Reverse(time), group, order)
+        });
         Ok(result)
     }
 
@@ -157,6 +234,7 @@ impl Recovery {
         marker.sync_all().map_err(|e| e.to_string())?;
         self.epoch += 1;
         self.written_revision = None;
+        self.written_context = None;
         self.has_work = false;
         self.last_attempt = Instant::now();
         // An older worker may still finish; its epoch remains tombstoned.
@@ -183,6 +261,7 @@ impl Recovery {
             completion.result?;
             if completion.epoch == self.epoch {
                 self.written_revision = Some(completion.revision);
+                self.written_context = completion.context;
                 for candidate in self.adopted.drain(..) {
                     candidate.discard()?;
                 }
@@ -206,25 +285,42 @@ impl Recovery {
         if self.pending.is_some()
             || document.editing()
             || !document.dirty()
-            || self.written_revision == Some(document.revision())
+            || (self.written_revision == Some(document.revision())
+                && self.written_context == self.context)
         {
             return Ok(false);
         }
         let group = self.group(self.epoch);
         fs::create_dir_all(&group).map_err(|e| e.to_string())?;
+        let write_snapshot = self.written_revision != Some(document.revision());
         let document_snapshot = document.snapshot();
         let revision = document.revision();
         let epoch = self.epoch;
         let lock = self.lock.clone();
+        let context = self.context.clone();
         let (sender, receiver) = mpsc::channel();
         self.pending = Some(receiver);
         self.has_work = true;
         self.last_attempt = Instant::now();
         std::thread::spawn(move || {
             let _lock = lock;
-            let result = files::save_project(&document_snapshot, &group.join("snapshot.prust"));
+            let result = (|| {
+                if write_snapshot {
+                    files::save_project(&document_snapshot, &group.join("snapshot.prust"))?;
+                }
+                if let Some(context) = &context {
+                    let bytes = serde_json::to_vec(context).map_err(|e| e.to_string())?;
+                    files::save_encoded_raster(
+                        &bytes,
+                        &group.join("context.json"),
+                        &std::sync::atomic::AtomicBool::new(false),
+                    )?;
+                }
+                Ok(())
+            })();
             drop(_lock);
             let _ = sender.send(Completion {
+                context,
                 epoch,
                 revision,
                 result,

@@ -378,6 +378,19 @@ impl Editor {
                 }
             }
             if let Some(recovery) = &mut slot.recovery {
+                let _ = recovery.set_context(paint_rust::recovery::Context {
+                    version: 1,
+                    workspace: recovery.workspace().to_owned(),
+                    order: self
+                        .document_order
+                        .iter()
+                        .position(|id| *id == slot.id)
+                        .unwrap_or(0),
+                    path: slot.path.as_ref().and_then(|p| std::path::absolute(p).ok()),
+                    zoom: slot.zoom,
+                    offset: [slot.offset.x, slot.offset.y],
+                    active: false,
+                });
                 let wake = ctx.clone();
                 if let Err(error) = recovery.tick(&slot.document, move || wake.request_repaint()) {
                     self.status = format!("Could not update inactive document recovery: {error}");

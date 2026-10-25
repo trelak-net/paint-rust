@@ -492,12 +492,22 @@ impl Editor {
             }
             Ok(Outcome::Recovered(mut document, index)) => {
                 document.mark_unsaved();
-                self.install_document(*document, None);
                 let candidate = self.recoverable.remove(index);
+                let context = candidate.context.clone();
+                self.install_document(*document, context.as_ref().and_then(|c| c.path.clone()));
+                if let Some(context) = context {
+                    self.zoom = context.zoom;
+                    self.canvas_offset = Vec2::new(context.offset[0], context.offset[1]);
+                    if context.active
+                        && let Some(batch) = &mut self.recovery_batch
+                    {
+                        batch.preferred.get_or_insert(self.active_document_id);
+                    }
+                }
                 if let Some(recovery) = &mut self.recovery {
                     recovery.adopt(candidate);
                 }
-                self.status = "Recovered unsaved work — save it as a project".into();
+                self.status = "Recovered unsaved work — save to keep your changes".into();
                 self.recovery_prompt = false;
             }
             Ok(Outcome::Imported(pixels, width, height, path)) => {

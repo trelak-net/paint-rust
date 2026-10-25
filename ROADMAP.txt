@@ -201,7 +201,7 @@ independent tasks; do not silently reduce the required scope.
 [ ] Bounded foreground work, large-document/multi-document benchmarks.
 [ ] Disk-full, corrupted-input, interrupted-save and low-memory scenarios.
 [x] Recover all snapshots into separate unsaved tabs; skip corrupt copies and retain failed recovery data.
-[ ] Restore original session tab order, document titles and view metadata.
+[x] Restore recoverable tab order, file destinations/titles, active tab and zoom/pan metadata.
 11. Distribution and preferences
 [x] Persistent theme/grid/brush preferences, recent-file menu and file-drop queue.
 [ ] Remaining general preferences.

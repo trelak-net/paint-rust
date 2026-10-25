@@ -143,3 +143,84 @@ fn discovery_reclaims_only_discarded_data_from_unlocked_sessions() {
     assert!(!abandoned.exists());
     assert!(candidates[0].path.is_file());
 }
+
+#[test]
+fn sibling_contexts_restore_tab_order_and_update_views_without_rewriting_pixels() {
+    use paint_rust::recovery::Context;
+    let dir = tempfile::tempdir().unwrap();
+    let mut first = Recovery::new(dir.path()).unwrap();
+    let mut second = first.sibling().unwrap();
+    let mut doc = Document::new(8, 8, [255; 4]).unwrap();
+    doc.invert();
+    let context = Context {
+        version: 1,
+        workspace: first.workspace().into(),
+        order: 1,
+        path: Some(dir.path().join("drawing.pdn")),
+        zoom: 2.5,
+        offset: [12.0, 45.0],
+        active: true,
+    };
+    first.set_context(context.clone()).unwrap();
+    second
+        .set_context(Context {
+            order: 0,
+            path: None,
+            active: false,
+            ..context.clone()
+        })
+        .unwrap();
+    first.schedule(&doc, || {}).unwrap();
+    second.schedule(&doc, || {}).unwrap();
+    wait(&mut first);
+    wait(&mut second);
+    assert!(!first.schedule(&doc, || {}).unwrap());
+    first
+        .set_context(Context {
+            zoom: 3.0,
+            ..context.clone()
+        })
+        .unwrap();
+    assert!(first.schedule(&doc, || {}).unwrap());
+    wait(&mut first);
+    drop(first);
+    drop(second);
+    let candidates = Recovery::discover(dir.path()).unwrap();
+    assert_eq!(candidates.len(), 2);
+    assert_eq!(candidates[0].context.as_ref().unwrap().order, 0);
+    assert_eq!(
+        candidates[1].context.as_ref().unwrap(),
+        &Context {
+            zoom: 3.0,
+            ..context
+        }
+    );
+    assert_eq!(
+        files::open(&candidates[1].path).unwrap().pixels(),
+        doc.pixels()
+    );
+}
+
+#[test]
+fn malformed_view_metadata_never_hides_recoverable_pixels() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut recovery = Recovery::new(dir.path()).unwrap();
+    let mut doc = Document::new(8, 8, [255; 4]).unwrap();
+    doc.invert();
+    recovery.schedule(&doc, || {}).unwrap();
+    wait(&mut recovery);
+    drop(recovery);
+    let candidates = Recovery::discover(dir.path()).unwrap();
+    let path = candidates[0].path.parent().unwrap().join("context.json");
+    drop(candidates);
+    for bytes in [b"invalid json".to_vec(), vec![b' '; 65537]] {
+        std::fs::write(&path, bytes).unwrap();
+        let candidates = Recovery::discover(dir.path()).unwrap();
+        assert_eq!(candidates.len(), 1);
+        assert!(candidates[0].context.is_none());
+        assert_eq!(
+            files::open(&candidates[0].path).unwrap().pixels(),
+            doc.pixels()
+        );
+    }
+}

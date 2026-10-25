@@ -2866,8 +2866,14 @@ impl Editor {
                                     candidate.modified.elapsed().unwrap_or_default().as_secs() / 60;
                                 ui.horizontal(|ui| {
                                     ui.label(format!(
-                                        "Session {} — last copied {minutes} min ago",
-                                        index + 1
+                                        "{} — last copied {minutes} min ago",
+                                        candidate
+                                            .context
+                                            .as_ref()
+                                            .and_then(|c| c.path.as_ref())
+                                            .and_then(|p| p.file_name())
+                                            .map(|p| p.to_string_lossy().into_owned())
+                                            .unwrap_or_else(|| format!("Untitled {}", index + 1))
                                     ));
                                     if ui.button("Recover").clicked() {
                                         chosen = Some((index, true));
@@ -3595,6 +3601,19 @@ impl Editor {
         self.show_selection_transform(ctx);
         self.show_help(ctx);
         if let Some(recovery) = &mut self.recovery {
+            let _ = recovery.set_context(paint_rust::recovery::Context {
+                version: 1,
+                workspace: recovery.workspace().to_owned(),
+                order: self
+                    .document_order
+                    .iter()
+                    .position(|id| *id == self.active_document_id)
+                    .unwrap_or(0),
+                path: self.path.as_ref().and_then(|p| std::path::absolute(p).ok()),
+                zoom: self.zoom,
+                offset: [self.canvas_offset.x, self.canvas_offset.y],
+                active: true,
+            });
             let wake = ctx.clone();
             if let Err(error) = recovery.tick(&self.document, move || wake.request_repaint()) {
                 self.status = format!("Could not update the recovery copy: {error}");
@@ -3878,6 +3897,53 @@ mod tests {
             assert!(editor.document.dirty());
             editor.cycle_document(1);
         }
+    }
+    #[test]
+    fn recovered_context_restores_paths_views_order_and_active_tab() {
+        use paint_rust::recovery::{Context, Recovery};
+        let ctx = egui::Context::default();
+        let root = tempfile::tempdir().unwrap();
+        let mut sessions = vec![Recovery::new(root.path()).unwrap()];
+        sessions.push(sessions[0].sibling().unwrap());
+        for (i, recovery) in sessions.iter_mut().enumerate() {
+            let mut document = Document::new(400, 300, [20 + i as u8, 40, 60, 255]).unwrap();
+            document.mark_unsaved();
+            recovery
+                .set_context(Context {
+                    version: 1,
+                    workspace: recovery.workspace().into(),
+                    order: 1 - i,
+                    path: Some(root.path().join(format!("drawing-{i}.pdn"))),
+                    zoom: 2.0 + i as f32,
+                    offset: [20.0, 30.0],
+                    active: i == 1,
+                })
+                .unwrap();
+            recovery.schedule(&document, || {}).unwrap();
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+            while recovery.busy() {
+                recovery.poll().unwrap();
+                assert!(std::time::Instant::now() < deadline);
+                std::thread::sleep(std::time::Duration::from_millis(2));
+            }
+        }
+        drop(sessions);
+        let mut editor = Editor::blank(&ctx);
+        editor.recovery = Some(Recovery::new(root.path()).unwrap());
+        editor.recoverable = Recovery::discover(root.path()).unwrap();
+        editor.start_recovery_batch();
+        wait_for_files(&mut editor, &ctx);
+        assert!(editor.recovery_batch.is_none());
+        assert_eq!(editor.path, Some(root.path().join("drawing-1.pdn")));
+        assert_eq!(editor.zoom, 3.0);
+        assert_eq!(editor.canvas_offset, Vec2::new(20.0, 30.0));
+        assert_eq!(editor.document_order[0], editor.active_document_id);
+        assert!(editor.document.dirty());
+        let last = editor.document_order[1];
+        editor.activate_document(last);
+        assert_eq!(editor.path, Some(root.path().join("drawing-0.pdn")));
+        assert_eq!(editor.zoom, 2.0);
+        assert!(editor.document.dirty());
     }
     #[test]
     fn zoom_commands_preserve_view_center_and_never_edit_document() {

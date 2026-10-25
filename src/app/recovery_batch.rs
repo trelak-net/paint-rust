@@ -6,6 +6,7 @@ pub(super) struct Batch {
     pub errors: Vec<String>,
     pub restored: usize,
     pub cancelled: bool,
+    pub preferred: Option<u64>,
 }
 
 impl Editor {
@@ -47,6 +48,9 @@ impl Editor {
             }
         }
         let batch = self.recovery_batch.take().unwrap();
+        if let Some(id) = batch.preferred {
+            self.activate_document(id);
+        }
         self.recovery_prompt = !self.recoverable.is_empty();
         self.status = format!(
             "Recovered {} document(s); {} failed{}",
