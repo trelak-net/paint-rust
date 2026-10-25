@@ -60,6 +60,7 @@ fn opaque_formats_apply_the_selected_matte_and_preserve_preview_bytes_on_save() 
     let options = RasterOptions {
         format: RasterFormat::Bmp,
         quality: 90,
+        gif_dither: false,
         dpi: Default::default(),
         matte: [20, 100, 180],
     };
@@ -89,6 +90,7 @@ fn jpeg_export_has_valid_dimensions_quality_control_and_opaque_matte() {
             RasterOptions {
                 format: RasterFormat::Jpeg,
                 quality,
+                gif_dither: false,
                 dpi: Default::default(),
                 matte: [128; 3],
             },

@@ -1666,3 +1666,12 @@ across pointer events and bends, so event frequency does not change the spacing.
 Off-canvas dabs are skipped before rasterization. Every stroke remains one undo
 transaction; overlapping dabs retain the stroke's maximum coverage. Path smoothing
 and tablet pressure remain pending.
+
+GIF dithering
+-------------
+GIF export offers optional Floyd–Steinberg color dithering. The decoded preview
+and byte count update when the option changes. Dithering uses alternating row
+directions and two bounded error rows, preserves the binary transparency mask,
+and leaves exact palette colors unchanged. The transparency threshold remains
+128; retained translucent pixels are composited onto the chosen matte. Output
+is still a single frame with at most 256 colors.

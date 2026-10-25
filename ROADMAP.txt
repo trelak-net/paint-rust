@@ -198,6 +198,7 @@ independent tasks; do not silently reduce the required scope.
 [x] Decoded-output export preview, byte count, JPEG quality and JPEG/BMP matte controls.
 [x] TIFF and TGA import/export with alpha and decoded export previews.
 [x] GIF first-frame import and single-frame export with explicit transparency policy.
+[x] Optional serpentine Floyd–Steinberg GIF dithering with decoded preview and bounded error rows.
 [x] Unified project/raster Save and Save As with confirmed flattening and undo.
 [x] DDS top-surface RGB/RGBA and BC1/2/3 import, lossless RGBA8 export and independent fixtures.
 [x] DDS BC4/BC5 UNORM import through legacy and DX10 headers with partial-block clipping.

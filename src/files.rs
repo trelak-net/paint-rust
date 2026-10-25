@@ -2,8 +2,7 @@ use crate::document::{BlendMode, Document, Layer};
 use image::{
     ImageDecoder, ImageEncoder, ImageReader,
     codecs::{
-        bmp::BmpEncoder, gif::GifEncoder, jpeg::JpegEncoder, png::PngEncoder, tga::TgaEncoder,
-        webp::WebPEncoder,
+        bmp::BmpEncoder, jpeg::JpegEncoder, png::PngEncoder, tga::TgaEncoder, webp::WebPEncoder,
     },
 };
 use std::{
@@ -343,6 +342,7 @@ impl RasterFormat {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct RasterOptions {
+    pub gif_dither: bool,
     pub dpi: crate::resolution::Dpi,
     pub format: RasterFormat,
     pub quality: u8,
@@ -354,6 +354,7 @@ impl RasterOptions {
             format,
             dpi: Default::default(),
             quality: 90,
+            gif_dither: false,
             matte: [255; 3],
         }
     }
@@ -501,11 +502,11 @@ fn encode_raster_options(
         inner: writer,
         cancel,
     };
+    if options.format == RasterFormat::Gif {
+        return crate::gif_export::encode(bytes, size, writer, options.gif_dither, cancel);
+    }
     match options.format {
-        RasterFormat::Dds => unreachable!("DDS encoded above"),
-        RasterFormat::Gif => {
-            GifEncoder::new(writer).encode(&bytes, size.0, size.1, image::ExtendedColorType::Rgba8)
-        }
+        RasterFormat::Dds | RasterFormat::Gif => unreachable!("Encoded above"),
         RasterFormat::Tiff => {
             let mut encoded = Cursor::new(Vec::new());
             {

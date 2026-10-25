@@ -98,6 +98,7 @@ impl Editor {
                 ui.small("DDS saves one uncompressed RGBA8 surface. Mipmaps, texture arrays and cube maps are not written.");
             }
             if dialog.options.format==files::RasterFormat::Gif {
+                changed |= ui.checkbox(&mut dialog.options.gif_dither, "Dither colors (Floyd–Steinberg)").changed();
                 ui.small("GIF stores one frame and up to 256 colors. Alpha below 128 becomes transparent; remaining pixels use the background color. Inspect the preview for palette changes.");
             }
             if changed {

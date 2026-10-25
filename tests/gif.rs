@@ -11,6 +11,7 @@ fn single_frame_export_has_binary_alpha_and_selected_matte() {
     let options = RasterOptions {
         format: RasterFormat::Gif,
         quality: 90,
+        gif_dither: false,
         dpi: Default::default(),
         matte: [20, 60, 100],
     };
@@ -61,4 +62,69 @@ fn gif_cancellation_preserves_existing_file() {
             .is_err()
     );
     assert_eq!(std::fs::read(path).unwrap(), b"old");
+}
+
+#[test]
+fn dithering_changes_quantized_gradients_and_keeps_binary_transparency() {
+    let size = (128, 96);
+    let pixels: Vec<_> = (0..size.0 * size.1)
+        .map(|i| {
+            let (x, y) = (i % size.0, i / size.0);
+            [
+                (x * 2) as u8,
+                (y * 255 / 95) as u8,
+                ((x + y) * 255 / 222) as u8,
+                if x < 3 { 0 } else { 255 },
+            ]
+        })
+        .collect();
+    let cancel = AtomicBool::new(false);
+    let plain = files::encode_raster_bytes(
+        &pixels,
+        size,
+        RasterOptions::new(RasterFormat::Gif),
+        &cancel,
+    )
+    .unwrap();
+    let options = RasterOptions {
+        gif_dither: true,
+        ..RasterOptions::new(RasterFormat::Gif)
+    };
+    let dithered = files::encode_raster_bytes(&pixels, size, options, &cancel).unwrap();
+    assert_ne!(plain, dithered);
+    assert_eq!(
+        dithered,
+        files::encode_raster_bytes(&pixels, size, options, &cancel).unwrap()
+    );
+    let decoded = files::decode_raster_bytes(&dithered, RasterFormat::Gif, &cancel).unwrap();
+    for (actual, source) in decoded.pixels().iter().zip(&pixels) {
+        assert_eq!(actual[3], source[3]);
+    }
+    let colors: std::collections::HashSet<_> = decoded.pixels().iter().collect();
+    assert!(colors.len() <= 256);
+    assert!(files::encode_raster_bytes(&pixels, size, options, &AtomicBool::new(true)).is_err());
+}
+
+#[test]
+fn dithering_preserves_exact_small_palettes_and_transparent_only_images() {
+    let cancel = AtomicBool::new(false);
+    for pixels in [
+        vec![[0; 4]; 6],
+        vec![
+            [1, 2, 3, 255],
+            [1, 2, 4, 255],
+            [255, 255, 255, 255],
+            [1, 2, 3, 255],
+            [1, 2, 4, 255],
+            [0; 4],
+        ],
+    ] {
+        let options = RasterOptions {
+            gif_dither: true,
+            ..RasterOptions::new(RasterFormat::Gif)
+        };
+        let bytes = files::encode_raster_bytes(&pixels, (3, 2), options, &cancel).unwrap();
+        let decoded = files::decode_raster_bytes(&bytes, RasterFormat::Gif, &cancel).unwrap();
+        assert_eq!(decoded.pixels(), pixels);
+    }
 }

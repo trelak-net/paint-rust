@@ -29,3 +29,5 @@ pub mod resample;
 pub mod resolution;
 
 pub mod raster_density;
+
+mod gif_export;
