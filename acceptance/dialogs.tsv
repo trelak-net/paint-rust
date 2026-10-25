@@ -3,7 +3,7 @@ Updates	missing	Distribution/update workflow pending
 Image size	partial	Pixel dimensions; physical resolution pending
 Resize	partial	Dimensions/aspect/sampling controls
 Save configuration	partial	Decoded preview, exact byte count, JPEG quality and matte controls; advanced formats pending
-About	missing	Product and license dialog pending
+About	supported	Version/package/platform information, copy action and offline project license/third-party notice tabs
 Canvas size	partial	Pixel dimensions, anchors and background options
 Color profile	partial	Automatic RGB/grayscale ICC to sRGB on import; tagged export; monitor profiles and user controls pending
 Save palette	partial	Native file picker and project palette format

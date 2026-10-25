@@ -111,3 +111,9 @@ background-operation failures. Details remain available after another operation
 changes the status message. Copy individual entries or all details when reporting
 a problem; review file paths before sharing. Clear removes the session entries.
 Cancelled operations are not recorded, and error details are not saved to disk.
+
+Version and licenses
+Help > About Paint Rust shows the installed version, package identifier and
+platform. Copy version information when reporting a problem. The MIT, Apache 2.0
+and Third-party notices tabs are available offline; full dependency license
+files accompany the application distribution.

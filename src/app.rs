@@ -1,3 +1,4 @@
+mod about;
 mod clone;
 mod colors;
 mod curves;
@@ -107,6 +108,7 @@ struct EffectDialog {
 pub struct Editor {
     help_open: bool,
     errors: errors::ErrorLog,
+    about: about::About,
     preferences: preferences::Preferences,
     system_theme: Option<egui::Theme>,
     panel_layout: panels::Layout,
@@ -264,6 +266,7 @@ impl Editor {
         Self {
             help_open: false,
             errors: Default::default(),
+            about: Default::default(),
             panel_layout: Default::default(),
             color_panel: Default::default(),
             layer_thumbnails: Default::default(),
@@ -922,6 +925,10 @@ impl Editor {
     }
 
     fn shortcuts(&mut self, ctx: &egui::Context) {
+        if self.about.open && ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::Escape)) {
+            self.about.open = false;
+            return;
+        }
         if self.errors.open && ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::Escape))
         {
             self.errors.open = false;
@@ -3694,6 +3701,8 @@ impl Editor {
                 ui.menu_button("Help",|ui| {
                     if ui.button("Guide and shortcuts    F1").clicked() { self.help_open=true; ui.close(); }
                     if ui.button("Operation errors…    Ctrl+F1").clicked() { self.errors.open=true; ui.close(); }
+                    ui.separator();
+                    if ui.button("About Paint Rust…").clicked() { self.about.open=true; ui.close(); }
                 });
             });
             ui.horizontal_wrapped(|ui| {
@@ -3813,6 +3822,7 @@ impl Editor {
         self.show_selection_transform(ctx);
         self.show_help(ctx);
         self.errors.show(ctx);
+        self.about.show(ctx);
         if let Some(recovery) = &mut self.recovery {
             let _ = recovery.set_context(paint_rust::recovery::Context {
                 version: 1,

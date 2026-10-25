@@ -233,6 +233,7 @@ independent tasks; do not silently reduce the required scope.
 [x] Persistent theme/grid/brush preferences, recent-file menu and file-drop queue.
 [ ] Remaining general preferences.
 [x] Window document list and embedded English guide/shortcut reference under Help/F1.
+[x] About dialog with version/platform copy and offline project license/third-party notice tabs.
 [ ] English/Polish localization and expanded user documentation.
 [ ] Installation/update validation across Linux desktop environments.
 12. Final acceptance
