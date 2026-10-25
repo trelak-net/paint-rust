@@ -1,7 +1,10 @@
 use crate::document::{BlendMode, Document, Layer};
 use image::{
     ImageDecoder, ImageEncoder, ImageReader,
-    codecs::{bmp::BmpEncoder, jpeg::JpegEncoder, png::PngEncoder, webp::WebPEncoder},
+    codecs::{
+        bmp::BmpEncoder, jpeg::JpegEncoder, png::PngEncoder, tga::TgaEncoder, tiff::TiffEncoder,
+        webp::WebPEncoder,
+    },
 };
 use std::{
     fs::File,
@@ -38,21 +41,11 @@ pub fn open_cancellable(path: &Path, cancel: &AtomicBool) -> Result<Document, St
     {
         return open_project_cancellable(path, cancel);
     }
-    let dimensions = ImageReader::new(BufReader::new(CancellableReader {
-        inner: File::open(path).map_err(|e| e.to_string())?,
-        cancel,
-    }))
-    .with_guessed_format()
-    .map_err(|e| e.to_string())?
-    .into_dimensions()
-    .map_err(|e| e.to_string())?;
+    let dimensions = raster_reader(path, cancel)?
+        .into_dimensions()
+        .map_err(|e| e.to_string())?;
     Document::validate_size(dimensions.0, dimensions.1)?;
-    let mut reader = ImageReader::new(BufReader::new(CancellableReader {
-        inner: File::open(path).map_err(|e| e.to_string())?,
-        cancel,
-    }))
-    .with_guessed_format()
-    .map_err(|e| e.to_string())?;
+    let mut reader = raster_reader(path, cancel)?;
     let mut limits = image::Limits::default();
     limits.max_alloc = Some(256 * 1024 * 1024);
     limits.max_image_width = Some(16384);
@@ -91,6 +84,21 @@ pub fn open_cancellable(path: &Path, cancel: &AtomicBool) -> Result<Document, St
     }
     check_cancel(cancel)?;
     Document::from_pixels(width, height, pixels)
+}
+
+fn raster_reader<'a>(
+    path: &Path,
+    cancel: &'a AtomicBool,
+) -> Result<ImageReader<BufReader<CancellableReader<'a, File>>>, String> {
+    let mut reader = ImageReader::new(BufReader::new(CancellableReader {
+        inner: File::open(path).map_err(|e| e.to_string())?,
+        cancel,
+    }));
+    // Formats without a signature, such as TGA, need an extension hint.
+    if let Ok(format) = image::ImageFormat::from_path(path) {
+        reader.set_format(format);
+    }
+    reader.with_guessed_format().map_err(|e| e.to_string())
 }
 
 pub const CANCELLED: &str = "Operation cancelled";
@@ -146,13 +154,22 @@ impl<W: Write> Write for CancellableWriter<'_, W> {
         if self.cancel.load(Ordering::Relaxed) {
             return Err(std::io::Error::other(CANCELLED));
         }
-        self.inner.write(buffer)
+        self.inner.write(&buffer[..buffer.len().min(64 * 1024)])
     }
     fn flush(&mut self) -> std::io::Result<()> {
         if self.cancel.load(Ordering::Relaxed) {
             return Err(std::io::Error::other(CANCELLED));
         }
         self.inner.flush()
+    }
+}
+
+impl<W: Seek> Seek for CancellableWriter<'_, W> {
+    fn seek(&mut self, position: SeekFrom) -> std::io::Result<u64> {
+        if self.cancel.load(Ordering::Relaxed) {
+            return Err(std::io::Error::other(CANCELLED));
+        }
+        self.inner.seek(position)
     }
 }
 
@@ -181,6 +198,8 @@ fn write_atomic(
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RasterFormat {
+    Tiff,
+    Tga,
     Jpeg,
     Bmp,
     Png,
@@ -189,6 +208,8 @@ pub enum RasterFormat {
 impl RasterFormat {
     pub fn extension(self) -> &'static str {
         match self {
+            Self::Tiff => "tif",
+            Self::Tga => "tga",
             Self::Jpeg => "jpg",
             Self::Bmp => "bmp",
             Self::Png => "png",
@@ -197,6 +218,8 @@ impl RasterFormat {
     }
     pub fn extensions(self) -> &'static [&'static str] {
         match self {
+            Self::Tiff => &["tif", "tiff"],
+            Self::Tga => &["tga"],
             Self::Jpeg => &["jpg", "jpeg"],
             Self::Bmp => &["bmp"],
             Self::Png => &["png"],
@@ -205,6 +228,8 @@ impl RasterFormat {
     }
     pub fn image_format(self) -> image::ImageFormat {
         match self {
+            Self::Tiff => image::ImageFormat::Tiff,
+            Self::Tga => image::ImageFormat::Tga,
             Self::Jpeg => image::ImageFormat::Jpeg,
             Self::Bmp => image::ImageFormat::Bmp,
             Self::Png => image::ImageFormat::Png,
@@ -213,6 +238,8 @@ impl RasterFormat {
     }
     pub fn label(self) -> &'static str {
         match self {
+            Self::Tiff => "TIFF",
+            Self::Tga => "TGA",
             Self::Jpeg => "JPEG",
             Self::Bmp => "BMP",
             Self::Png => "PNG",
@@ -314,6 +341,25 @@ fn encode_raster_options(
         cancel,
     };
     match options.format {
+        RasterFormat::Tiff => {
+            let mut encoded = Cursor::new(Vec::new());
+            TiffEncoder::new(CancellableWriter {
+                inner: &mut encoded,
+                cancel,
+            })
+            .write_image(&bytes, size.0, size.1, image::ExtendedColorType::Rgba8)
+            .map_err(|e| e.to_string())?;
+            check_cancel(cancel)?;
+            return writer
+                .write_all(encoded.get_ref())
+                .map_err(|e| e.to_string());
+        }
+        RasterFormat::Tga => TgaEncoder::new(writer).write_image(
+            &bytes,
+            size.0,
+            size.1,
+            image::ExtendedColorType::Rgba8,
+        ),
         RasterFormat::Jpeg => JpegEncoder::new_with_quality(writer, options.quality).encode(
             &bytes,
             size.0,

@@ -6,10 +6,10 @@ JPEG	partial	Read/write; EXIF orientation; quality 1–100, matte and decoded pr
 BMP	partial	Read/write; opaque RGB with selectable matte and decoded preview	Additional BMP variants and metadata policy
 WebP	partial	Read; lossless export; decoded export preview	Lossy encode options, metadata and ICC
 GIF	missing	None	Palette, dithering, transparency and animation policy
-TIFF	missing	None	Compression, sample formats, metadata and multipage policy
+TIFF	partial	First-page import; RGBA8 export and decoded preview	Compression controls, high-bit-depth editing, ICC, metadata and multipage UI
 JPEG XL	missing	None	Codec, options, licensing and validation
 AVIF	missing	None	Codec, options, licensing and validation
 HEIC	missing	None	Codec/platform availability, licensing and validation
 DDS	missing	None	Compression, mipmaps, texture formats and validation
-TGA	missing	None	Read/write variants, alpha and validation
+TGA	partial	Extension-aware import; RGBA export and decoded preview	Additional variants, metadata and external fixtures
 JPEG XR	missing	None	Codec, options, licensing and validation

@@ -1339,6 +1339,20 @@
       }
     },
     {
+      "name": "fax",
+      "version": "0.2.7",
+      "license": "MIT",
+      "authors": [
+        "Sebastian K <s3bk@protonmail.com>"
+      ],
+      "repository": "https://github.com/pdf-rs/fax",
+      "source": "https://crates.io/crates/fax/0.2.7",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE": "7101390b4c8edd752f4c0de47f35d61b44d9cf0ee8dd032115e25644e277cfff"
+      }
+    },
+    {
       "name": "fdeflate",
       "version": "0.3.7",
       "license": "MIT OR Apache-2.0",
@@ -1679,6 +1693,21 @@
       "upstream_notices": [],
       "files": {
         "LICENSE": "a4445427440043e8ce6fadf7a43fb906cb0d7f6c573a560a9f142cf9f9bf8ff4"
+      }
+    },
+    {
+      "name": "half",
+      "version": "2.7.1",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "Kathryn Long <squeeself@gmail.com>"
+      ],
+      "repository": "https://github.com/VoidStarKat/half-rs",
+      "source": "https://crates.io/crates/half/2.7.1",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "a6cba85bc92e0cff7a450b1d873c0eaa2e9fc96bf472df0247a26bec77bf3ff9",
+        "LICENSE-MIT": "508a77d2e7b51d98adeed32648ad124b7b30241a8e70b2e72c99f92d8e5874d1"
       }
     },
     {
@@ -3213,6 +3242,21 @@
       }
     },
     {
+      "name": "tiff",
+      "version": "0.11.3",
+      "license": "MIT",
+      "authors": [
+        "The image-rs Developers"
+      ],
+      "repository": "https://github.com/image-rs/image-tiff",
+      "source": "https://crates.io/crates/tiff/0.11.3",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE": "20c097d0de27e2adc179140a3d542091951a030699c7e1c78655f2a2d08d4e3e",
+        "tests/COPYRIGHT": "c6d1d56bb6e2fe4f0aed4aa8553261dd65247db6db50c87c9e9f3fbe095e2202"
+      }
+    },
+    {
       "name": "tiny-skia",
       "version": "0.11.4",
       "license": "BSD-3-Clause",
@@ -3680,6 +3724,21 @@
       }
     },
     {
+      "name": "weezl",
+      "version": "0.1.12",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "The image-rs Developers"
+      ],
+      "repository": "https://github.com/image-rs/weezl",
+      "source": "https://crates.io/crates/weezl/0.1.12",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "769f80b5bcb42ed0af4e4d2fd74e1ac9bf843cb80c5a29219d1ef3544428a6bb",
+        "LICENSE-MIT": "573f5227db835cd30bbdd3aed3f82615f80119a4d5c82b4daf642dbfe2b6afde"
+      }
+    },
+    {
       "name": "winit",
       "version": "0.30.13",
       "license": "Apache-2.0",
@@ -3987,6 +4046,21 @@
         "LICENSE-BSD": "83c1763356e822adde0a2cae748d938a73fdc263849ccff6b27776dff213bd32",
         "LICENSE-MIT": "1a2f5c12ddc934d58956aa5dbdd3255fe55fd957633ab7d0d39e4f0daa73f7df",
         "SOURCE-COPYRIGHTS.txt": "d1cd4d1f0c7146ed81cca43ed5a8fa7d0e43cfcc1eddcca0e227c99a0627648a"
+      }
+    },
+    {
+      "name": "zerocopy-derive",
+      "version": "0.8.63",
+      "license": "BSD-2-Clause OR Apache-2.0 OR MIT",
+      "authors": [],
+      "repository": "https://github.com/google/zerocopy",
+      "source": "https://crates.io/crates/zerocopy-derive/0.8.63",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "9d185ac6703c4b0453974c0d85e9eee43e6941009296bb1f5eb0b54e2329e9f3",
+        "LICENSE-BSD": "83c1763356e822adde0a2cae748d938a73fdc263849ccff6b27776dff213bd32",
+        "LICENSE-MIT": "1a2f5c12ddc934d58956aa5dbdd3255fe55fd957633ab7d0d39e4f0daa73f7df",
+        "SOURCE-COPYRIGHTS.txt": "5810639c113693f35f31083fb33a46ee10db551971dcd440717213a65d3eca9b"
       }
     },
     {

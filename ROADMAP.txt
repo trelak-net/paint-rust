@@ -139,6 +139,7 @@ independent tasks; do not silently reduce the required scope.
 [ ] Mandatory PDN import/export with real external interoperability fixtures.
 [ ] Preserve layer names, visibility, opacity, blend modes and metadata.
 [x] Decoded-output export preview, byte count, JPEG quality and JPEG/BMP matte controls.
+[x] TIFF and TGA import/export with alpha and decoded export previews.
 [ ] Remaining raster codecs/options and unified raster Save/Save As routing.
 [x] Apply all eight EXIF orientations once on raster import.
 [ ] ICC color management and raster metadata preservation policy.

@@ -140,7 +140,7 @@ this is not a guarantee of constant frame time at the document limits. PDN/PRUST
 preserve string metadata and layer background flags. Raster EXIF orientation is applied to pixels on import, including mirrored
 orientations. Raster metadata and embedded color profiles are not preserved;
 ICC color conversion is not implemented. PNG, JPEG,
-BMP and lossless WebP are available for raster export. A user-local Linux installation helper is available; there is no signed
+BMP, lossless WebP, TIFF and TGA are available for raster export. A user-local Linux installation helper is available; there is no signed
 distribution yet. Linux is the currently validated desktop target.
 
 Validation
@@ -967,3 +967,14 @@ Sobel magnitude, while Emboss projects the gradient along an editable angle onto
 a neutral-gray relief. Both preserve source alpha and use premultiplied samples.
 These effects support selection masks, cancellable previews, undo and parameter
 recall. External reference output comparisons remain pending.
+
+TIFF and TGA
+------------
+Open/import and export dialogs support TIFF (.tif/.tiff) and TGA (.tga), including
+decoded-output previews. TIFF exports one RGBA8 image; a multi-page input opens
+its first image. TGA import uses the extension when no signature is available.
+Tests verify all RGBA bytes, including hidden RGB, when encoding and reopening
+a single raster, as well as cancellation and exact atomic output bytes.
+Raster exports omit document metadata and ICC profiles. Codec options, multipage
+editing and high-bit-depth working buffers remain pending. Dependency notices
+were refreshed for the TIFF decoder/encoder and its active dependencies.

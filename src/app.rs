@@ -377,7 +377,9 @@ impl Editor {
             .set_title("Import image as layer")
             .add_filter(
                 "Images and projects",
-                &["png", "jpg", "jpeg", "bmp", "webp", "prust"],
+                &[
+                    "png", "jpg", "jpeg", "bmp", "webp", "tif", "tiff", "tga", "prust", "pdn",
+                ],
             )
             .pick_file()
         else {
@@ -539,7 +541,10 @@ impl Editor {
                 if let Some(paths) = rfd::FileDialog::new()
                     .add_filter(
                         "Projects and images",
-                        &["prust", "pdn", "png", "jpg", "jpeg", "bmp", "webp"],
+                        &[
+                            "prust", "pdn", "png", "jpg", "jpeg", "bmp", "webp", "tif", "tiff",
+                            "tga",
+                        ],
                     )
                     .pick_files()
                 {
@@ -2604,6 +2609,8 @@ impl Editor {
                         files::RasterFormat::Jpeg,
                         files::RasterFormat::Bmp,
                         files::RasterFormat::WebP,
+                        files::RasterFormat::Tiff,
+                        files::RasterFormat::Tga,
                     ] {
                         if ui.add(Icon::SaveAs.button(format.label())).clicked() {
                             self.export_image(format);

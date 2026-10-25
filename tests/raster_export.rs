@@ -142,6 +142,8 @@ fn raster_export_omits_document_metadata_and_embedded_profiles() {
         RasterFormat::Jpeg,
         RasterFormat::Bmp,
         RasterFormat::WebP,
+        RasterFormat::Tiff,
+        RasterFormat::Tga,
     ] {
         let path = directory
             .path()
@@ -158,5 +160,37 @@ fn raster_export_omits_document_metadata_and_embedded_profiles() {
         assert!(decoder.icc_profile().unwrap().is_none());
         assert_eq!(decoder.orientation().unwrap(), Orientation::NoTransforms);
         assert_eq!(document.metadata.get("Author").unwrap(), marker);
+    }
+}
+
+#[test]
+fn tiff_and_tga_preserve_rgba_and_atomic_output_bytes() {
+    let pixels = [
+        [19, 87, 201, 0],
+        [31, 57, 193, 1],
+        [211, 19, 97, 128],
+        [4, 80, 125, 255],
+    ];
+    let directory = tempfile::tempdir().unwrap();
+    for format in [RasterFormat::Tiff, RasterFormat::Tga] {
+        let bytes = files::encode_raster_bytes(
+            &pixels,
+            (2, 2),
+            files::RasterOptions::new(format),
+            &AtomicBool::new(false),
+        )
+        .unwrap();
+        let path = directory
+            .path()
+            .join(format!("exact.{}", format.extension()));
+        files::save_encoded_raster(&bytes, &path, &AtomicBool::new(false)).unwrap();
+        let loaded = files::open(&path).unwrap();
+        assert_eq!((loaded.width, loaded.height), (2, 2));
+        assert_eq!(loaded.pixels(), pixels);
+        assert_eq!(std::fs::read(&path).unwrap(), bytes);
+        assert!(!loaded.dirty());
+        assert!(files::open_cancellable(&path, &AtomicBool::new(true)).is_err());
+        assert!(files::save_encoded_raster(b"wrong", &path, &AtomicBool::new(true)).is_err());
+        assert_eq!(std::fs::read(&path).unwrap(), bytes);
     }
 }
