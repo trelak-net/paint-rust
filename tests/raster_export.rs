@@ -127,3 +127,36 @@ fn jpeg_export_has_valid_dimensions_quality_control_and_opaque_matte() {
         .is_err()
     );
 }
+
+#[test]
+fn raster_export_omits_document_metadata_and_embedded_profiles() {
+    use image::{ImageDecoder, ImageReader, metadata::Orientation};
+    let directory = tempfile::tempdir().unwrap();
+    let mut document = Document::new(3, 2, [80, 120, 160, 255]).unwrap();
+    let marker = "private-export-metadata-marker-93c1";
+    for key in ["Author", "GPS", "Software", "Comment", "Orientation"] {
+        document.metadata.insert(key.into(), marker.into());
+    }
+    for format in [
+        RasterFormat::Png,
+        RasterFormat::Jpeg,
+        RasterFormat::Bmp,
+        RasterFormat::WebP,
+    ] {
+        let path = directory
+            .path()
+            .join(format!("image.{}", format.extension()));
+        files::save_raster_cancellable(&document, &path, format, &AtomicBool::new(false)).unwrap();
+        let bytes = std::fs::read(&path).unwrap();
+        assert!(
+            !bytes
+                .windows(marker.len())
+                .any(|window| window == marker.as_bytes())
+        );
+        let mut decoder = ImageReader::open(&path).unwrap().into_decoder().unwrap();
+        assert!(decoder.exif_metadata().unwrap().is_none());
+        assert!(decoder.icc_profile().unwrap().is_none());
+        assert_eq!(decoder.orientation().unwrap(), Orientation::NoTransforms);
+        assert_eq!(document.metadata.get("Author").unwrap(), marker);
+    }
+}
