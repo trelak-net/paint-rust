@@ -17,6 +17,7 @@ mod recovery_batch;
 mod render_controls;
 mod rulers;
 mod selection_transform;
+mod shape_edit;
 mod structure_shortcuts;
 mod thumbnails;
 mod toolbar;
@@ -190,6 +191,8 @@ pub struct Editor {
     levels_channel: usize,
     effect_parameters: std::collections::HashMap<std::mem::Discriminant<Effect>, Effect>,
     gesture_preview: Option<EffectDialog>,
+    keep_shape_editable: bool,
+    shape_edit: Option<paint_rust::shapes::Parameters>,
     transform_drag: Option<transform_handles::TransformDrag>,
     new_width: u32,
     new_height: u32,
@@ -349,6 +352,8 @@ impl Editor {
             levels_channel: 0,
             effect_parameters: Default::default(),
             gesture_preview: None,
+            keep_shape_editable: false,
+            shape_edit: None,
             transform_drag: None,
             new_width: 960,
             new_height: 640,
@@ -727,6 +732,9 @@ impl Editor {
     }
 
     fn finish_stroke(&mut self) {
+        if self.shape_edit.is_some() {
+            return;
+        }
         if self.text_dialog.is_some()
             || self.effect_dialog.is_some()
             || self.selection_transform.is_some()
@@ -932,6 +940,16 @@ impl Editor {
     }
 
     fn shortcuts(&mut self, ctx: &egui::Context) {
+        if self.shape_edit.is_some() {
+            if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::Escape)) {
+                self.finish_shape_edit(false);
+            } else if !ctx.wants_keyboard_input()
+                && ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::Enter))
+            {
+                self.finish_shape_edit(true);
+            }
+            return;
+        }
         if self.new_dialog && ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::Escape)) {
             self.new_dialog = false;
             return;
@@ -1638,7 +1656,9 @@ impl Editor {
                     egui::PointerButton::Primary
                 };
                 self.clone_source(ui, &response, rect, &painter, temporary_pan);
+                self.shape_handles(ui, rect);
                 if ui.is_enabled()
+                    && self.shape_edit.is_none()
                     && (self.tool != Tool::Clone
                         || (self
                             .clone_anchor
@@ -1972,7 +1992,8 @@ impl Editor {
                         ui.ctx().request_repaint();
                     }
                     self.last_point = Some(point);
-                    if !ui.input(|i| i.pointer.button_down(drawing_button)) {
+                    if !ui.input(|i| i.pointer.button_down(drawing_button)) && !self.retain_shape()
+                    {
                         self.finish_stroke();
                     }
                 }
@@ -2215,6 +2236,7 @@ impl Editor {
             Tool::Line | Tool::Rectangle | Tool::Ellipse | Tool::Shapes
         ) {
             ui.checkbox(&mut self.shape_antialias, "Antialias shape");
+            ui.checkbox(&mut self.keep_shape_editable, "Edit after drawing");
         }
         if matches!(
             self.tool,
@@ -3164,6 +3186,7 @@ impl Editor {
             }
         }
         if self.gesture_preview.is_some() && ctx.input(|i| i.viewport().close_requested()) {
+            self.shape_edit = None;
             self.gesture_preview = None;
             self.document.cancel();
             self.last_point = None;
@@ -3764,7 +3787,10 @@ impl Editor {
                 }
             });
         });
-        self.document_tabs(ctx, enabled && self.file_job.is_none());
+        self.document_tabs(
+            ctx,
+            enabled && self.file_job.is_none() && self.shape_edit.is_none(),
+        );
         egui::TopBottomPanel::bottom("status").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.label(format!(
@@ -3784,7 +3810,7 @@ impl Editor {
                     .on_hover_text(&self.status);
             });
         });
-        self.workspace_panels(ctx, enabled);
+        self.workspace_panels(ctx, enabled && self.shape_edit.is_none());
         egui::CentralPanel::default()
             .frame(
                 egui::Frame::central_panel(&ctx.style())
@@ -3797,6 +3823,7 @@ impl Editor {
                 self.canvas(ui);
             });
         self.dialogs(ctx);
+        self.show_shape_edit(ctx);
         self.show_paste_confirmation(ctx);
         self.show_selection_transform(ctx);
         self.show_help(ctx);
@@ -7117,5 +7144,50 @@ mod tests {
         assert!(!editor.document.can_undo());
         editor.activate_document(0);
         assert_eq!(editor.active_document_id, 0);
+    }
+    #[test]
+    fn editable_shape_release_waits_for_explicit_apply_or_cancel() {
+        for apply in [false, true] {
+            let ctx = egui::Context::default();
+            let mut editor = Editor::blank(&ctx);
+            editor.tool = Tool::Rectangle;
+            editor.shape_filled = true;
+            editor.keep_shape_editable = true;
+            frame(&mut editor, &ctx, vec![]);
+            let start = editor.canvas_viewport.min + Vec2::new(50.0, 50.0);
+            let end = start + Vec2::new(80.0, 60.0);
+            frame(
+                &mut editor,
+                &ctx,
+                vec![egui::Event::PointerMoved(start), pointer(start, true)],
+            );
+            frame(
+                &mut editor,
+                &ctx,
+                vec![egui::Event::PointerMoved(end), pointer(end, false)],
+            );
+            assert!(editor.shape_edit.is_some());
+            assert!(editor.document.editing());
+            assert!(editor.file_job.is_none());
+            frame(&mut editor, &ctx, vec![]);
+            assert!(editor.shape_edit.is_some());
+            assert_eq!(editor.document.history().count(), 0);
+            editor.finish_shape_edit(apply);
+            wait_for_files(&mut editor, &ctx);
+            assert!(editor.shape_edit.is_none());
+            assert!(!editor.document.editing());
+            assert_eq!(editor.document.history().count(), usize::from(apply));
+            if apply {
+                editor.undo();
+            }
+            assert!(
+                editor
+                    .document
+                    .pixels()
+                    .iter()
+                    .all(|pixel| *pixel == [255; 4])
+            );
+            assert!(!editor.document.dirty());
+        }
     }
 }

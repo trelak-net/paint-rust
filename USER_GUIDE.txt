@@ -125,3 +125,11 @@ Unlink X/Y resolution for independent axes. The pixel-size and layer-memory
 readouts show the actual raster to be created. Each side may reach 16,384 pixels,
 subject to the total limit of 16,777,216 pixels; invalid combinations disable
 Create. Cancel or Escape leaves the current document unchanged.
+
+Adjust a shape before applying
+Enable Edit after drawing in the Line, Rectangle, Ellipse or Shapes tool options.
+After dragging, use the white canvas handles to resize the figure or its center
+handle to move it. The Edit shape window also accepts exact endpoints and changes
+to shape, colors, outline width, fill and antialiasing. Apply (or Enter outside a
+text field) commits one undo step; Cancel or Escape discards the entire draft.
+The option lasts for the current session.

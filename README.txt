@@ -1059,7 +1059,15 @@ brush kernel. Hard legacy rectangle/ellipse rendering remains available when
 new options are off. Previews, selection masks, cancellation and one-step undo
 are shared with the existing gesture workflow. Tests cover all geometries, reverse
 drag, combined colors, hidden RGB, selection boundaries and secondary gestures.
-Persistent handles, editable curves and exact reference coverage remain pending.
+Enable Edit after drawing to retain a shape preview after release. Canvas edge/
+corner handles resize it, the center handle translates it, and Edit shape offers
+numeric endpoints, geometry, width, colors and antialiasing. Apply/Enter commits
+one history entry; Cancel/Escape restores the original layer. Other document
+operations remain unavailable until the draft finishes. The option is session-
+local and off by default. Rotation handles, editable curves and exact reference
+coverage remain pending. Native pointer automation for the retained-shape dialog
+remains unverified on the current compositor; synthetic UI-event tests cover
+release retention, handle translation, apply/cancel and one-step undo.
 The native Windows editor 5.1.12 shape-menu inventory was checked on 2026-10-25;
 all 29 menu forms have corresponding geometry, plus line and directional arrows.
 Geometry is defined independently using normalized polygons and analytic curves.
