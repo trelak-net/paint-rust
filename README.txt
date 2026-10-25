@@ -938,3 +938,13 @@ closes preserved floating-panel layout. The tools palette now uses two to four
 columns according to its width, with a wider and shorter default. A second pair
 of launches and screenshot review confirmed all nineteen tools remain visible in
 the default floating layout. Existing custom panel geometry is preserved.
+
+Input histograms
+----------------
+Levels, Auto levels and Curves display an input histogram computed in a separate
+worker from the frozen active-layer snapshot and current selection. Fully
+transparent pixels are excluded; partially transparent pixels count once. RGB
+view combines channel counts; single-channel views show their own counts. Linear
+and logarithmic heights, exact hovered-bin counts and the selected pixel count
+are available. Closing the dialog cancels unfinished histogram work. Output
+histograms and external reference comparisons remain pending.

@@ -3,6 +3,7 @@ mod colors;
 mod curves;
 mod export;
 mod file_operations;
+mod histogram;
 mod lasso;
 mod panels;
 mod thumbnails;
@@ -76,6 +77,7 @@ struct TextDialog {
 }
 
 struct EffectDialog {
+    histogram: Option<histogram::Histogram>,
     effect: Effect,
     preview: crate::preview::EffectPreview,
 }
@@ -579,7 +581,11 @@ impl Editor {
                 self.document.selection(),
                 effect,
             );
-            self.gesture_preview = Some(EffectDialog { effect, preview });
+            self.gesture_preview = Some(EffectDialog {
+                effect,
+                preview,
+                histogram: None,
+            });
         }
     }
 
@@ -712,7 +718,23 @@ impl Editor {
             effect,
         );
         self.document.begin(effect.name());
-        self.effect_dialog = Some(EffectDialog { effect, preview });
+        let histogram = matches!(
+            effect,
+            Effect::Levels(_) | Effect::AutoLevels(_) | Effect::Curves(_)
+        )
+        .then(|| {
+            histogram::Histogram::new(
+                ctx.clone(),
+                self.document.shared_pixels(),
+                self.document.width,
+                self.document.selection(),
+            )
+        });
+        self.effect_dialog = Some(EffectDialog {
+            effect,
+            preview,
+            histogram,
+        });
     }
 
     fn apply_effect(&mut self, effect: Effect) {
@@ -2280,6 +2302,7 @@ impl Editor {
                                 ui.label("Preview on the active layer");
                             }
                         }
+                        if let Some(histogram)=&mut dialog.histogram { histogram.show(ui,self.levels_channel); }
                         if changed {
                             dialog.preview.request(dialog.effect);
                         }
@@ -3747,7 +3770,11 @@ mod tests {
             effect,
         );
         editor.document.begin(effect.name());
-        editor.effect_dialog = Some(EffectDialog { effect, preview });
+        editor.effect_dialog = Some(EffectDialog {
+            effect,
+            preview,
+            histogram: None,
+        });
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
         loop {
             frame(&mut editor, &ctx, vec![]);
@@ -4308,6 +4335,7 @@ mod tests {
         preview.request(last);
         editor.document.begin("Gradient");
         editor.gesture_preview = Some(EffectDialog {
+            histogram: None,
             effect: last,
             preview,
         });

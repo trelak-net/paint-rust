@@ -67,23 +67,8 @@ pub(crate) fn automatic(
     if !clip_percent.is_finite() || !(0.0..=5.0).contains(&clip_percent) {
         return None;
     }
-    let mut histogram = [[0_u32; 256]; 3];
-    let mut count = 0_u32;
-    for (index, pixel) in source.iter().enumerate() {
-        if index.is_multiple_of(4096) && cancel.load(Ordering::Relaxed) {
-            return None;
-        }
-        if pixel[3] == 0
-            || selection
-                .is_some_and(|s| !s.contains(index % width as usize, index / width as usize))
-        {
-            continue;
-        }
-        count += 1;
-        for channel in 0..3 {
-            histogram[channel][pixel[channel] as usize] += 1;
-        }
-    }
+    let histogram = histogram(source, width, selection, cancel)?;
+    let count: u32 = histogram[0].iter().sum();
     let mut levels = Levels::default();
     if count == 0 {
         return Some(levels);
@@ -112,4 +97,36 @@ pub(crate) fn automatic(
         }
     }
     Some(levels)
+}
+
+/// Counts selected, nontransparent pixels without alpha weighting.
+pub fn histogram(
+    source: &[Pixel],
+    width: u32,
+    selection: Option<&Selection>,
+    cancel: &AtomicBool,
+) -> Option<[[u32; 256]; 3]> {
+    if width == 0
+        || source.len() > 16_777_216
+        || !source.len().is_multiple_of(width as usize)
+        || cancel.load(Ordering::Relaxed)
+    {
+        return None;
+    }
+    let mut histogram = [[0_u32; 256]; 3];
+    for (index, pixel) in source.iter().enumerate() {
+        if index.is_multiple_of(4096) && cancel.load(Ordering::Relaxed) {
+            return None;
+        }
+        if pixel[3] == 0
+            || selection
+                .is_some_and(|s| !s.contains(index % width as usize, index / width as usize))
+        {
+            continue;
+        }
+        for channel in 0..3 {
+            histogram[channel][pixel[channel] as usize] += 1;
+        }
+    }
+    Some(histogram)
 }

@@ -25,7 +25,7 @@ Ink Sketch	Artistic	missing	No implementation yet	Kernel, parameter UI, cancella
 Invert Alpha	Adjustment	partial	Invert alpha without changing RGB	External reference output, ranges and color-space audit
 Invert Colors	Adjustment	partial	RGB inversion; preserves alpha	Exact transfer function, ranges, color space and reference output audit
 Julia Fractal	Render	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
-Levels	Adjustment	partial	Master/R/G/B input and output endpoints plus gamma; histogram display pending	Exact transfer function, ranges, color space and reference output audit
+Levels	Adjustment	partial	Master/R/G/B input and output endpoints, gamma and background input histogram	Exact transfer function, ranges, color space and reference output audit
 Mandelbrot Fractal	Render	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
 Median Blur	Blurs	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
 Morphology	Distort	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases

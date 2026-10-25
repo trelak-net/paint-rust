@@ -246,3 +246,33 @@ fn auto_levels_clips_the_requested_population_at_both_ends() {
     .unwrap();
     assert_eq!(full, source);
 }
+
+#[test]
+fn histogram_counts_selection_once_and_excludes_hidden_pixels() {
+    let source = [
+        [10, 20, 30, 255],
+        [10, 40, 30, 1],
+        [200, 200, 200, 0],
+        [99, 99, 99, 255],
+    ];
+    let selection = Selection {
+        x: 0,
+        y: 0,
+        width: 3,
+        height: 1,
+        mask: None,
+        ellipse: None,
+    };
+    let bins = paint_rust::levels::histogram(&source, 4, Some(&selection), &AtomicBool::new(false))
+        .unwrap();
+    assert_eq!(bins[0][10], 2);
+    assert_eq!(bins[1][20], 1);
+    assert_eq!(bins[1][40], 1);
+    assert_eq!(bins[2][30], 2);
+    for channel in bins {
+        assert_eq!(channel.iter().sum::<u32>(), 2);
+    }
+    assert!(paint_rust::levels::histogram(&source, 4, None, &AtomicBool::new(true)).is_none());
+    assert!(paint_rust::levels::histogram(&source, 0, None, &AtomicBool::new(false)).is_none());
+    assert!(paint_rust::levels::histogram(&source, 3, None, &AtomicBool::new(false)).is_none());
+}
