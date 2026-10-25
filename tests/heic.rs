@@ -155,3 +155,53 @@ fn exported_pixels_match_independent_ffmpeg_decoder() {
         assert!(a.abs_diff(*b) <= 1, "{a} != {b}");
     }
 }
+
+#[test]
+fn heic_density_survives_export_without_descriptive_metadata() {
+    let dpi = paint_rust::resolution::Dpi {
+        x: 300.25,
+        y: 150.5,
+    };
+    let mut options = RasterOptions::new(RasterFormat::Heic);
+    options.dpi = dpi;
+    let cancel = AtomicBool::new(false);
+    let bytes = files::encode_raster_bytes(
+        &vec![[30, 60, 90, 255]; 32 * 24],
+        (32, 24),
+        options,
+        &cancel,
+    )
+    .unwrap();
+    let document = files::decode_raster_bytes(&bytes, RasterFormat::Heic, &cancel).unwrap();
+    assert_eq!(document.resolution(), dpi);
+    assert!(!document.dirty());
+    let mut context = libheif_rs::HeifContext::new().unwrap();
+    context.read_bytes(&bytes).unwrap();
+    let handle = context.primary_image_handle().unwrap();
+    assert_eq!(handle.number_of_metadata_blocks(b"Exif"), 1);
+    assert_eq!(handle.number_of_metadata_blocks(b"mime"), 0);
+    let mut ids = [0];
+    assert_eq!(handle.metadata_block_ids(&mut ids, b"Exif"), 1);
+    let exif = handle.metadata(ids[0]).unwrap();
+    let start = 4 + u32::from_be_bytes(exif[..4].try_into().unwrap()) as usize;
+    let tiff = &exif[start..];
+    assert_eq!(&tiff[..8], b"II\x2a\0\x08\0\0\0");
+    assert_eq!(u16::from_le_bytes(tiff[8..10].try_into().unwrap()), 3);
+    let tags: Vec<_> = (0..3)
+        .map(|i| u16::from_le_bytes(tiff[10 + i * 12..12 + i * 12].try_into().unwrap()))
+        .collect();
+    assert_eq!(tags, [282, 283, 296]);
+    // A broken optional metadata pointer must not prevent opening the pixels.
+    let mut malformed = bytes.clone();
+    let offset = malformed
+        .windows(exif.len())
+        .position(|window| window == exif)
+        .unwrap();
+    malformed[offset..offset + 4].copy_from_slice(&u32::MAX.to_be_bytes());
+    let recovered = files::decode_raster_bytes(&malformed, RasterFormat::Heic, &cancel).unwrap();
+    assert_eq!(
+        recovered.resolution(),
+        paint_rust::resolution::Dpi::default()
+    );
+    assert_eq!(recovered.pixels(), document.pixels());
+}

@@ -213,7 +213,8 @@ independent tasks; do not silently reduce the required scope.
 [ ] AVIF density metadata, HDR/associated alpha, grids/animation and broader color variants.
 [x] HEIC primary-image import with native parse/decode limits, grid/crop/orientation and ICC conversion.
 [x] HEIC quality/alpha export with decoded preview, private temporary container and independent HEVC decoder checks.
-[ ] HEIC physical resolution, HDR/associated alpha, sequence editing, broader color variants and tiny-image/alpha Windows interoperability.
+[x] HEIC physical-resolution round trip with bounded EXIF parsing and application-owned density tags.
+[ ] HEIC transformed density-axis audit, HDR/associated alpha, sequence editing, broader color variants and tiny-image/alpha Windows interoperability.
 [ ] JPEG XL lossy export, HDR/associated-alpha import, remaining raster codecs, DDS mip-level import selection/additional block formats and advanced export options.
 [x] Apply all eight EXIF orientations once on raster import.
 [x] Convert embedded raster RGB/grayscale ICC to sRGB and tag supported exports.

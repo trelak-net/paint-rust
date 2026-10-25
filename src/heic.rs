@@ -195,7 +195,43 @@ pub(crate) fn decode(mut reader: impl Read, cancel: &AtomicBool) -> Result<Docum
     if let Some(profile) = profile {
         crate::color_management::convert_to_srgb(&mut pixels, &profile.data, cancel)?;
     }
-    Document::from_pixels(width, height, pixels)
+    let mut document = Document::from_pixels(width, height, pixels)?;
+    if let Some(dpi) = density(&handle) {
+        crate::resolution::write(&mut document.metadata, dpi)?;
+    }
+    Ok(document)
+}
+
+// Metadata is optional. Bound both item count and bytes before allocation.
+fn density(handle: &libheif_rs::ImageHandle) -> Option<crate::resolution::Dpi> {
+    let mut ids = [0; 16];
+    let count = handle.metadata_block_ids(&mut ids, b"Exif");
+    let mut budget = 4 * 1024 * 1024usize;
+    for id in ids.into_iter().take(count) {
+        let size = handle.metadata_size(id);
+        if size > budget {
+            continue;
+        }
+        budget -= size;
+        let Ok(data) = handle.metadata(id) else {
+            continue;
+        };
+        // HEIF EXIF starts with a big-endian offset relative to byte four.
+        let Some(offset) = data
+            .get(..4)
+            .and_then(|b| b.try_into().ok())
+            .map(u32::from_be_bytes)
+        else {
+            continue;
+        };
+        let Some(start) = (offset as usize).checked_add(4) else {
+            continue;
+        };
+        if let Some(dpi) = data.get(start..).and_then(crate::raster_density::read_exif) {
+            return Some(dpi);
+        }
+    }
+    None
 }
 
 pub(crate) fn encode(
@@ -203,6 +239,7 @@ pub(crate) fn encode(
     size: (u32, u32),
     mut writer: impl Write,
     quality: u8,
+    dpi: crate::resolution::Dpi,
     cancel: &AtomicBool,
 ) -> Result<(), String> {
     check(cancel)?;
@@ -258,10 +295,13 @@ pub(crate) fn encode(
         .map_err(|e| e.to_string())?;
     let mut options = EncodingOptions::new().map_err(|e| e.to_string())?;
     options.set_save_alpha_channel(true);
-    let _handle = context
+    let handle = context
         .encode_image(&image, &mut encoder, Some(options))
         .map_err(|e| e.to_string())?;
     check(cancel)?;
+    context
+        .add_exif_metadata(&handle, &crate::raster_density::exif(dpi))
+        .map_err(|e| e.to_string())?;
     // The wrapper's vector writer replaces earlier chunks. Use its file writer
     // and a private temporary file to retain all container chunks correctly.
     let temporary = tempfile::NamedTempFile::new().map_err(|e| e.to_string())?;

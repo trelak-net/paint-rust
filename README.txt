@@ -1791,8 +1791,11 @@ Import selects the primary image and applies container cropping, rotation and
 mirroring once, including supported grid/tile images. Straight alpha and embedded
 RGB/grayscale ICC conversion are supported. Untagged SDR images use sRGB;
 non-sRGB color declarations without ICC, HDR and associated alpha are rejected.
-Burst/sequence editing, physical resolution and broader color variants remain
-pending. Source descriptive metadata is omitted; reopening currently uses 96 DPI.
+Burst/sequence editing and broader color variants remain pending. Physical
+resolution is read from bounded EXIF metadata and written using only XResolution,
+YResolution and ResolutionUnit. Source descriptive metadata is omitted. Missing
+or invalid resolution uses 96 DPI; density-axis behavior of externally rotated
+files remains pending verification.
 
 Export uses a host HEVC encoder, preserves alpha, embeds sRGB ICC and provides
 a quality slider and decoded-output preview. The x265 backend uses 4:4:4 chroma,

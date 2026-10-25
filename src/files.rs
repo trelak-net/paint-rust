@@ -559,6 +559,7 @@ fn encode_raster_options(
                 cancel,
             },
             options.quality,
+            options.dpi,
             cancel,
         );
     }

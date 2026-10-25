@@ -86,13 +86,13 @@ impl Editor {
             } else if matches!(dialog.options.format,files::RasterFormat::Bmp | files::RasterFormat::Tga | files::RasterFormat::Gif | files::RasterFormat::Dds) {
                 "Colors use sRGB; this format is saved without an embedded profile."
             } else { "Colors use sRGB; an ICC profile is embedded. Source EXIF, location and author tags are omitted." });
-            if matches!(dialog.options.format, files::RasterFormat::Dds | files::RasterFormat::Gif | files::RasterFormat::Tga | files::RasterFormat::Avif | files::RasterFormat::Heic) {
+            if matches!(dialog.options.format, files::RasterFormat::Dds | files::RasterFormat::Gif | files::RasterFormat::Tga | files::RasterFormat::Avif) {
                 ui.small("Physical resolution is not stored in this format; reopening uses 96 DPI.");
             } else {
                 ui.small(format!("Physical resolution: {:.2} × {:.2} DPI.", dialog.options.dpi.x, dialog.options.dpi.y));
             }
             let mut changed=false;
-            if matches!(dialog.options.format, files::RasterFormat::Jpeg | files::RasterFormat::Avif | files::RasterFormat::Heic) {
+            if matches!(dialog.options.format, files::RasterFormat::Jpeg | files::RasterFormat::Avif) {
                 changed |= ui.add(egui::Slider::new(&mut dialog.options.quality,1..=100).text("Quality")).changed();
             }
             if matches!(dialog.options.format,files::RasterFormat::Jpeg | files::RasterFormat::Bmp | files::RasterFormat::Gif) {
