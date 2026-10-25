@@ -71,7 +71,8 @@ impl Editor {
         let mut keep = true;
         let mut save = None;
         let mut open = true;
-        egui::Window::new(format!("{} {}",if dialog.save_document {"Save"} else {"Export"},dialog.options.format.label())).collapsible(false).resizable(true).vscroll(true).max_height((ctx.content_rect().height()-80.0).max(180.0)).default_width(540.0).open(&mut open).show(ctx,|ui| {
+        egui::Window::new(format!("{} {}",if dialog.save_document {"Save"} else {"Export"},dialog.options.format.label())).collapsible(false).resizable(true).vscroll(false).anchor(egui::Align2::CENTER_CENTER, Vec2::ZERO).max_height((ctx.content_rect().height()-80.0).max(180.0)).default_width(540.0).open(&mut open).show(ctx,|ui| {
+            egui::ScrollArea::vertical().max_height((ctx.content_rect().height()-220.0).max(100.0)).show(ui, |ui| {
             ui.add(egui::Label::new(dialog.path.display().to_string()).truncate()).on_hover_text(dialog.path.display().to_string());
             if dialog.save_document {
                 ui.label("Saving as a raster replaces the current document with the flattened decoded image. You can undo this after saving.");
@@ -114,6 +115,8 @@ impl Editor {
                 ui.label(format!("{} × {} px — {} bytes",dialog.dimensions.0,dialog.dimensions.1,bytes.len()));
             } else if let Some(error)=&dialog.error { ui.colored_label(ui.visuals().error_fg_color,error); }
             else { ui.label("Encoding preview…"); ui.ctx().request_repaint_after(std::time::Duration::from_millis(100)); }
+            });
+            ui.separator();
             ui.horizontal(|ui| {
                 if ui.add_enabled(dialog.preview.ready && dialog.encoded.is_some() && (!dialog.save_document || dialog.flatten_confirmed),egui::Button::new(if dialog.save_document {"Save image"} else {"Save export"})).clicked() {
                     save=dialog.encoded.take(); keep=false;
@@ -142,6 +145,63 @@ impl Editor {
                 .after_save
                 .take()
                 .filter(|action| !matches!(action, Action::SaveAll));
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn raster_save_actions_remain_visible_below_scrolling_preview() {
+        for size in [egui::vec2(800.0, 600.0), egui::vec2(640.0, 360.0)] {
+            for format in [files::RasterFormat::Gif, files::RasterFormat::Jpeg] {
+                let ctx = egui::Context::default();
+                let mut editor = Editor::blank(&ctx);
+                editor.document = Document::new(512, 320, [40, 80, 120, 255]).unwrap();
+                editor.begin_raster_save(
+                    PathBuf::from("/tmp/example-output-image").with_extension(format.extension()),
+                    format,
+                );
+                let input = || egui::RawInput {
+                    screen_rect: Some(Rect::from_min_size(Pos2::ZERO, size)),
+                    ..Default::default()
+                };
+                let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+                while !editor.export_dialog.as_ref().unwrap().preview.ready {
+                    let _ = ctx.run(input(), |ctx| editor.show_export(ctx));
+                    assert!(
+                        std::time::Instant::now() < deadline,
+                        "Export preview timed out"
+                    );
+                    std::thread::sleep(std::time::Duration::from_millis(5));
+                }
+                for _ in 0..2 {
+                    let _ = ctx.run(input(), |ctx| editor.show_export(ctx));
+                }
+                let output = ctx.run(input(), |ctx| editor.show_export(ctx));
+                let mut labels = Vec::new();
+                for clipped in output.shapes {
+                    if let egui::Shape::Text(text) = clipped.shape
+                        && ["Save image", "Cancel"].contains(&text.galley.job.text.as_str())
+                    {
+                        let bounds = Rect::from_min_size(text.pos, text.galley.size());
+                        assert!(
+                            ctx.content_rect().contains_rect(bounds),
+                            "{} outside window at {size:?}: {bounds:?}",
+                            text.galley.job.text
+                        );
+                        assert!(
+                            clipped.clip_rect.contains_rect(bounds),
+                            "{} clipped at {size:?}",
+                            text.galley.job.text
+                        );
+                        labels.push(text.galley.job.text.clone());
+                    }
+                }
+                assert_eq!(labels, ["Save image", "Cancel"]);
+                assert!(!editor.document.dirty());
+            }
         }
     }
 }
