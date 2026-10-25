@@ -934,5 +934,7 @@ background preview, cooperative cancellation, undo and session parameter recall.
 Exact external transfer-function and color-space comparisons remain pending.
 
 Native validation after retouch tools: two isolated desktop launches and clean
-closes preserved floating-panel layout. Screenshot review identified crowding in
-the floating tools palette; compact layout work remains required.
+closes preserved floating-panel layout. The tools palette now uses two to four
+columns according to its width, with a wider and shorter default. A second pair
+of launches and screenshot review confirmed all nineteen tools remain visible in
+the default floating layout. Existing custom panel geometry is preserved.

@@ -36,8 +36,11 @@ impl Editor {
                 (Tool::Ellipse, Icon::Ellipse, "Ellipse", "O"),
             ];
             if self.panel_layout.floating {
+                let columns = ((ui.available_width() + 3.0) / 35.0)
+                    .floor()
+                    .clamp(2.0, 4.0) as usize;
                 egui::Grid::new("compact-tools")
-                    .num_columns(2)
+                    .num_columns(columns)
                     .spacing(Vec2::splat(3.0))
                     .show(ui, |ui| {
                         for (index, (tool, icon, label, shortcut)) in choices.iter().enumerate() {
@@ -59,7 +62,7 @@ impl Editor {
                             {
                                 self.tool = *tool;
                             }
-                            if index % 2 == 1 {
+                            if (index + 1) % columns == 0 {
                                 ui.end_row();
                             }
                         }
@@ -408,7 +411,7 @@ impl Editor {
                 let rect = self.panel_layout.rects[index].unwrap_or(Rect::from_min_size(
                     position,
                     if index == 0 {
-                        Vec2::new(100.0, 290.0)
+                        Vec2::new(150.0, 240.0)
                     } else {
                         Vec2::new(210.0, 260.0)
                     },
