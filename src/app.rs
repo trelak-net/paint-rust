@@ -9,6 +9,7 @@ mod file_operations;
 mod help;
 mod histogram;
 mod lasso;
+mod new_image;
 mod panels;
 mod paste;
 mod preferences;
@@ -192,6 +193,9 @@ pub struct Editor {
     transform_drag: Option<transform_handles::TransformDrag>,
     new_width: u32,
     new_height: u32,
+    new_dpi: paint_rust::resolution::Dpi,
+    new_units: paint_rust::resolution::Unit,
+    new_link_resolution: bool,
     transparent: bool,
     allow_close: bool,
     suppress_stroke: bool,
@@ -348,6 +352,9 @@ impl Editor {
             transform_drag: None,
             new_width: 960,
             new_height: 640,
+            new_dpi: Default::default(),
+            new_units: Default::default(),
+            new_link_resolution: true,
             transparent: false,
             allow_close: false,
             suppress_stroke: false,
@@ -925,6 +932,10 @@ impl Editor {
     }
 
     fn shortcuts(&mut self, ctx: &egui::Context) {
+        if self.new_dialog && ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::Escape)) {
+            self.new_dialog = false;
+            return;
+        }
         if self.about.open && ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::Escape)) {
             self.about.open = false;
             return;
@@ -3119,52 +3130,7 @@ impl Editor {
                 }
             }
         }
-        if self.new_dialog {
-            egui::Window::new("New image")
-                .collapsible(false)
-                .resizable(false)
-                .anchor(egui::Align2::CENTER_CENTER, Vec2::ZERO)
-                .show(ctx, |ui| {
-                    ui.horizontal(|ui| {
-                        let label = ui.label("Width");
-                        ui.add(
-                            egui::DragValue::new(&mut self.new_width)
-                                .range(1..=4096)
-                                .suffix(" px"),
-                        )
-                        .labelled_by(label.id);
-                    });
-                    ui.horizontal(|ui| {
-                        let label = ui.label("Height");
-                        ui.add(
-                            egui::DragValue::new(&mut self.new_height)
-                                .range(1..=4096)
-                                .suffix(" px"),
-                        )
-                        .labelled_by(label.id);
-                    });
-                    ui.checkbox(&mut self.transparent, "Transparent background");
-                    ui.horizontal(|ui| {
-                        if ui.button("Create").clicked() {
-                            match Document::new(
-                                self.new_width,
-                                self.new_height,
-                                if self.transparent { [0; 4] } else { [255; 4] },
-                            ) {
-                                Ok(document) => {
-                                    self.install_document(document, None);
-                                    self.new_dialog = false;
-                                    self.status = "New image created".into();
-                                }
-                                Err(error) => self.status = error,
-                            }
-                        }
-                        if ui.button("Cancel").clicked() {
-                            self.new_dialog = false;
-                        }
-                    });
-                });
-        }
+        self.show_new_image(ctx);
     }
 }
 

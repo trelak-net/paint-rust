@@ -117,3 +117,11 @@ Help > About Paint Rust shows the installed version, package identifier and
 platform. Copy version information when reporting a problem. The MIT, Apache 2.0
 and Third-party notices tabs are available offline; full dependency license
 files accompany the application distribution.
+
+New image dimensions
+File > New supports pixels, inches and centimeters. Set DPI before entering a
+physical width or height; changing DPI later preserves the pixel dimensions.
+Unlink X/Y resolution for independent axes. The pixel-size and layer-memory
+readouts show the actual raster to be created. Each side may reach 16,384 pixels,
+subject to the total limit of 16,777,216 pixels; invalid combinations disable
+Create. Cancel or Escape leaves the current document unchanged.

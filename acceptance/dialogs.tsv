@@ -1,7 +1,7 @@
 Dialog	Status	Current implementation or gap
 Updates	missing	Distribution/update workflow pending
-Image size	partial	Pixel dimensions; physical resolution pending
-Resize	partial	Dimensions/aspect/sampling controls
+Image size	partial	Pixel/physical dimensions and independent DPI; remaining presentation audit
+Resize	partial	Pixel/physical/percentage dimensions, DPI, aspect and eight sampling choices; remaining presentation audit
 Save configuration	partial	Decoded preview, exact byte count, JPEG quality and matte controls; advanced formats pending
 About	supported	Version/package/platform information, copy action and offline project license/third-party notice tabs
 Canvas size	partial	Pixel dimensions, anchors and background options
@@ -11,7 +11,7 @@ Task progress	partial	Cancellation and status; detailed progress reporting pendi
 Unsaved changes	supported	Save/discard/cancel across documents
 Error details	partial	Persistent session error details for background operations with selection/copy/clear; remaining synchronous-error coverage pending
 Layer properties	partial	Name, opacity and blend mode; exact presentation pending
-New image	partial	Pixel dimensions and fill; unit/DPI settings pending
+New image	supported	Pixel/inch/centimeter dimensions, linked or independent DPI, fill, pixel/memory preview and size validation
 Settings	partial	Theme/grid/brush and recent-file persistence plus panel/palette settings; remaining general preferences pending
 Text	partial	Draft, font, alignment, spacing, preview/apply/cancel
 Effect settings	partial	Shared live-preview dialogs; filter inventory incomplete

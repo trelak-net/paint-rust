@@ -234,6 +234,7 @@ independent tasks; do not silently reduce the required scope.
 [ ] Remaining general preferences.
 [x] Window document list and embedded English guide/shortcut reference under Help/F1.
 [x] About dialog with version/platform copy and offline project license/third-party notice tabs.
+[x] New-image physical units, linked/independent DPI, pixel and memory preview, and size validation before allocation.
 [ ] English/Polish localization and expanded user documentation.
 [ ] Installation/update validation across Linux desktop environments.
 12. Final acceptance
