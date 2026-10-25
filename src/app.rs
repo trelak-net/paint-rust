@@ -193,6 +193,7 @@ pub struct Editor {
     gesture_preview: Option<EffectDialog>,
     keep_shape_editable: bool,
     shape_edit: Option<paint_rust::shapes::Parameters>,
+    curve_controls: Option<[(f32, f32); 2]>,
     transform_drag: Option<transform_handles::TransformDrag>,
     new_width: u32,
     new_height: u32,
@@ -354,6 +355,7 @@ impl Editor {
             gesture_preview: None,
             keep_shape_editable: false,
             shape_edit: None,
+            curve_controls: None,
             transform_drag: None,
             new_width: 960,
             new_height: 640,
@@ -3187,6 +3189,7 @@ impl Editor {
         }
         if self.gesture_preview.is_some() && ctx.input(|i| i.viewport().close_requested()) {
             self.shape_edit = None;
+            self.curve_controls = None;
             self.gesture_preview = None;
             self.document.cancel();
             self.last_point = None;

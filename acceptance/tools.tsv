@@ -14,7 +14,7 @@ Color picker	partial	K	I	Single-pixel color sampling	Sampling radius, scope and 
 Fill	partial	F	F	Tolerance, connectivity, sampling and selection barriers	Reference tolerance matching and patterned fill
 Gradient	partial	G	G	Five geometries and blend/replace/transparency modes	Persistent endpoint editing and exact interpolation/color space
 Line/curve	partial	O	L	Straight line with constrained angles	Editable curves, joins, caps, dashes and arrows
-Shapes	partial	O	U / R / O	Thirty-three geometries, outline/fill/combined modes, antialiasing and optional persistent resize/move handles	Rotation handles, curves and exact reference coverage
+Shapes	partial	O	U / R / O	Thirty-three geometries, outline/fill/combined modes, antialiasing and optional persistent resize/move handles	Rotation handles, joined paths and exact reference coverage
 Text	partial	T	T	Installed/file font selection, variable axes, shaping, decorations, outline fallback, alignment, spacing and antialiasing	Fallback style/axis matching, color-font rendering, line-height expansion and external typography audit
 Clone stamp	partial	L	C	Ctrl-click source layer identity, aligned/unaligned cloning, frozen merged sampling and brush controls	External coverage and source-marker behavior audit
 Recolor	partial	R	J	RGB tolerance, primary/secondary replacement, alpha preservation and brush controls	Reference matching, shading preservation and sampling controls

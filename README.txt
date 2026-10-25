@@ -1064,7 +1064,7 @@ corner handles resize it, the center handle translates it, and Edit shape offers
 numeric endpoints, geometry, width, colors and antialiasing. Apply/Enter commits
 one history entry; Cancel/Escape restores the original layer. Other document
 operations remain unavailable until the draft finishes. The option is session-
-local and off by default. Rotation handles, editable curves and exact reference
+local and off by default. Rotation handles, joined paths and exact reference
 coverage remain pending. Native pointer automation for the retained-shape dialog
 remains unverified on the current compositor; synthetic UI-event tests cover
 release retention, handle translation, apply/cancel and one-step undo.
@@ -1876,5 +1876,9 @@ collinear reversals and coincident-endpoint loops. Work is capped at 4096 segmen
 and 16 subdivision levels; control coordinates are limited to +/-32768 pixels.
 Segments share one stroke-coverage buffer, so joins do not accumulate opacity.
 Selection clipping, antialiasing, blend mode and cancellation use the brush kernel.
-The geometry is excluded from repeat-effect settings. Interactive controls are
-a separate integration step.
+The geometry is excluded from repeat-effect settings. Enable Edit after drawing
+for the Line tool, draw an initial line, and enable Cubic curve in Edit shape.
+Two additional canvas handles and numeric X/Y controls define its curvature.
+The center handle translates all four points. Apply and Cancel retain the same
+single-transaction behavior as other shapes. Joined paths, closed-path fill and
+additional spline modes remain pending.

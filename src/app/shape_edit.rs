@@ -10,6 +10,7 @@ impl Editor {
             return false;
         };
         self.shape_edit = Some(parameters);
+        self.curve_controls = None;
         self.last_point = None;
         self.shape_origin = None;
         true
@@ -18,6 +19,7 @@ impl Editor {
         if self.shape_edit.take().is_none() {
             return;
         }
+        self.curve_controls = None;
         if apply {
             self.finish_stroke();
         } else {
@@ -28,6 +30,20 @@ impl Editor {
             self.texture_dirty = true;
             self.status = "Shape cancelled".into();
         }
+    }
+    fn request_shape_edit_preview(&mut self, parameters: paint_rust::shapes::Parameters) {
+        let effect = if let Some(controls) = self
+            .curve_controls
+            .filter(|_| parameters.shape == Shape::Line)
+        {
+            Effect::Bezier(paint_rust::bezier::Parameters {
+                points: [parameters.from, controls[0], controls[1], parameters.to],
+                style: parameters.style,
+            })
+        } else {
+            Effect::Shape(parameters)
+        };
+        self.request_gesture_preview(effect);
     }
     pub(super) fn shape_handles(&mut self, ui: &mut egui::Ui, rect: Rect) {
         let Some(mut parameters) = self.shape_edit else {
@@ -44,7 +60,21 @@ impl Editor {
             egui::Stroke::new(1.0_f32, Color32::WHITE),
             egui::StrokeKind::Outside,
         );
-        let handles: Vec<(Pos2, i32, i32)> = if parameters.shape == Shape::Line {
+        let handles: Vec<(Pos2, i32, i32)> = if let Some(controls) = self.curve_controls {
+            let controls = controls.map(to_screen);
+            painter.line_segment(
+                [from, controls[0]],
+                egui::Stroke::new(1.0_f32, Color32::GRAY),
+            );
+            painter.line_segment([controls[1], to], egui::Stroke::new(1.0_f32, Color32::GRAY));
+            vec![
+                (from, 0, 0),
+                (controls[0], 3, 0),
+                (controls[1], 4, 0),
+                (to, 2, 2),
+                (from.lerp(to, 0.5), 1, 1),
+            ]
+        } else if parameters.shape == Shape::Line {
             vec![(from, 0, 0), (to, 2, 2), (from.lerp(to, 0.5), 1, 1)]
         } else {
             (0..3)
@@ -71,18 +101,31 @@ impl Editor {
             );
             painter.circle_filled(position, 4.0, Color32::WHITE);
             painter.circle_stroke(position, 4.0, egui::Stroke::new(1.5_f32, Color32::BLACK));
-            response.clone().on_hover_text(if x == 1 && y == 1 {
+            response.clone().on_hover_text(if x >= 3 {
+                "Curve control point"
+            } else if x == 1 && y == 1 {
                 "Move shape"
             } else {
                 "Resize shape"
             });
             if response.dragged() {
                 let delta = ui.input(|i| i.pointer.delta()) / self.zoom;
-                if x == 1 && y == 1 {
+                if x >= 3 {
+                    if let Some(controls) = &mut self.curve_controls {
+                        controls[(x - 3) as usize].0 += delta.x;
+                        controls[(x - 3) as usize].1 += delta.y;
+                    }
+                } else if x == 1 && y == 1 {
                     parameters.from.0 += delta.x;
                     parameters.to.0 += delta.x;
                     parameters.from.1 += delta.y;
                     parameters.to.1 += delta.y;
+                    if let Some(controls) = &mut self.curve_controls {
+                        for point in controls {
+                            point.0 += delta.x;
+                            point.1 += delta.y;
+                        }
+                    }
                 } else {
                     if x == 0 {
                         parameters.from.0 += delta.x;
@@ -101,8 +144,18 @@ impl Editor {
             }
         }
         if changed {
+            for point in [&mut parameters.from, &mut parameters.to] {
+                point.0 = point.0.clamp(-32768.0, 32768.0);
+                point.1 = point.1.clamp(-32768.0, 32768.0);
+            }
+            if let Some(controls) = &mut self.curve_controls {
+                for point in controls {
+                    point.0 = point.0.clamp(-32768.0, 32768.0);
+                    point.1 = point.1.clamp(-32768.0, 32768.0);
+                }
+            }
             self.shape_edit = Some(parameters);
-            self.request_gesture_preview(Effect::Shape(parameters));
+            self.request_shape_edit_preview(parameters);
         }
     }
     pub(super) fn show_shape_edit(&mut self, ctx: &egui::Context) {
@@ -110,6 +163,7 @@ impl Editor {
             return;
         };
         let before = parameters;
+        let before_controls = self.curve_controls;
         let mut open = true;
         let mut apply = false;
         let mut cancel = false;
@@ -135,6 +189,40 @@ impl Editor {
                                     );
                                 }
                             });
+                        if parameters.shape == Shape::Line {
+                            let mut curved = self.curve_controls.is_some();
+                            if ui.checkbox(&mut curved, "Cubic curve").changed() {
+                                self.curve_controls = curved.then(|| {
+                                    [1.0 / 3.0, 2.0 / 3.0].map(|t| {
+                                        (
+                                            parameters.from.0
+                                                + (parameters.to.0 - parameters.from.0) * t,
+                                            parameters.from.1
+                                                + (parameters.to.1 - parameters.from.1) * t,
+                                        )
+                                    })
+                                });
+                            }
+                        } else {
+                            self.curve_controls = None;
+                        }
+                        if let Some(controls) = &mut self.curve_controls {
+                            for (index, point) in controls.iter_mut().enumerate() {
+                                ui.horizontal(|ui| {
+                                    ui.label(format!("Control {}", index + 1));
+                                    ui.add(
+                                        egui::DragValue::new(&mut point.0)
+                                            .range(-32768.0..=32768.0)
+                                            .prefix("X "),
+                                    );
+                                    ui.add(
+                                        egui::DragValue::new(&mut point.1)
+                                            .range(-32768.0..=32768.0)
+                                            .prefix("Y "),
+                                    );
+                                });
+                            }
+                        }
                         for (label, point) in
                             [("Start", &mut parameters.from), ("End", &mut parameters.to)]
                         {
@@ -183,9 +271,9 @@ impl Editor {
             self.finish_shape_edit(false);
             return;
         }
-        if parameters != before {
+        if parameters != before || self.curve_controls != before_controls {
             self.shape_edit = Some(parameters);
-            self.request_gesture_preview(Effect::Shape(parameters));
+            self.request_shape_edit_preview(parameters);
         }
         if apply {
             self.finish_shape_edit(true);
@@ -305,5 +393,52 @@ mod tests {
         assert_eq!(result.to, (58.0, 54.0));
         assert!(!editor.document.can_undo());
         editor.finish_shape_edit(false);
+    }
+    #[test]
+    fn editable_curve_applies_latest_controls_and_clears_draft_state() {
+        let ctx = egui::Context::default();
+        let mut editor = draft(&ctx);
+        let mut parameters = editor.shape_edit.unwrap();
+        parameters.shape = Shape::Line;
+        parameters.from = (8.0, 32.0);
+        parameters.to = (56.0, 32.0);
+        editor.shape_edit = Some(parameters);
+        editor.curve_controls = Some([(8.0, 0.0), (56.0, 64.0)]);
+        editor.request_shape_edit_preview(parameters);
+        let expected = paint_rust::bezier::render(
+            &vec![[0; 4]; 64 * 64],
+            64,
+            64,
+            None,
+            paint_rust::bezier::Parameters {
+                points: [parameters.from, (8.0, 0.0), (56.0, 64.0), parameters.to],
+                style: parameters.style,
+            },
+            &std::sync::atomic::AtomicBool::new(false),
+        )
+        .unwrap();
+        assert!(matches!(
+            editor.gesture_preview.as_ref().unwrap().effect,
+            Effect::Bezier(_)
+        ));
+        editor.finish_shape_edit(true);
+        assert!(editor.curve_controls.is_none());
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        while editor.file_job.is_some() {
+            editor.poll_file_job(&ctx);
+            assert!(std::time::Instant::now() < deadline);
+            std::thread::sleep(std::time::Duration::from_millis(2));
+        }
+        assert_eq!(editor.document.pixels(), expected);
+        assert_eq!(editor.document.history().count(), 1);
+        editor.undo();
+        assert!(!editor.document.dirty());
+        assert!(
+            editor
+                .document
+                .pixels()
+                .iter()
+                .all(|pixel| *pixel == [0; 4])
+        );
     }
 }

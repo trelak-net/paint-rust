@@ -133,3 +133,9 @@ handle to move it. The Edit shape window also accepts exact endpoints and change
 to shape, colors, outline width, fill and antialiasing. Apply (or Enter outside a
 text field) commits one undo step; Cancel or Escape discards the entire draft.
 The option lasts for the current session.
+
+Draw a curve
+Select Line and enable Edit after drawing. Draw the initial segment, then enable
+Cubic curve in Edit shape. Drag either control handle, or enter its X/Y position,
+to bend the curve. The center handle moves the complete curve. Apply creates one
+undo step; Cancel removes the draft. Curves are stroked rather than filled.
