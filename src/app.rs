@@ -4775,8 +4775,9 @@ mod tests {
                 }],
             );
             assert!(editor.tool == Tool::Pencil);
-            let start = Pos2::new(350.0, 200.0);
-            let end = Pos2::new(370.0, 200.0);
+            frame(&mut editor, &ctx, vec![]);
+            let start = editor.canvas_viewport.min + Vec2::new(100.0, 100.0);
+            let end = start + Vec2::new(20.0, 0.0);
             let event = |pos, pressed| egui::Event::PointerButton {
                 pos,
                 button,
