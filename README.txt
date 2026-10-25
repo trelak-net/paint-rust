@@ -1061,3 +1061,14 @@ strong red dominance and should be restricted to the eye selection. Both retain
 alpha. All six effects share cancellable previews, selection output masks, undo
 and session parameter recall. Determinism, identity, alpha, selection and invalid
 parameters are tested; movable centers and external output comparisons remain.
+
+Color wheel
+-----------
+The Colors panel includes an expandable hue wheel and saturation/value field for
+primary or secondary color, plus an alpha slider. The vector mesh is authored in
+code for this project. Hue remains selected when saturation/value reaches zero,
+so a new hue can be chosen before restoring color from gray or black. Numeric
+HSV controls share that retained hue. Popup color pickers also retain transient
+HSV state without quantizing stored RGBA during idle frames. Pointer tests verify
+hue selection on black, subsequent saturation/value editing and alpha retention.
+Numeric RGB/HSV/HEX controls remain available for keyboard input.

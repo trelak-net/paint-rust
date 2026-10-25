@@ -132,6 +132,7 @@ impl Editor {
             self.secondary_color = Rgba::WHITE;
         }
         self.palette_actions(ui);
+        self.color_wheel(ui);
         self.color_channels(ui);
         ui.label(format!(
             "#{:02X}{:02X}{:02X}",

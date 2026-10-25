@@ -33,7 +33,12 @@ impl Rgba {
         Self(hsv.to_srgba_unmultiplied())
     }
     pub fn edit(&mut self, ui: &mut egui::Ui) -> egui::Response {
-        let mut hsv = self.hsva();
+        let id = ui.next_auto_id().with("straight-color-hsv");
+        let cached = ui.data_mut(|data| data.get_temp::<(Rgba, egui::ecolor::Hsva)>(id));
+        let mut hsv = match cached {
+            Some((previous, hsv)) if previous == *self => hsv,
+            _ => self.hsva(),
+        };
         let response = egui::color_picker::color_edit_button_hsva(
             ui,
             &mut hsv,
@@ -42,6 +47,7 @@ impl Rgba {
         if response.changed() {
             *self = Self::from_hsva(hsv);
         }
+        ui.data_mut(|data| data.insert_temp(id, (*self, hsv)));
         response
     }
 }
@@ -68,6 +74,9 @@ pub(super) struct ColorPanel {
     secondary: bool,
     hex: String,
     last_color: Option<(bool, Rgba)>,
+    wheel_hues: [f32; 2],
+    wheel_colors: [Option<Rgba>; 2],
+    wheel_drag_hue: Option<bool>,
 }
 impl Default for ColorPanel {
     fn default() -> Self {
@@ -84,6 +93,9 @@ impl Default for ColorPanel {
             secondary: false,
             hex: String::new(),
             last_color: None,
+            wheel_hues: [0.0; 2],
+            wheel_colors: [None; 2],
+            wheel_drag_hue: None,
         }
     }
 }
@@ -135,6 +147,107 @@ fn encode_palette(colors: &[Rgba]) -> String {
     text
 }
 impl ColorPanel {
+    fn wheel_ui(&mut self, ui: &mut egui::Ui, color: &mut Rgba) -> Rect {
+        let index = usize::from(self.secondary);
+        let mut hsv = color.hsva();
+        if self.wheel_colors[index] != Some(*color) && hsv.s > 0.0 && hsv.v > 0.0 {
+            self.wheel_hues[index] = hsv.h;
+        }
+        hsv.h = self.wheel_hues[index];
+        let (rect, response) = ui.allocate_exact_size(Vec2::splat(160.0), Sense::click_and_drag());
+        response.widget_info(|| {
+            egui::WidgetInfo::labeled(
+                egui::WidgetType::Other,
+                response.enabled(),
+                "Hue wheel and saturation/value field; numeric controls below",
+            )
+        });
+        let center = rect.center();
+        let square = Rect::from_center_size(center, Vec2::splat(80.0));
+        if let Some(pointer) = response.interact_pointer_pos() {
+            if response.drag_started()
+                || response.clicked()
+                || ui.input(|i| i.pointer.primary_pressed()) && response.hovered()
+            {
+                let distance = pointer.distance(center);
+                self.wheel_drag_hue = if (58.0..=78.0).contains(&distance) {
+                    Some(true)
+                } else if square.contains(pointer) {
+                    Some(false)
+                } else {
+                    None
+                };
+            }
+            if (response.dragged() || response.clicked() || response.is_pointer_button_down_on())
+                && let Some(hue) = self.wheel_drag_hue
+            {
+                if hue {
+                    let delta = pointer - center;
+                    hsv.h = (delta.y.atan2(delta.x) / std::f32::consts::TAU).rem_euclid(1.0);
+                    self.wheel_hues[index] = hsv.h;
+                } else {
+                    hsv.s = ((pointer.x - square.left()) / square.width()).clamp(0.0, 1.0);
+                    hsv.v = (1.0 - (pointer.y - square.top()) / square.height()).clamp(0.0, 1.0);
+                }
+                *color = Rgba::from_hsva(hsv);
+            }
+        }
+        if !ui.input(|i| i.pointer.primary_down()) {
+            self.wheel_drag_hue = None;
+        }
+        self.wheel_colors[index] = Some(*color);
+        let mut mesh = egui::Mesh::default();
+        for step in 0..=96 {
+            let h = step as f32 / 96.0;
+            let angle = h * std::f32::consts::TAU;
+            let direction = Vec2::new(angle.cos(), angle.sin());
+            let color = Color32::from(egui::ecolor::Hsva::new(h, 1.0, 1.0, 1.0));
+            mesh.colored_vertex(center + direction * 59.0, color);
+            mesh.colored_vertex(center + direction * 75.0, color);
+            if step > 0 {
+                let i = (step * 2) as u32;
+                mesh.add_triangle(i - 2, i - 1, i);
+                mesh.add_triangle(i - 1, i + 1, i);
+            }
+        }
+        let base = mesh.vertices.len() as u32;
+        for y in 0..=12 {
+            for x in 0..=12 {
+                let s = x as f32 / 12.0;
+                let v = 1.0 - y as f32 / 12.0;
+                mesh.colored_vertex(
+                    Pos2::new(
+                        square.left() + s * square.width(),
+                        square.top() + (1.0 - v) * square.height(),
+                    ),
+                    Color32::from(egui::ecolor::Hsva::new(hsv.h, s, v, 1.0)),
+                );
+                if x > 0 && y > 0 {
+                    let i = base + y * 13 + x;
+                    mesh.add_triangle(i - 14, i - 13, i - 1);
+                    mesh.add_triangle(i - 13, i, i - 1);
+                }
+            }
+        }
+        ui.painter().add(egui::Shape::mesh(mesh));
+        let angle = hsv.h * std::f32::consts::TAU;
+        for point in [
+            center + Vec2::new(angle.cos(), angle.sin()) * 67.0,
+            Pos2::new(
+                square.left() + hsv.s * square.width(),
+                square.bottom() - hsv.v * square.height(),
+            ),
+        ] {
+            ui.painter()
+                .circle_stroke(point, 4.0, egui::Stroke::new(3.0_f32, Color32::BLACK));
+            ui.painter()
+                .circle_stroke(point, 4.0, egui::Stroke::new(1.0_f32, Color32::WHITE));
+        }
+        ui.add(egui::Slider::new(&mut color.0[3], 0..=255).text("Alpha"));
+        self.wheel_colors[index] = Some(*color);
+        rect
+    }
+
     fn read(path: &std::path::Path) -> Result<Vec<Rgba>, String> {
         use std::io::Read;
         let file = std::fs::File::open(path).map_err(|e| e.to_string())?;
@@ -177,6 +290,21 @@ impl ColorPanel {
     }
 }
 impl Editor {
+    pub(super) fn color_wheel(&mut self, ui: &mut egui::Ui) {
+        egui::CollapsingHeader::new("Color wheel").show(ui, |ui| {
+            ui.horizontal(|ui| {
+                ui.selectable_value(&mut self.color_panel.secondary, false, "Primary");
+                ui.selectable_value(&mut self.color_panel.secondary, true, "Secondary");
+            });
+            let color = if self.color_panel.secondary {
+                &mut self.secondary_color
+            } else {
+                &mut self.color
+            };
+            self.color_panel.wheel_ui(ui, color);
+        });
+    }
+
     pub(super) fn color_channels(&mut self, ui: &mut egui::Ui) {
         egui::CollapsingHeader::new("Color channels").show(ui, |ui| {
             ui.horizontal(|ui| {
@@ -208,7 +336,13 @@ impl Editor {
             if changed {
                 *color = Rgba::from_rgba_unmultiplied(rgba[0], rgba[1], rgba[2], rgba[3]);
             }
-            let hsva = color.hsva();
+            let index = usize::from(self.color_panel.secondary);
+            let mut hsva = color.hsva();
+            if hsva.s == 0.0 || hsva.v == 0.0 {
+                hsva.h = self.color_panel.wheel_hues[index];
+            } else {
+                self.color_panel.wheel_hues[index] = hsva.h;
+            }
             let mut hsv = [hsva.h * 360.0, hsva.s * 100.0, hsva.v * 100.0];
             let mut changed = false;
             egui::Grid::new("hsv-inputs").num_columns(2).show(ui, |ui| {
@@ -236,6 +370,8 @@ impl Editor {
                     hsv[2] / 100.0,
                     hsva.a,
                 ));
+                self.color_panel.wheel_hues[index] = hsv[0] / 360.0;
+                self.color_panel.wheel_colors[index] = Some(*color);
             }
             let key = (self.color_panel.secondary, *color);
             if self.color_panel.last_color != Some(key) {
@@ -323,6 +459,56 @@ impl Editor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn wheel_edits_hue_preserves_alpha_and_remembers_hue_for_black() {
+        let ctx = egui::Context::default();
+        let mut panel = ColorPanel::default();
+        let mut color = Rgba::from_rgba_unmultiplied(0, 0, 0, 37);
+        let frame = |events: Vec<egui::Event>, panel: &mut ColorPanel, color: &mut Rgba| {
+            let mut rect = Rect::NOTHING;
+            let _ = ctx.run(
+                egui::RawInput {
+                    screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(400.0, 400.0))),
+                    events,
+                    ..Default::default()
+                },
+                |ctx| {
+                    egui::CentralPanel::default().show(ctx, |ui| {
+                        rect = panel.wheel_ui(ui, color);
+                    });
+                },
+            );
+            rect
+        };
+        let rect = frame(vec![], &mut panel, &mut color);
+        let click = |point: Pos2, pressed| {
+            vec![
+                egui::Event::PointerMoved(point),
+                egui::Event::PointerButton {
+                    pos: point,
+                    pressed,
+                    button: egui::PointerButton::Primary,
+                    modifiers: egui::Modifiers::NONE,
+                },
+            ]
+        };
+        let hue = rect.center() - Vec2::new(67.0, 0.0);
+        for pressed in [true, false] {
+            frame(click(hue, pressed), &mut panel, &mut color);
+        }
+        assert_eq!(color.to_srgba_unmultiplied(), [0, 0, 0, 37]);
+        assert!((panel.wheel_hues[0] - 0.5).abs() < 0.01);
+        frame(vec![], &mut panel, &mut color);
+        let bright = rect.center() + Vec2::new(40.0, -40.0);
+        for pressed in [true, false] {
+            frame(click(bright, pressed), &mut panel, &mut color);
+        }
+        assert_eq!(color.to_srgba_unmultiplied(), [0, 255, 255, 37]);
+        let before = color;
+        frame(vec![], &mut panel, &mut color);
+        assert_eq!(color, before);
+    }
+
     #[test]
     fn straight_rgba_retains_hidden_rgb_and_all_alpha_values() {
         for alpha in 0..=255 {
