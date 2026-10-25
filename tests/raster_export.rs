@@ -129,7 +129,7 @@ fn jpeg_export_has_valid_dimensions_quality_control_and_opaque_matte() {
 }
 
 #[test]
-fn raster_export_omits_document_metadata_and_embedded_profiles() {
+fn raster_export_omits_private_metadata_and_tags_supported_formats_as_srgb() {
     use image::{ImageDecoder, ImageReader, metadata::Orientation};
     let directory = tempfile::tempdir().unwrap();
     let mut document = Document::new(3, 2, [80, 120, 160, 255]).unwrap();
@@ -157,7 +157,20 @@ fn raster_export_omits_document_metadata_and_embedded_profiles() {
         );
         let mut decoder = ImageReader::open(&path).unwrap().into_decoder().unwrap();
         assert!(decoder.exif_metadata().unwrap().is_none());
-        assert!(decoder.icc_profile().unwrap().is_none());
+        let profile = if format == RasterFormat::Tiff {
+            let mut tiff = tiff::decoder::Decoder::new(std::io::Cursor::new(&bytes)).unwrap();
+            Some(tiff.get_tag_u8_vec(tiff::tags::Tag::IccProfile).unwrap())
+        } else {
+            decoder.icc_profile().unwrap()
+        };
+        if matches!(format, RasterFormat::Bmp | RasterFormat::Tga) {
+            assert!(profile.is_none());
+        } else {
+            assert_eq!(
+                profile.unwrap_or_else(|| panic!("Missing ICC profile for {format:?}")),
+                paint_rust::color_management::srgb_profile().unwrap()
+            );
+        }
         assert_eq!(decoder.orientation().unwrap(), Orientation::NoTransforms);
         assert_eq!(document.metadata.get("Author").unwrap(), marker);
     }

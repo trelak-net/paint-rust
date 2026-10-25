@@ -5,7 +5,7 @@ Resize	partial	Dimensions/aspect/sampling controls
 Save configuration	partial	Decoded preview, exact byte count, JPEG quality and matte controls; advanced formats pending
 About	missing	Product and license dialog pending
 Canvas size	partial	Pixel dimensions, anchors and background options
-Color profile	missing	ICC interpretation and profile controls pending
+Color profile	partial	Automatic RGB/grayscale ICC to sRGB on import; tagged export; monitor profiles and user controls pending
 Save palette	partial	Native file picker and project palette format
 Task progress	partial	Cancellation and status; detailed progress reporting pending
 Unsaved changes	supported	Save/discard/cancel across documents

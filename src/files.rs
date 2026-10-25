@@ -51,11 +51,29 @@ pub fn open_cancellable(path: &Path, cancel: &AtomicBool) -> Result<Document, St
     limits.max_image_width = Some(16384);
     limits.max_image_height = Some(16384);
     reader.limits(limits);
+    let is_tiff = reader.format() == Some(image::ImageFormat::Tiff);
     let mut decoder = reader.into_decoder().map_err(|e| e.to_string())?;
     if decoder.total_bytes() > 256 * 1024 * 1024 {
         return Err("Decoded image exceeds the memory limit.".into());
     }
     let orientation = decoder.orientation().map_err(|e| e.to_string())?;
+    let profile = if is_tiff {
+        // Read metadata with an independent bound: the image wrapper limits TIFF
+        // tag reads to the pixel buffer size, which excludes profiles on tiny images.
+        let mut metadata = tiff::decoder::Decoder::new(BufReader::new(CancellableReader {
+            inner: File::open(path).map_err(|e| e.to_string())?,
+            cancel,
+        }))
+        .map_err(|e| e.to_string())?
+        .with_limits(tiff_metadata_limits());
+        metadata
+            .find_tag(tiff::tags::Tag::IccProfile)
+            .map_err(|e| e.to_string())?
+            .map(|value| value.into_u8_vec().map_err(|e| e.to_string()))
+            .transpose()?
+    } else {
+        decoder.icc_profile().map_err(|e| e.to_string())?
+    };
     check_cancel(cancel)?;
     let image = image::DynamicImage::from_decoder(decoder)
         .map_err(|e| e.to_string())?
@@ -63,6 +81,9 @@ pub fn open_cancellable(path: &Path, cancel: &AtomicBool) -> Result<Document, St
     let (mut width, mut height) = image.dimensions();
     let mut pixels = collect_pixels(&image, cancel)?;
     drop(image);
+    if let Some(profile) = profile {
+        crate::color_management::convert_to_srgb(&mut pixels, &profile, cancel)?;
+    }
     use crate::transform::Orientation as O;
     use image::metadata::Orientation as E;
     let operations: &[O] = match orientation {
@@ -84,6 +105,14 @@ pub fn open_cancellable(path: &Path, cancel: &AtomicBool) -> Result<Document, St
     }
     check_cancel(cancel)?;
     Document::from_pixels(width, height, pixels)
+}
+
+fn tiff_metadata_limits() -> tiff::decoder::Limits {
+    let mut limits = tiff::decoder::Limits::default();
+    limits.decoding_buffer_size = 4 * 1024 * 1024;
+    limits.intermediate_buffer_size = 4 * 1024 * 1024;
+    limits.ifd_value_size = 4 * 1024 * 1024;
+    limits
 }
 
 fn raster_reader<'a>(
@@ -384,10 +413,10 @@ fn encode_raster_options(
     match options.format {
         RasterFormat::Tiff => {
             let mut encoded = Cursor::new(Vec::new());
-            TiffEncoder::new(CancellableWriter {
+            with_srgb_profile(TiffEncoder::new(CancellableWriter {
                 inner: &mut encoded,
                 cancel,
-            })
+            }))?
             .write_image(&bytes, size.0, size.1, image::ExtendedColorType::Rgba8)
             .map_err(|e| e.to_string())?;
             check_cancel(cancel)?;
@@ -401,25 +430,24 @@ fn encode_raster_options(
             size.1,
             image::ExtendedColorType::Rgba8,
         ),
-        RasterFormat::Jpeg => JpegEncoder::new_with_quality(writer, options.quality).encode(
-            &bytes,
-            size.0,
-            size.1,
-            image::ExtendedColorType::Rgb8,
-        ),
+        RasterFormat::Jpeg => with_srgb_profile(JpegEncoder::new_with_quality(
+            writer,
+            options.quality,
+        ))?
+        .encode(&bytes, size.0, size.1, image::ExtendedColorType::Rgb8),
         RasterFormat::Bmp => BmpEncoder::new(&mut writer).encode(
             &bytes,
             size.0,
             size.1,
             image::ExtendedColorType::Rgb8,
         ),
-        RasterFormat::Png => PngEncoder::new(writer).write_image(
+        RasterFormat::Png => with_srgb_profile(PngEncoder::new(writer))?.write_image(
             &bytes,
             size.0,
             size.1,
             image::ExtendedColorType::Rgba8,
         ),
-        RasterFormat::WebP => WebPEncoder::new_lossless(writer).write_image(
+        RasterFormat::WebP => with_srgb_profile(WebPEncoder::new_lossless(writer))?.write_image(
             &bytes,
             size.0,
             size.1,
@@ -427,6 +455,13 @@ fn encode_raster_options(
         ),
     }
     .map_err(|e| e.to_string())
+}
+
+fn with_srgb_profile<E: ImageEncoder>(mut encoder: E) -> Result<E, String> {
+    encoder
+        .set_icc_profile(crate::color_management::srgb_profile()?)
+        .map_err(|e| e.to_string())?;
+    Ok(encoder)
 }
 
 pub fn save_png(document: &Document, path: &Path) -> Result<(), String> {

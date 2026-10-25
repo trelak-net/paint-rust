@@ -138,8 +138,9 @@ use changed-region compositing and partial texture uploads. Initial copies of
 shared layer buffers, allocation and GPU uploads still take time on the UI thread;
 this is not a guarantee of constant frame time at the document limits. PDN/PRUST
 preserve string metadata and layer background flags. Raster EXIF orientation is applied to pixels on import, including mirrored
-orientations. Raster metadata and embedded color profiles are not preserved;
-ICC color conversion is not implemented. PNG, JPEG,
+orientations. Embedded RGB/grayscale ICC profiles are converted to sRGB on raster
+import. PNG/JPEG/WebP/TIFF exports embed sRGB; source descriptive metadata is
+omitted. PNG, JPEG,
 BMP, lossless WebP, TIFF and TGA are available for raster export. A user-local Linux installation helper is available; there is no signed
 distribution yet. Linux is the currently validated desktop target.
 
@@ -760,8 +761,8 @@ Rust writer's metadata arrays. The native Windows GUI opened and re-saved Rust-p
 every layer pixel and property, including all fourteen blend modes, survived the return trip. This is not a claim of
 complete PDN version compatibility.
 Whole-graph gzip, parent-backed buffers, non-bitmap layers and future signatures
-are not supported yet. ICC interpretation and metadata updates after geometry
-changes remain separate work. Reproduce a codec round trip with:
+are not supported yet. PDN-specific ICC interpretation and metadata updates
+after geometry changes remain separate work. Reproduce a codec round trip with:
 
     cargo run --example pdn_roundtrip -- INPUT OUTPUT.pdn
 
@@ -975,7 +976,8 @@ decoded-output previews. TIFF exports one RGBA8 image; a multi-page input opens
 its first image. TGA import uses the extension when no signature is available.
 Tests verify all RGBA bytes, including hidden RGB, when encoding and reopening
 a single raster, as well as cancellation and exact atomic output bytes.
-Raster exports omit document metadata and ICC profiles. Codec options, multipage
+Raster exports omit source descriptive metadata; TIFF embeds an sRGB ICC profile.
+Codec options, multipage
 editing and high-bit-depth working buffers remain pending. Dependency notices
 were refreshed for the TIFF decoder/encoder and its active dependencies.
 
@@ -1110,3 +1112,22 @@ all distinct colors. Neighbor weights include opacity, while the destination
 alpha and fully transparent RGB are retained. The filter supports the common
 preview, cancellation, selection, undo and saved-parameter workflow. Reference
 kernel comparison and large-image performance validation remain pending.
+
+Raster color management
+-----------------------
+Raster import interprets embedded RGB or grayscale ICC profiles using Little CMS
+and relative colorimetric intent, converting to the 8-bit sRGB working space.
+Alpha is retained. Untagged images are assumed to be sRGB. Unsupported color
+spaces, malformed profiles and profiles larger than 4 MiB produce an open error;
+CMYK profiles are not applied to RGB samples produced by a decoder. Conversion
+runs in bounded batches with cancellation. TIFF metadata has an independent
+4 MiB read bound so small images can carry larger profiles.
+PNG, JPEG, WebP and TIFF exports embed the working sRGB profile. BMP and TGA
+remain untagged. Source EXIF/location/author/comment tags are omitted, and EXIF
+orientation is applied to pixels once. Export preview shows the encoded bytes.
+Tests cover linear RGB and grayscale conversion, alpha, tiny TIFF profiles,
+invalid/unsupported profiles, sRGB identity and re-import without double conversion.
+Display-monitor profiles, selectable rendering intents, high-bit-depth conversion,
+CMYK import and PDN-specific profile metadata interpretation remain pending.
+The color engine is statically linked; no additional runtime library is needed.
+Binding API: https://docs.rs/lcms2/6.1.1/lcms2/

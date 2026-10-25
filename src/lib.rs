@@ -19,3 +19,5 @@ pub mod brush;
 pub mod curves;
 
 pub mod fonts;
+
+pub mod color_management;

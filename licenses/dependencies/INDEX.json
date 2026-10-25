@@ -1,6 +1,6 @@
 {
   "target": "x86_64-unknown-linux-gnu",
-  "cargo_lock_sha256": "25d2bf1140c7e2cd9a0cbabd026a09d5d328e649a08e6f82a42aa7cffbbee557",
+  "cargo_lock_sha256": "6be35ebaeaf0c4f8d268792340684be272c74f0e24b38d241008c0ceb0dcc640",
   "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1",
   "rust_library_notice_sha256": "5647be074c8edf7339fd863055923a8fc80bc5610a8d4661ec3b767b9d392c27",
   "packages": [
@@ -942,6 +942,20 @@
       }
     },
     {
+      "name": "dunce",
+      "version": "1.0.5",
+      "license": "CC0-1.0 OR MIT-0 OR Apache-2.0",
+      "authors": [
+        "Kornel <kornel@geekhood.net>"
+      ],
+      "repository": "https://gitlab.com/kornelski/dunce",
+      "source": "https://crates.io/crates/dunce/1.0.5",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499"
+      }
+    },
+    {
       "name": "ecolor",
       "version": "0.33.3",
       "license": "MIT OR Apache-2.0",
@@ -1425,6 +1439,51 @@
       "upstream_notices": [],
       "files": {
         "LICENSE": "b1181a40b2a7b25cf66fd01481713bc1005df082c53ef73e851e55071b102744"
+      }
+    },
+    {
+      "name": "foreign-types",
+      "version": "0.5.0",
+      "license": "MIT/Apache-2.0",
+      "authors": [
+        "Steven Fackler <sfackler@gmail.com>"
+      ],
+      "repository": "https://github.com/sfackler/foreign-types",
+      "source": "https://crates.io/crates/foreign-types/0.5.0",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "c6596eb7be8581c18be736c846fb9173b69eccf6ef94c5135893ec56bd92ba08",
+        "LICENSE-MIT": "333ea3aaa3cadb819f4acd9f9153f9feee060a995ca8710f32bc5bd9a4b91734"
+      }
+    },
+    {
+      "name": "foreign-types-macros",
+      "version": "0.2.4",
+      "license": "MIT/Apache-2.0",
+      "authors": [
+        "Steven Fackler <sfackler@gmail.com>"
+      ],
+      "repository": "https://github.com/sfackler/foreign-types",
+      "source": "https://crates.io/crates/foreign-types-macros/0.2.4",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "c6596eb7be8581c18be736c846fb9173b69eccf6ef94c5135893ec56bd92ba08",
+        "LICENSE-MIT": "333ea3aaa3cadb819f4acd9f9153f9feee060a995ca8710f32bc5bd9a4b91734"
+      }
+    },
+    {
+      "name": "foreign-types-shared",
+      "version": "0.3.1",
+      "license": "MIT/Apache-2.0",
+      "authors": [
+        "Steven Fackler <sfackler@gmail.com>"
+      ],
+      "repository": "https://github.com/sfackler/foreign-types",
+      "source": "https://crates.io/crates/foreign-types-shared/0.3.1",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "c6596eb7be8581c18be736c846fb9173b69eccf6ef94c5135893ec56bd92ba08",
+        "LICENSE-MIT": "333ea3aaa3cadb819f4acd9f9153f9feee060a995ca8710f32bc5bd9a4b91734"
       }
     },
     {
@@ -1958,6 +2017,21 @@
       }
     },
     {
+      "name": "jobserver",
+      "version": "0.1.35",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "Alex Crichton <alex@alexcrichton.com>"
+      ],
+      "repository": "https://github.com/rust-lang/jobserver-rs",
+      "source": "https://crates.io/crates/jobserver/0.1.35",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "LICENSE-MIT": "378f5840b258e2779c39418f3f2d7b2ba96f1c7917dd6be0713f88305dbda397"
+      }
+    },
+    {
       "name": "khronos_api",
       "version": "3.1.0",
       "license": "Apache-2.0",
@@ -1995,6 +2069,35 @@
         "LICENSE-APACHE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
         "LICENSE-MIT": "23c23145f6eac25c28cdcc03d38506a5712a9a8cffb5bd5301457f6173ea696e",
         "SOURCE-COPYRIGHTS.txt": "07f734e07ee8267b325736d685bcc73485fbe2da604eeaa5dc37a9d459d6451e"
+      }
+    },
+    {
+      "name": "lcms2",
+      "version": "6.1.1",
+      "license": "MIT",
+      "authors": [
+        "Kornel Lesiński <kornel@geekhood.net>"
+      ],
+      "repository": "https://github.com/kornelski/rust-lcms2.git",
+      "source": "https://crates.io/crates/lcms2/6.1.1",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE": "7cc86732b1711029f02d8354b9783f8f840e79dfb9942ad59a80cf86165ca5cf"
+      }
+    },
+    {
+      "name": "lcms2-sys",
+      "version": "4.0.7",
+      "license": "MIT",
+      "authors": [
+        "Kornel Lesiński <kornel@geekhood.net>"
+      ],
+      "repository": "https://github.com/kornelski/rust-lcms2-sys.git",
+      "source": "https://crates.io/crates/lcms2-sys/4.0.7",
+      "upstream_notices": [],
+      "files": {
+        "SOURCE-COPYRIGHTS.txt": "8013a626a32be85547bc2e0919e40ec4fe60a26b4cbcb1d563af1c53d243133e",
+        "vendor/LICENSE": "6dbd60437f8ef91d8de1f08ad75882547fd4931bfcc3566a0735f28db1484d31"
       }
     },
     {

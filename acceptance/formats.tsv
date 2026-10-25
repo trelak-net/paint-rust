@@ -1,12 +1,12 @@
 Format	Status	Current implementation	Remaining work
 PDN	partial	Layered PDN3 deferred BGRA8 read/write	Broader variants, malformed fixtures and metadata/color policy
 PRUST	different	Native lossless project and recovery format	Additional project format retained intentionally
-PNG	partial	Read; lossless RGBA export; decoded export preview	ICC, EXIF and metadata policy
-JPEG	partial	Read/write; EXIF orientation; quality 1–100, matte and decoded preview	ICC and metadata policy
+PNG	partial	Read; lossless RGBA export; decoded export preview	RGB/grayscale ICC and EXIF orientation supported; monitor profiles and metadata options pending
+JPEG	partial	Read/write; EXIF orientation; quality 1–100, matte and decoded preview	RGB/grayscale ICC supported; monitor profiles and metadata options pending
 BMP	partial	Read/write; opaque RGB with selectable matte and decoded preview	Additional BMP variants and metadata policy
-WebP	partial	Read; lossless export; decoded export preview	Lossy encode options, metadata and ICC
+WebP	partial	Read; lossless export; decoded export preview	Lossy encode options and metadata options; ICC conversion/tagging supported
 GIF	missing	None	Palette, dithering, transparency and animation policy
-TIFF	partial	First-page import; RGBA8 export and decoded preview	Compression controls, high-bit-depth editing, ICC, metadata and multipage UI
+TIFF	partial	First-page import; RGBA8 export and decoded preview	Compression controls, high-bit-depth editing, metadata and multipage UI; ICC conversion/tagging supported
 JPEG XL	missing	None	Codec, options, licensing and validation
 AVIF	missing	None	Codec, options, licensing and validation
 HEIC	missing	None	Codec/platform availability, licensing and validation

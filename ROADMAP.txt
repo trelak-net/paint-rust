@@ -155,7 +155,9 @@ independent tasks; do not silently reduce the required scope.
 [x] Unified project/raster Save and Save As with confirmed flattening and undo.
 [ ] Remaining raster codecs and advanced export options.
 [x] Apply all eight EXIF orientations once on raster import.
-[ ] ICC color management and raster metadata preservation policy.
+[x] Convert embedded raster RGB/grayscale ICC to sRGB and tag supported exports.
+[x] Explicit raster metadata policy: apply orientation, omit source descriptive tags.
+[ ] Monitor profiles, CMYK/high-bit-depth conversion and PDN-specific color metadata.
 10. Reliability and performance
 [ ] Bounded foreground work, large-document/multi-document benchmarks.
 [ ] Disk-full, corrupted-input, interrupted-save and low-memory scenarios.

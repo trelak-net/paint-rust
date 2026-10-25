@@ -77,6 +77,9 @@ impl Editor {
                 ui.small("Layers and metadata are not stored in this file. Use PRUST or PDN to keep an editable project. JPEG also loses transparency and image detail.");
                 ui.checkbox(&mut dialog.flatten_confirmed,"Save a flattened raster document");
             }
+            ui.small(if matches!(dialog.options.format,files::RasterFormat::Bmp | files::RasterFormat::Tga) {
+                "Colors use sRGB; this format is saved without an embedded profile."
+            } else { "Colors use sRGB; an ICC profile is embedded. Source EXIF, location and author tags are omitted." });
             let mut changed=false;
             if dialog.options.format==files::RasterFormat::Jpeg {
                 changed |= ui.add(egui::Slider::new(&mut dialog.options.quality,1..=100).text("Quality")).changed();

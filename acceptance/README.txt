@@ -118,7 +118,8 @@ tested. Further codecs/options and comprehensive native dialog checks remain.
 FILE-02: Verify EXIF orientation and ICC conversion exactly once, including
 round-trips through project/recovery/PDN. Status: partial; all eight JPEG EXIF
 orientations, invalid tags, cancellation and PRUST/PNG round-trips are tested.
-ICC conversion and remaining round-trip combinations are pending.
+RGB/grayscale ICC conversion, tiny TIFF profile reads and tagged sRGB re-import
+are tested. Monitor profiles, CMYK and remaining round-trip combinations are pending.
 PERF-01: Benchmark large images and many documents while editing, saving,
 recovering and spilling undo to disk. Status: per-document checks exist; shared
 memory limits and full multi-document benchmarks remain pending.
