@@ -131,6 +131,7 @@ independent tasks; do not silently reduce the required scope.
 [x] Background input histograms for levels/curves with channel and logarithmic views.
 [ ] Remaining adjustment parity audit.
 [x] Gaussian and motion blur with premultiplied-alpha sampling and live previews.
+[x] Seeded noise, median/percentile blur, edge detection and directional emboss.
 [ ] Complete remaining blur, distortion, noise and stylization inventory.
 [x] Repeat last effect and restore last-applied parameters within the session.
 [ ] Persist effect parameters across restarts and complete preview/cancel parity audit.

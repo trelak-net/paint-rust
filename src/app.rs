@@ -2278,6 +2278,21 @@ impl Editor {
                                     )
                                     .changed();
                             }
+                            Effect::AddNoise { amount,coverage,monochrome,seed } => {
+                                changed |= ui.add(egui::Slider::new(amount,0..=100).text("Intensity")).changed();
+                                changed |= ui.add(egui::Slider::new(coverage,0..=100).text("Coverage (%)")).changed();
+                                changed |= ui.checkbox(monochrome,"Monochrome").changed();
+                                let label=ui.label("Seed");
+                                changed |= ui.add(egui::DragValue::new(seed)).labelled_by(label.id).changed();
+                                if ui.button("New seed").clicked() { *seed=seed.wrapping_add(1);changed=true; }
+                            }
+                            Effect::Median { radius,percentile } => {
+                                changed |= ui.add(egui::Slider::new(radius,0..=10).text("Radius (px)")).changed();
+                                changed |= ui.add(egui::Slider::new(percentile,0..=100).text("Percentile")).changed();
+                            }
+                            Effect::Emboss(angle) => {
+                                changed |= ui.add(egui::Slider::new(angle,-180.0..=180.0).text("Angle (degrees)")).changed();
+                            }
                             Effect::TemperatureTint { temperature,tint } => {
                                 changed |= ui.add(egui::Slider::new(temperature,-100..=100).text("Temperature")).changed();
                                 changed |= ui.add(egui::Slider::new(tint,-100..=100).text("Tint")).changed();
@@ -2749,6 +2764,18 @@ impl Editor {
                     (
                         "Effects",
                         &[
+                            Effect::AddNoise {
+                                amount: 20,
+                                coverage: 100,
+                                monochrome: true,
+                                seed: 1,
+                            },
+                            Effect::Median {
+                                radius: 1,
+                                percentile: 50,
+                            },
+                            Effect::EdgeDetect,
+                            Effect::Emboss(45.0),
                             Effect::GaussianBlur(3),
                             Effect::MotionBlur {
                                 distance: 10,

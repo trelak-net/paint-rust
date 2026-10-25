@@ -1,7 +1,7 @@
 Capability	Category	Status	Current implementation	Remaining validation or work
 Quantize	Color	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
 Red Eye Removal	Photo	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
-Add Noise	Noise	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Add Noise	Noise	partial	Deterministic seeded uniform noise, coverage and monochrome/color controls	External reference output, ranges and color-space audit
 Auto-Level	Adjustment	partial	Auto levels; selected nontransparent histogram, configurable tail clipping	Exact transfer function, ranges, color space and reference output audit
 Bokeh Blur	Blurs	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
 Brightness / Contrast	Adjustment	partial	CPU transfer curve and live preview	Exact transfer function, ranges, color space and reference output audit
@@ -12,8 +12,8 @@ Curves	Adjustment	partial	RGB/per-channel point editor, numeric controls, cubic 
 Dents	Distort	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
 Black and White	Adjustment	partial	Grayscale with weighted RGB luminance	Exact transfer function, ranges, color space and reference output audit
 Drop Shadow	Object	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
-Edge Detect	Stylize	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
-Emboss	Stylize	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Edge Detect	Stylize	partial	Sobel magnitude with premultiplied input; source alpha retained	External reference output, ranges and color-space audit
+Emboss	Stylize	partial	Directional grayscale Sobel relief; source alpha retained	External reference output, ranges and color-space audit
 Exposure	Adjustment	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
 Fragment Blur	Blurs	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
 Frosted Glass	Distort	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
@@ -27,7 +27,7 @@ Invert Colors	Adjustment	partial	RGB inversion; preserves alpha	Exact transfer f
 Julia Fractal	Render	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
 Levels	Adjustment	partial	Master/R/G/B input and output endpoints, gamma and background input histogram	Exact transfer function, ranges, color space and reference output audit
 Mandelbrot Fractal	Render	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
-Median Blur	Blurs	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Median Blur	Blurs	partial	Sliding alpha-weighted RGB histogram; radius and percentile controls	External reference output, ranges and color-space audit
 Morphology	Distort	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
 Motion Blur	Blurs	partial	Bilinear premultiplied sampling, angle, distance and centered mode	External reference output, ranges and color-space audit
 Oil Painting	Artistic	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases

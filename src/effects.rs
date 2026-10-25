@@ -1,9 +1,22 @@
 mod blurs;
+mod stylize;
 use crate::document::{Pixel, Selection};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Effect {
+    AddNoise {
+        amount: u8,
+        coverage: u8,
+        monochrome: bool,
+        seed: u32,
+    },
+    Median {
+        radius: u32,
+        percentile: u8,
+    },
+    EdgeDetect,
+    Emboss(f32),
     InvertAlpha,
     TemperatureTint {
         temperature: i16,
@@ -52,6 +65,10 @@ impl Effect {
     }
     pub fn name(self) -> &'static str {
         match self {
+            Self::AddNoise { .. } => "Add noise",
+            Self::Median { .. } => "Median blur",
+            Self::EdgeDetect => "Edge detect",
+            Self::Emboss(_) => "Emboss",
             Self::InvertAlpha => "Invert alpha",
             Self::TemperatureTint { .. } => "Temperature / Tint",
             Self::HighlightsShadows { .. } => "Highlights / Shadows",
@@ -156,6 +173,11 @@ pub fn render(
         _ => None,
     };
     let mut output = match effect {
+        Effect::Median { radius, percentile } => {
+            stylize::median(source, width, height, radius, percentile, cancel)?
+        }
+        Effect::EdgeDetect => stylize::edges(source, width, height, None, cancel)?,
+        Effect::Emboss(angle) => stylize::edges(source, width, height, Some(angle), cancel)?,
         Effect::GaussianBlur(radius) => blurs::gaussian(source, width, height, radius, cancel)?,
         Effect::MotionBlur {
             distance,
@@ -185,6 +207,16 @@ pub fn render(
                 continue;
             }
             let p = source[i];
+            if let Effect::AddNoise {
+                amount,
+                coverage,
+                monochrome,
+                seed,
+            } = effect
+            {
+                output[i] = stylize::noise(p, i, amount, coverage, monochrome, seed);
+                continue;
+            }
             if effect == Effect::InvertAlpha {
                 output[i][3] = 255 - p[3];
                 continue;
@@ -262,7 +294,11 @@ pub fn render(
                         let steps = f64::from(levels.clamp(2, 32) - 1);
                         (f64::from(*channel) * steps / 255.0).round() * 255.0 / steps
                     }
-                    Effect::InvertAlpha
+                    Effect::AddNoise { .. }
+                    | Effect::Median { .. }
+                    | Effect::EdgeDetect
+                    | Effect::Emboss(_)
+                    | Effect::InvertAlpha
                     | Effect::GaussianBlur(_)
                     | Effect::MotionBlur { .. }
                     | Effect::Curves(_)

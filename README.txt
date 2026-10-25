@@ -957,3 +957,13 @@ zero alpha and channel values at low alpha. Color display converts to the UI's
 premultiplied representation without changing stored values. The popup uses HSV
 with independent alpha and updates the stored bytes only after a user edit.
 Tests cover every alpha value, HEX/palette/HSV round-trips and idle UI frames.
+
+Noise and stylization
+---------------------
+Add noise offers intensity, coverage, monochrome/color and a repeatable seed.
+Median blur uses sliding alpha-weighted channel histograms with a configurable
+percentile; it preserves each destination pixel's alpha. Edge detect computes
+Sobel magnitude, while Emboss projects the gradient along an editable angle onto
+a neutral-gray relief. Both preserve source alpha and use premultiplied samples.
+These effects support selection masks, cancellable previews, undo and parameter
+recall. External reference output comparisons remain pending.
