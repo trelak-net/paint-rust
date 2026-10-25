@@ -779,3 +779,15 @@ Batch opening
 The Open dialog accepts multiple files. Startup arguments and dropped files are
 queued into independent tabs. A failed input leaves existing documents untouched,
 does not prevent later files from opening, and remains listed in an error window.
+
+Workspace panels
+----------------
+View offers independent Tools (F5), History (F6), Layers (F7) and Colors (F8)
+visibility, floating panels, and layout reset. Ctrl+Shift+F5 through F8 reset the
+corresponding panel position. Floating panels can be moved and resized; their
+visibility, positions, sizes and floating mode are stored atomically in
+net.trelak.PaintRust/workspace.txt under the user configuration directory.
+Invalid settings fall back to the default docked layout. Floating tool icons retain
+accessible names, shortcut tooltips and a readable current-tool label.
+Two native launches with two PDN documents verified clean exit and stable panel
+positions/sizes across restart, using isolated configuration and recovery folders.

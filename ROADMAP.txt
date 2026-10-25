@@ -84,7 +84,7 @@ independent tasks; do not silently reduce the required scope.
 [x] Thumbnail tabs, switching, reordering, individual close and close all.
 [x] Save/discard/cancel flows across multiple dirty documents.
 2. Workspace
-[ ] Movable, hideable panels with layout persistence and reset.
+[x] Movable, hideable panels with layout persistence and reset.
 [ ] Complete menu/toolbar organization and contextual options.
 [ ] Light/dark/high-DPI and compact-window acceptance checks.
 3. Colors and navigation

@@ -1,4 +1,5 @@
 mod file_operations;
+mod panels;
 mod transform_handles;
 mod workspace;
 use crate::icons::Icon;
@@ -66,6 +67,8 @@ struct EffectDialog {
 }
 
 pub struct Editor {
+    panel_layout: panels::Layout,
+    panel_epoch: u64,
     documents: Vec<workspace::DocumentSlot>,
     open_queue: std::collections::VecDeque<PathBuf>,
     open_errors: Vec<String>,
@@ -127,6 +130,10 @@ pub struct Editor {
 impl Editor {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         let mut editor = Self::blank(&cc.egui_ctx);
+        match panels::Layout::load() {
+            Ok(layout) => editor.panel_layout = layout,
+            Err(error) => editor.status = format!("Using default workspace layout: {error}"),
+        }
         editor.appearance = Some(crate::appearance::connect(&cc.egui_ctx));
         editor
             .open_queue
@@ -151,6 +158,8 @@ impl Editor {
         crate::appearance::configure(ctx);
         egui_extras::install_image_loaders(ctx);
         Self {
+            panel_layout: Default::default(),
+            panel_epoch: 0,
             documents: Vec::new(),
             open_queue: Default::default(),
             open_errors: Vec::new(),
@@ -738,6 +747,19 @@ impl Editor {
                 }
             }
         }
+        ctx.input(|i| {
+            for (index, key) in [Key::F5, Key::F6, Key::F7, Key::F8].iter().enumerate() {
+                if i.key_pressed(*key) {
+                    if i.modifiers.ctrl && i.modifiers.shift {
+                        self.panel_layout.rects[index] = None;
+                        self.panel_layout.visible[index] = true;
+                        self.panel_epoch += 1;
+                    } else {
+                        self.panel_layout.visible[index] = !self.panel_layout.visible[index];
+                    }
+                }
+            }
+        });
         let command = ctx.input_mut(|i| {
             if i.events.iter().any(|event| matches!(event,egui::Event::Copy)) { Some(11)
             } else if i.events.iter().any(|event| matches!(event,egui::Event::Cut)) { Some(12)
@@ -2263,6 +2285,20 @@ impl Editor {
                         }
                     });
                 }
+                ui.menu_button("View", |ui| {
+                    ui.checkbox(&mut self.panel_layout.floating, "Floating panels");
+                    for (index, name) in panels::NAMES.iter().enumerate() {
+                        ui.checkbox(
+                            &mut self.panel_layout.visible[index],
+                            format!("{name}    F{}", index + 5),
+                        );
+                    }
+                    if ui.button("Reset panel layout").clicked() {
+                        self.panel_layout = Default::default();
+                        self.panel_epoch += 1;
+                        ui.close();
+                    }
+                });
                 if ui.add(Icon::Invert.button("Invert colors")).clicked() {
                     self.start_document_edit(DocumentEdit::Invert);
                 }
@@ -2301,307 +2337,7 @@ impl Editor {
                 ui.label(&self.status);
             });
         });
-        egui::SidePanel::left("tools")
-            .default_width(180.0)
-            .width_range(160.0..=240.0)
-            .show(ctx, |ui| {
-                egui::ScrollArea::vertical()
-                    .id_salt("tool-panel")
-                    .show(ui, |ui| {
-                        if !enabled || self.file_job.is_some() || self.document.editing() {
-                            ui.disable();
-                        }
-                        ui.heading("Tools");
-                        ui.scope(|ui| {
-                            ui.spacing_mut().button_padding = egui::vec2(4.0, 2.0);
-                            ui.spacing_mut().item_spacing.y = 3.0;
-                            for (tool, icon, label, shortcut) in [
-                                (Tool::Select, Icon::Select, "Select area", "S"),
-                                (Tool::Polygon, Icon::Polygon, "Polygon select", "P"),
-                                (Tool::Move, Icon::Move, "Move", "M"),
-                                (Tool::Gradient, Icon::Gradient, "Gradient", "G"),
-                                (Tool::Text, Icon::Text, "Text", "T"),
-                                (Tool::Brush, Icon::Brush, "Brush", "B"),
-                                (Tool::Pencil, Icon::Pencil, "Pencil", "N"),
-                                (Tool::Eraser, Icon::Eraser, "Eraser", "E"),
-                                (Tool::Fill, Icon::Fill, "Flood fill", "F"),
-                                (Tool::Picker, Icon::Picker, "Color picker", "I"),
-                                (Tool::Line, Icon::Line, "Line", "L"),
-                                (Tool::Rectangle, Icon::Rectangle, "Rectangle", "R"),
-                                (Tool::Ellipse, Icon::Ellipse, "Ellipse", "O"),
-                            ] {
-                                let button = icon
-                                    .button(label)
-                                    .selected(self.tool == tool)
-                                    .shortcut_text(egui::RichText::new(shortcut).color(
-                                        if self.tool == tool {
-                                            ui.visuals().selection.stroke.color
-                                        } else {
-                                            ui.visuals().weak_text_color()
-                                        },
-                                    ));
-                                if ui.add_sized([ui.available_width(), 26.0], button).clicked() {
-                                    self.tool = tool;
-                                }
-                            }
-                        });
-                        ui.separator();
-                        ui.heading("Color");
-                        ui.horizontal(|ui| {
-                            let label = ui.label("Primary");
-                            ui.color_edit_button_srgba(&mut self.color)
-                                .labelled_by(label.id);
-                        });
-                        ui.horizontal(|ui| {
-                            let label = ui.label("Secondary");
-                            ui.color_edit_button_srgba(&mut self.secondary_color)
-                                .labelled_by(label.id);
-                        });
-                        if ui.button("Swap colors    X").clicked() {
-                            std::mem::swap(&mut self.color, &mut self.secondary_color);
-                        }
-                        ui.horizontal_wrapped(|ui| {
-                            for color in [
-                                Color32::BLACK,
-                                Color32::WHITE,
-                                Color32::from_rgb(225, 65, 75),
-                                Color32::from_rgb(245, 170, 40),
-                                Color32::from_rgb(70, 175, 115),
-                                Color32::from_rgb(42, 113, 224),
-                                Color32::from_rgb(153, 90, 210),
-                            ] {
-                                let label = format!(
-                                    "Set primary color to #{:02X}{:02X}{:02X}",
-                                    color.r(),
-                                    color.g(),
-                                    color.b()
-                                );
-                                let response = ui.add(egui::Button::new("  ").fill(color));
-                                response.widget_info(|| {
-                                    egui::WidgetInfo::labeled(
-                                        egui::WidgetType::Button,
-                                        response.enabled(),
-                                        &label,
-                                    )
-                                });
-                                let response = response.on_hover_text(format!(
-                                    "{label} (left click); set secondary with right click"
-                                ));
-                                if response.clicked() {
-                                    self.color = color;
-                                } else if response.clicked_by(egui::PointerButton::Secondary) {
-                                    self.secondary_color = color;
-                                }
-                            }
-                        });
-                        ui.label(format!(
-                            "#{:02X}{:02X}{:02X}",
-                            self.color.r(),
-                            self.color.g(),
-                            self.color.b()
-                        ));
-                    });
-            });
-        egui::SidePanel::right("layers")
-            .default_width(220.0)
-            .width_range(180.0..=320.0)
-            .show(ctx, |ui| {
-                if !enabled || self.file_job.is_some() || self.document.editing() {
-                    ui.disable();
-                }
-                egui::ScrollArea::vertical()
-                    .id_salt("layers-panel")
-                    .show(ui, |ui| {
-                        ui.heading("Layers");
-                        ui.horizontal_wrapped(|ui| {
-                            if ui
-                                .add_enabled(
-                                    self.document.can_add_layer(),
-                                    egui::Button::new("Add"),
-                                )
-                                .clicked()
-                            {
-                                self.document.add_layer(false);
-                                self.texture_dirty = true;
-                            }
-                            if ui
-                                .add_enabled(
-                                    self.document.can_add_layer(),
-                                    egui::Button::new("Duplicate"),
-                                )
-                                .clicked()
-                            {
-                                self.document.add_layer(true);
-                                self.texture_dirty = true;
-                            }
-                            if ui
-                                .add_enabled(
-                                    self.document.layers().len() > 1,
-                                    egui::Button::new("Delete"),
-                                )
-                                .clicked()
-                            {
-                                self.document.remove_layer();
-                                self.texture_dirty = true;
-                            }
-                        });
-                        ui.horizontal(|ui| {
-                            let active = self.document.active_layer();
-                            if ui
-                                .add_enabled(
-                                    active + 1 < self.document.layers().len(),
-                                    egui::Button::new("Move up"),
-                                )
-                                .clicked()
-                            {
-                                self.document.move_layer(true);
-                                self.texture_dirty = true;
-                            }
-                            if ui
-                                .add_enabled(active > 0, egui::Button::new("Move down"))
-                                .clicked()
-                            {
-                                self.document.move_layer(false);
-                                self.texture_dirty = true;
-                            }
-                        });
-                        if ui
-                            .add_enabled(
-                                self.document.can_add_layer(),
-                                egui::Button::new("Import image…"),
-                            )
-                            .on_hover_text(
-                                "Add an image or a project's visible image as a new layer",
-                            )
-                            .clicked()
-                        {
-                            self.import_layer();
-                        }
-                        if ui
-                    .add_enabled(
-                        self.document.can_flatten(),
-                        egui::Button::new("Flatten image"),
-                    )
-                    .on_hover_text(
-                        "Replace all layers with the visible image. Undo restores the layers.",
-                    )
-                    .clicked()
-                {
-                    self.start_document_edit(DocumentEdit::Flatten);
-                }
-                        ui.separator();
-                        egui::ScrollArea::vertical()
-                            .id_salt("layer-list")
-                            .max_height(320.0)
-                            .show(ui, |ui| {
-                                for index in (0..self.document.layers().len()).rev() {
-                                    let layer = &self.document.layers()[index];
-                                    let mut visible = layer.visible;
-                                    let name = layer.name.clone();
-                                    ui.horizontal(|ui| {
-                                        let visibility = ui.checkbox(&mut visible, "");
-                                        let label = format!("Show layer {name}");
-                                        visibility.widget_info(|| {
-                                            egui::WidgetInfo::selected(
-                                                egui::WidgetType::Checkbox,
-                                                visibility.enabled(),
-                                                visible,
-                                                &label,
-                                            )
-                                        });
-                                        if visibility.on_hover_text(label).changed() {
-                                            self.document.set_visibility(index, visible);
-                                            self.texture_dirty = true;
-                                        }
-                                        if ui
-                                            .selectable_label(
-                                                index == self.document.active_layer(),
-                                                name,
-                                            )
-                                            .clicked()
-                                        {
-                                            self.document.select_layer(index);
-                                        }
-                                    });
-                                }
-                            });
-                        ui.separator();
-                        let layer = &self.document.layers()[self.document.active_layer()];
-                        ui.label(format!(
-                            "Opacity: {:.0}%",
-                            f32::from(layer.opacity) * 100.0 / 255.0
-                        ));
-                        if ui.button("Layer properties…").clicked() {
-                            self.layer_properties =
-                                Some((layer.name.clone(), layer.opacity, layer.blend_mode));
-                        }
-                        if !layer.visible {
-                            ui.small("The active layer is hidden.");
-                        }
-                        ui.separator();
-                        egui::CollapsingHeader::new("History")
-                            .default_open(true)
-                            .show(ui, |ui| {
-                                ui.small(format!(
-                                    "RAM: {:.1} MiB; disk: {:.1} MiB",
-                                    self.document.history_bytes() as f64 / (1024.0 * 1024.0),
-                                    self.document.history_disk_bytes() as f64 / (1024.0 * 1024.0)
-                                ));
-                                if self.history_storage_paused {
-                                    ui.small("History storage paused; undo remains in RAM.");
-                                }
-                                if (self.history_storage_paused
-                                    || self.document.history_error().is_some())
-                                    && ui.button("Resume history storage").clicked()
-                                {
-                                    self.store_history_async();
-                                }
-                                let undo: Vec<String> =
-                                    self.document.history().map(str::to_owned).collect();
-                                let redo: Vec<String> =
-                                    self.document.redo_history().map(str::to_owned).collect();
-                                let mut chosen = None;
-                                egui::ScrollArea::vertical()
-                                    .id_salt("history-list")
-                                    .max_height(160.0)
-                                    .show(ui, |ui| {
-                                        if undo.is_empty() && redo.is_empty() {
-                                            ui.label("No edits yet");
-                                        }
-                                        for (index, label) in redo.iter().enumerate() {
-                                            if ui
-                                                .button(format!("Redo {label}"))
-                                                .on_hover_text(format!(
-                                                    "Redo {} operation(s)",
-                                                    index + 1
-                                                ))
-                                                .clicked()
-                                            {
-                                                chosen = Some((index + 1, true));
-                                            }
-                                        }
-                                        if !undo.is_empty() && !redo.is_empty() {
-                                            ui.separator();
-                                        }
-                                        for (index, label) in undo.iter().enumerate() {
-                                            if ui
-                                                .button(format!("Undo {label}"))
-                                                .on_hover_text(format!(
-                                                    "Undo {} operation(s)",
-                                                    index + 1
-                                                ))
-                                                .clicked()
-                                            {
-                                                chosen = Some((index + 1, false));
-                                            }
-                                        }
-                                    });
-                                if let Some((steps, redo)) = chosen {
-                                    self.navigate_history(steps, redo);
-                                }
-                            });
-                    });
-            });
+        self.workspace_panels(ctx, enabled);
         egui::CentralPanel::default()
             .frame(
                 egui::Frame::central_panel(&ctx.style())
@@ -2651,6 +2387,9 @@ impl eframe::App for Editor {
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
         self.clear_recovery();
         self.clear_inactive_recovery();
+        if let Err(error) = self.panel_layout.save() {
+            eprintln!("Could not save workspace layout: {error}");
+        }
     }
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
