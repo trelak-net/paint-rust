@@ -16,6 +16,7 @@ impl Editor {
             ui.spacing_mut().item_spacing.y = 3.0;
             let choices = [
                 (Tool::Select, Icon::Select, "Select area", "S"),
+                (Tool::Lasso, Icon::Lasso, "Lasso select", "Q"),
                 (Tool::Polygon, Icon::Polygon, "Polygon select", "P"),
                 (Tool::ColorSelect, Icon::ColorSelect, "Select color", "W"),
                 (Tool::Move, Icon::Move, "Move", "M"),

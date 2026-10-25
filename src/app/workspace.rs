@@ -16,6 +16,7 @@ impl Editor {
         self.texture_dirty = true;
         self.selection_texture = None;
         self.polygon_points.clear();
+        self.lasso.cancel();
         self.last_point = None;
         self.shape_origin = None;
         self.selection_before = None;

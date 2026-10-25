@@ -99,7 +99,7 @@ independent tasks; do not silently reduce the required scope.
 [ ] Reference comparisons on opaque and transparent layers.
 5. Selection and transforms
 [x] Color-based selection with tolerance, connected/global modes and active/merged sampling.
-[ ] Freehand lasso.
+[x] Freehand lasso with closing preview, selection combination and Escape cancellation.
 [ ] Complete selection combination and pixel/selection transform options.
 [ ] Interpolation, constraints and edge-case validation.
 6. Tools

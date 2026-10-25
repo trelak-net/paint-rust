@@ -829,3 +829,8 @@ pixels match regardless of hidden RGB. Sample merged image uses the visible
 composite; otherwise sampling uses raw pixels of the active layer. Replace, Add,
 Subtract and Intersect combine the result with the existing selection. Processing
 runs in the background and can be cancelled without replacing the old selection.
+
+Lasso select (Q): drag a freehand outline and release to close it. Escape cancels
+the outline; a click retains the existing selection. The same selection combination
+modes apply as for other selection tools. Outlines are limited to 4096 sampled
+points; exceeding the limit cancels the gesture and retains the previous selection.

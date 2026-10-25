@@ -28,3 +28,6 @@ the same MIT OR Apache-2.0 terms.
 
 icons/color-select.svg: original color-selection icon, authored for this project;
 MIT OR Apache-2.0, version 1. No external source artwork.
+
+icons/lasso.svg: original freehand-selection icon, authored for this project;
+MIT OR Apache-2.0, version 1. No external source artwork.

@@ -1,5 +1,6 @@
 mod colors;
 mod file_operations;
+mod lasso;
 mod panels;
 mod thumbnails;
 mod transform_handles;
@@ -18,6 +19,7 @@ use std::path::PathBuf;
 
 #[derive(Clone, Copy, PartialEq)]
 enum Tool {
+    Lasso,
     ColorSelect,
     Polygon,
     Zoom,
@@ -104,6 +106,7 @@ pub struct Editor {
     color_contiguous: bool,
     color_sample_merged: bool,
     polygon_points: Vec<(f64, f64)>,
+    lasso: lasso::Lasso,
     polygon_size: (u32, u32),
     selection_texture: Option<(std::sync::Arc<Vec<u8>>, TextureHandle)>,
     shape_origin: Option<(f32, f32)>,
@@ -206,6 +209,7 @@ impl Editor {
             color_contiguous: true,
             color_sample_merged: false,
             polygon_points: Vec::new(),
+            lasso: Default::default(),
             polygon_size: (0, 0),
             selection_texture: None,
             shape_origin: None,
@@ -472,6 +476,7 @@ impl Editor {
 
     fn request(&mut self, action: Action, ctx: &egui::Context) {
         self.polygon_points.clear();
+        self.lasso.cancel();
         if self.file_job.is_some() {
             return;
         }
@@ -824,6 +829,7 @@ impl Editor {
                 Some(6)
             } else if !i.modifiers.command && !self.document.editing() && self.last_point.is_none()
             {
+                if i.key_pressed(Key::Q) { self.tool = Tool::Lasso; }
                 if i.key_pressed(Key::W) { self.tool = Tool::ColorSelect; }
                 if i.key_pressed(Key::P) { self.tool = Tool::Polygon; }
                 if i.key_pressed(Key::Z) { self.tool = Tool::Zoom; }
@@ -879,6 +885,7 @@ impl Editor {
             Some(4) => self.redo(),
             Some(5) => self.undo(),
             Some(6) => {
+                self.lasso.cancel();
                 self.zoom_origin = None;
                 self.suppress_stroke = true;
                 self.gesture_preview = None;
@@ -1210,6 +1217,7 @@ impl Editor {
                         ));
                     }
                 }
+                self.lasso_canvas(ui, &response, rect, &painter, temporary_pan);
                 self.transform_handles(ui, rect, &painter);
                 if response.hovered()
                     && !self.panning
@@ -1306,7 +1314,10 @@ impl Editor {
                     egui::PointerButton::Primary
                 };
                 if ui.is_enabled()
-                    && !matches!(self.tool, Tool::Polygon | Tool::Pan | Tool::Zoom)
+                    && !matches!(
+                        self.tool,
+                        Tool::Polygon | Tool::Lasso | Tool::Pan | Tool::Zoom
+                    )
                     && !temporary_pan
                     && ui.input(|i| i.focused)
                     && !self.suppress_stroke
@@ -1345,7 +1356,7 @@ impl Editor {
                             Tool::Select => {
                                 self.selection_before = Some(self.document.selection());
                             }
-                            Tool::Polygon | Tool::Pan | Tool::Zoom => {}
+                            Tool::Polygon | Tool::Lasso | Tool::Pan | Tool::Zoom => {}
                             Tool::Picker => {
                                 if let Some(pixel) = self
                                     .document
@@ -1561,9 +1572,14 @@ impl Editor {
             ui.checkbox(&mut self.radial_gradient, "Radial gradient");
             ui.small("Right drag reverses colors");
         }
-        if matches!(self.tool, Tool::Select | Tool::Polygon | Tool::ColorSelect) {
+        if matches!(
+            self.tool,
+            Tool::Select | Tool::Polygon | Tool::ColorSelect | Tool::Lasso
+        ) {
             if self.tool == Tool::Select {
                 ui.checkbox(&mut self.ellipse_selection, "Elliptical selection");
+            } else if self.tool == Tool::Lasso {
+                ui.small("Drag to outline an area. Release closes the outline; Escape cancels.");
             } else if self.tool == Tool::ColorSelect {
                 ui.add(egui::Slider::new(&mut self.color_tolerance, 0..=255).text("Tolerance"));
                 ui.checkbox(&mut self.color_contiguous, "Contiguous");
@@ -4330,5 +4346,80 @@ mod tests {
         assert!(editor.document.layers() == original);
         assert!(!editor.document.dirty());
         assert!(!editor.document.can_undo());
+    }
+    #[test]
+    fn lasso_drag_closes_on_release_and_escape_preserves_previous_selection() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.document = Document::new(100, 100, [255; 4]).unwrap();
+        editor.tool = Tool::Lasso;
+        frame(&mut editor, &ctx, vec![]);
+        frame(&mut editor, &ctx, vec![]);
+        let origin = editor.canvas_viewport.min;
+        let start = origin + Vec2::new(10.0, 10.0);
+        frame(
+            &mut editor,
+            &ctx,
+            vec![egui::Event::PointerMoved(start), pointer(start, true)],
+        );
+        for delta in [
+            Vec2::new(50.0, 10.0),
+            Vec2::new(50.0, 50.0),
+            Vec2::new(10.0, 50.0),
+        ] {
+            frame(
+                &mut editor,
+                &ctx,
+                vec![egui::Event::PointerMoved(origin + delta)],
+            );
+        }
+        let end = origin + Vec2::new(10.0, 50.0);
+        frame(&mut editor, &ctx, vec![pointer(end, false)]);
+        wait_for_files(&mut editor, &ctx);
+        let selection = editor.document.selection().unwrap();
+        assert_eq!(
+            (selection.x, selection.y, selection.width, selection.height),
+            (10, 10, 40, 40)
+        );
+        assert!(
+            selection
+                .mask
+                .as_ref()
+                .unwrap()
+                .pixels
+                .iter()
+                .all(|p| *p == 1)
+        );
+        assert!(!editor.document.dirty());
+        assert!(!editor.document.can_undo());
+        frame(
+            &mut editor,
+            &ctx,
+            vec![egui::Event::PointerMoved(start), pointer(start, true)],
+        );
+        frame(&mut editor, &ctx, vec![egui::Event::PointerMoved(end)]);
+        frame(
+            &mut editor,
+            &ctx,
+            vec![egui::Event::Key {
+                key: Key::Escape,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers::NONE,
+            }],
+        );
+        frame(&mut editor, &ctx, vec![pointer(end, false)]);
+        assert!(editor.file_job.is_none());
+        assert_eq!(editor.document.selection(), Some(selection.clone()));
+        // A click does not turn an existing selection into an empty mask.
+        frame(
+            &mut editor,
+            &ctx,
+            vec![egui::Event::PointerMoved(start), pointer(start, true)],
+        );
+        frame(&mut editor, &ctx, vec![pointer(start, false)]);
+        assert!(editor.file_job.is_none());
+        assert_eq!(editor.document.selection(), Some(selection));
     }
 }
