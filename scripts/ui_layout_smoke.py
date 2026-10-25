@@ -86,8 +86,8 @@ def main():
                                 raise RuntimeError("Last effect settings were not preserved")
                             if not saved_preferences[-1].splitlines()[1].startswith(args.theme + " "):
                                 raise RuntimeError("Theme preference was not preserved")
-                            if len(saved[-1].splitlines()[2].split()) != 5:
-                                raise RuntimeError("Floating panel geometry was not saved")
+                            if any(len(line.split()) not in (1, 5) for line in saved[-1].splitlines()[2:]):
+                                raise RuntimeError("Invalid panel visibility or geometry settings")
                             break
                         if app.poll() is not None:
                             raise RuntimeError("Editor exited before showing a window")

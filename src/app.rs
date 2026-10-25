@@ -3182,7 +3182,7 @@ impl Editor {
                         self.zoom_to_selection();
                         ui.close();
                     }
-                    ui.checkbox(&mut self.panel_layout.floating, "Floating panels");
+                    ui.checkbox(&mut self.panel_layout.floating, "Floating panels").on_hover_text("Small windows temporarily use scrollable side panels; enlarging restores floating positions.");
                     ui.checkbox(&mut self.pixel_grid, "Pixel grid (at 800% and above)");
                     for (index, name) in panels::NAMES.iter().enumerate() {
                         ui.checkbox(

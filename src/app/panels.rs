@@ -8,7 +8,7 @@ struct LayerDrag {
 
 impl Editor {
     fn tools_panel(&mut self, ui: &mut egui::Ui) {
-        if !self.panel_layout.floating {
+        if !self.floating_panels_active(ui.ctx()) {
             ui.heading("Tools");
         }
         ui.scope(|ui| {
@@ -36,7 +36,7 @@ impl Editor {
                 (Tool::Ellipse, Icon::Ellipse, "Ellipse", "O"),
                 (Tool::Shapes, Icon::Shapes, "Shapes", "U"),
             ];
-            if self.panel_layout.floating {
+            if self.panel_layout.floating || ui.ctx().available_rect().height() < 580.0 {
                 let columns = ((ui.available_width() + 3.0) / 35.0)
                     .floor()
                     .clamp(2.0, 4.0) as usize;
@@ -91,7 +91,7 @@ impl Editor {
         });
     }
     fn colors_panel(&mut self, ui: &mut egui::Ui) {
-        if !self.panel_layout.floating {
+        if !self.floating_panels_active(ui.ctx()) {
             ui.heading("Color");
         }
         ui.horizontal(|ui| {
@@ -228,7 +228,7 @@ impl Editor {
         }
     }
     fn layers_panel(&mut self, ui: &mut egui::Ui) {
-        if !self.panel_layout.floating {
+        if !self.floating_panels_active(ui.ctx()) {
             ui.heading("Layers");
         }
         ui.horizontal_wrapped(|ui| {
@@ -419,8 +419,11 @@ impl Editor {
             _ => unreachable!(),
         }
     }
+    fn floating_panels_active(&self, ctx: &egui::Context) -> bool {
+        self.panel_layout.floating && ctx.available_rect().height() >= 580.0
+    }
     pub(super) fn workspace_panels(&mut self, ctx: &egui::Context, enabled: bool) {
-        if self.panel_layout.floating {
+        if self.floating_panels_active(ctx) {
             let area = ctx.available_rect();
             for (index, name) in NAMES.iter().enumerate() {
                 let mut open = self.panel_layout.visible[index];
@@ -647,5 +650,39 @@ mod tests {
         }
         assert!(Layout::decode("workspace-v1\n1\n1 0 0 0 0\n1\n1\n1\n").is_err());
         assert!(Layout::decode("workspace-v1\n1\n1\n").is_err());
+    }
+    #[test]
+    fn compact_fallback_preserves_floating_preference_and_geometry() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.panel_layout.floating = true;
+        for (index, rect) in editor.panel_layout.rects.iter_mut().enumerate() {
+            *rect = Some(Rect::from_min_size(
+                Pos2::new(20.0 + index as f32 * 100.0, 40.0),
+                Vec2::new(180.0, 240.0),
+            ));
+        }
+        let before = editor.panel_layout.rects;
+        let _ = ctx.run(
+            egui::RawInput {
+                screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(800.0, 500.0))),
+                ..Default::default()
+            },
+            |ctx| {
+                assert!(!editor.floating_panels_active(ctx));
+                editor.workspace_panels(ctx, true);
+            },
+        );
+        assert!(editor.panel_layout.floating);
+        assert_eq!(editor.panel_layout.rects, before);
+        let _ = ctx.run(
+            egui::RawInput {
+                screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1180.0, 800.0))),
+                ..Default::default()
+            },
+            |ctx| {
+                assert!(editor.floating_panels_active(ctx));
+            },
+        );
     }
 }

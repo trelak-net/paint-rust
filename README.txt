@@ -1223,4 +1223,13 @@ GIF. Layers exposes shared layer actions and properties even with its panel hidd
 Edit includes Undo/Redo and Adjustments includes color inversion. Brush and zoom
 sliders reserve their complete labels before wrapping. Tests cover clipping in
 a narrow toolbar; native 800x600/light and 200%/dark checks cover startup and
-persistence. Compact floating-panel overlap is tracked separately.
+persistence. Small workspaces temporarily use scrollable sidebars to keep
+Tools, Colors, Layers and History reachable without overlapping floating windows.
+
+Compact workspace fallback
+--------------------------
+Below 580 logical pixels of available canvas height, floating panels temporarily
+use scrollable sidebars. All twenty tools use a compact icon grid. The floating
+preference and saved window positions remain unchanged, and larger windows return
+to that layout. Tests verify the preserved state and resize threshold; native
+800x600/light and 200%/dark launches verify both layouts and clean restarts.

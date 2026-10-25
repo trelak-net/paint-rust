@@ -90,7 +90,8 @@ independent tasks; do not silently reduce the required scope.
 [x] Movable, hideable panels with layout persistence and reset.
 [x] Separate main menu and quick-action toolbar; shared layer actions and complete raster export menu.
 [ ] Remaining menu commands, keyboard map and contextual-option parity.
-[ ] Light/dark/high-DPI and compact-window acceptance checks.
+[x] Compact sidebar fallback retaining floating geometry; readable 800x600 tool grid.
+[ ] Complete light/dark/high-DPI dialog and contextual-tool acceptance matrix.
 3. Colors and navigation
 [x] Numeric RGB/HSV/alpha/HEX editing, palette persistence and defaults.
 [x] Exact straight-RGBA storage for tools, text, numeric/HEX editing and palettes.
