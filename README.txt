@@ -920,3 +920,19 @@ Tolerance is the maximum RGB channel distance. Replacement preserves alpha and
 skips transparent pixels. Shading-preserving recoloring remains pending.
 Both tools use brush size, hardness, opacity, antialiasing and selection masks.
 Clone supports source-over blending or replacement, including transparent samples.
+
+Additional photo effects
+------------------------
+Gaussian blur uses a normalized separable Gaussian kernel with replicated canvas
+edges. Motion blur supports distance, angle and centered/one-sided sampling with
+bilinear interpolation. Both accumulate premultiplied color and alpha to avoid
+leaking hidden RGB into visible edges; selection masks constrain the output.
+Temperature/Tint adjusts warm/cool and green/magenta balance. Highlights/Shadows
+uses luminance-weighted lightening or darkening. Both preserve alpha. Invert alpha
+changes only alpha, including fully transparent pixels' retained RGB. All use
+background preview, cooperative cancellation, undo and session parameter recall.
+Exact external transfer-function and color-space comparisons remain pending.
+
+Native validation after retouch tools: two isolated desktop launches and clean
+closes preserved floating-panel layout. Screenshot review identified crowding in
+the floating tools palette; compact layout work remains required.

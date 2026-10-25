@@ -1,8 +1,24 @@
+mod blurs;
 use crate::document::{Pixel, Selection};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Effect {
+    InvertAlpha,
+    TemperatureTint {
+        temperature: i16,
+        tint: i16,
+    },
+    HighlightsShadows {
+        highlights: i16,
+        shadows: i16,
+    },
+    GaussianBlur(u32),
+    MotionBlur {
+        distance: u32,
+        angle: f32,
+        centered: bool,
+    },
     Curves(crate::curves::Curves),
     Levels(crate::levels::Levels),
     AutoLevels(f32),
@@ -36,6 +52,11 @@ impl Effect {
     }
     pub fn name(self) -> &'static str {
         match self {
+            Self::InvertAlpha => "Invert alpha",
+            Self::TemperatureTint { .. } => "Temperature / Tint",
+            Self::HighlightsShadows { .. } => "Highlights / Shadows",
+            Self::GaussianBlur(_) => "Gaussian blur",
+            Self::MotionBlur { .. } => "Motion blur",
             Self::Curves(_) => "Curves",
             Self::Levels(_) => "Levels",
             Self::AutoLevels(_) => "Auto levels",
@@ -135,6 +156,12 @@ pub fn render(
         _ => None,
     };
     let mut output = match effect {
+        Effect::GaussianBlur(radius) => blurs::gaussian(source, width, height, radius, cancel)?,
+        Effect::MotionBlur {
+            distance,
+            angle,
+            centered,
+        } => blurs::motion(source, width, height, distance, angle, centered, cancel)?,
         Effect::BoxBlur(radius) if radius > 0 => {
             blur(source, width, height, radius.min(64), cancel)?
         }
@@ -158,6 +185,10 @@ pub fn render(
                 continue;
             }
             let p = source[i];
+            if effect == Effect::InvertAlpha {
+                output[i][3] = 255 - p[3];
+                continue;
+            }
             if let Some(tables) = &level_tables {
                 for channel in 0..3 {
                     output[i][channel] = tables[channel][p[channel] as usize];
@@ -194,6 +225,28 @@ pub fn render(
                         luminance
                             + (f64::from(*channel) - luminance) * f64::from(amount.clamp(0.0, 2.0))
                     }
+                    Effect::TemperatureTint { temperature, tint } => {
+                        let warm = f64::from(temperature.clamp(-100, 100)) * 0.64;
+                        let green = f64::from(tint.clamp(-100, 100)) * 0.64;
+                        f64::from(*channel) + [warm + green * 0.5, -green, -warm + green * 0.5][c]
+                    }
+                    Effect::HighlightsShadows {
+                        highlights,
+                        shadows,
+                    } => {
+                        let l = luminance / 255.0;
+                        let shadow_weight = (1.0 - l).powi(2);
+                        let highlight_weight = l.powi(2);
+                        let amount = (f64::from(shadows.clamp(-100, 100)) * shadow_weight
+                            + f64::from(highlights.clamp(-100, 100)) * highlight_weight)
+                            / 100.0;
+                        let value = f64::from(*channel);
+                        if amount >= 0.0 {
+                            value + (255.0 - value) * amount
+                        } else {
+                            value * (1.0 + amount)
+                        }
+                    }
                     Effect::Grayscale => luminance,
                     Effect::Sepia => luminance * [1.13, 1.0, 0.8][c],
                     Effect::Sharpen(amount) => {
@@ -209,7 +262,10 @@ pub fn render(
                         let steps = f64::from(levels.clamp(2, 32) - 1);
                         (f64::from(*channel) * steps / 255.0).round() * 255.0 / steps
                     }
-                    Effect::Curves(_)
+                    Effect::InvertAlpha
+                    | Effect::GaussianBlur(_)
+                    | Effect::MotionBlur { .. }
+                    | Effect::Curves(_)
                     | Effect::Levels(_)
                     | Effect::AutoLevels(_)
                     | Effect::HueSaturation { .. }

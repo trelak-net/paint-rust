@@ -2258,7 +2258,20 @@ impl Editor {
                                     )
                                     .changed();
                             }
-                            Effect::BoxBlur(radius) => {
+                            Effect::TemperatureTint { temperature,tint } => {
+                                changed |= ui.add(egui::Slider::new(temperature,-100..=100).text("Temperature")).changed();
+                                changed |= ui.add(egui::Slider::new(tint,-100..=100).text("Tint")).changed();
+                            }
+                            Effect::HighlightsShadows { highlights,shadows } => {
+                                changed |= ui.add(egui::Slider::new(shadows,-100..=100).text("Shadows")).changed();
+                                changed |= ui.add(egui::Slider::new(highlights,-100..=100).text("Highlights")).changed();
+                            }
+                            Effect::MotionBlur { distance,angle,centered } => {
+                                changed |= ui.add(egui::Slider::new(distance,0..=200).text("Distance (px)")).changed();
+                                changed |= ui.add(egui::Slider::new(angle,-180.0..=180.0).text("Angle (degrees)")).changed();
+                                changed |= ui.checkbox(centered,"Centered").changed();
+                            }
+                            Effect::GaussianBlur(radius) | Effect::BoxBlur(radius) => {
                                 changed |= ui
                                     .add(egui::Slider::new(radius, 0..=32).text("Radius (px)"))
                                     .changed();
@@ -2686,6 +2699,15 @@ impl Editor {
                     (
                         "Adjustments",
                         &[
+                            Effect::InvertAlpha,
+                            Effect::TemperatureTint {
+                                temperature: 0,
+                                tint: 0,
+                            },
+                            Effect::HighlightsShadows {
+                                highlights: 0,
+                                shadows: 0,
+                            },
                             Effect::Curves(Default::default()),
                             Effect::Levels(Default::default()),
                             Effect::AutoLevels(0.5),
@@ -2706,6 +2728,12 @@ impl Editor {
                     (
                         "Effects",
                         &[
+                            Effect::GaussianBlur(3),
+                            Effect::MotionBlur {
+                                distance: 10,
+                                angle: 0.0,
+                                centered: true,
+                            },
                             Effect::BoxBlur(2),
                             Effect::Sharpen(1.0),
                             Effect::Pixelate(8),
