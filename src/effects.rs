@@ -1,3 +1,4 @@
+mod artistic;
 mod blurs;
 mod detail;
 mod distort;
@@ -13,6 +14,18 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 #[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum Effect {
+    OilPainting {
+        radius: u32,
+        bins: u8,
+    },
+    PencilSketch {
+        radius: u32,
+        strength: f32,
+    },
+    InkSketch {
+        threshold: u8,
+        color: f32,
+    },
     ReduceNoise {
         radius: u32,
         strength: f32,
@@ -158,6 +171,11 @@ impl Effect {
         let range = |v: f32, min: f32, max: f32| v.is_finite() && (min..=max).contains(&v);
         match self {
             Self::Move(_) | Self::Shape(_) | Self::Gradient(_) | Self::FreeTransform(_) => false,
+            Self::OilPainting { radius, bins } => radius <= 10 && (2..=64).contains(&bins),
+            Self::PencilSketch { radius, strength } => {
+                (1..=64).contains(&radius) && range(strength, 0.0, 1.0)
+            }
+            Self::InkSketch { color, .. } => range(color, 0.0, 1.0),
             Self::ReduceNoise { radius, strength } => radius <= 10 && range(strength, 0.0, 1.0),
             Self::Relief { angle, strength } => {
                 range(angle, -180.0, 180.0) && range(strength, 0.0, 3.0)
@@ -267,6 +285,9 @@ impl Effect {
 
     pub fn category(self) -> &'static str {
         match self {
+            Self::OilPainting { .. } | Self::PencilSketch { .. } | Self::InkSketch { .. } => {
+                "Artistic"
+            }
             Self::Clouds(_) | Self::Turbulence(_) | Self::Mandelbrot(_) | Self::Julia(_) => {
                 "Render"
             }
@@ -312,6 +333,9 @@ impl Effect {
     }
     pub fn name(self) -> &'static str {
         match self {
+            Self::OilPainting { .. } => "Oil painting",
+            Self::PencilSketch { .. } => "Pencil sketch",
+            Self::InkSketch { .. } => "Ink sketch",
             Self::ReduceNoise { .. } => "Reduce noise",
             Self::Relief { .. } => "Relief",
             Self::Outline { .. } => "Outline",
@@ -491,6 +515,9 @@ pub fn render(
         return None;
     }
     let mut output = match effect {
+        Effect::OilPainting { .. } | Effect::PencilSketch { .. } | Effect::InkSketch { .. } => {
+            artistic::render(source, width, height, effect, cancel)?
+        }
         Effect::ReduceNoise { .. } | Effect::Relief { .. } | Effect::Outline { .. } => {
             detail::render(source, width, height, effect, cancel)?
         }
@@ -738,7 +765,10 @@ pub fn render(
                         let steps = f64::from(levels.clamp(2, 32) - 1);
                         (f64::from(*channel) * steps / 255.0).round() * 255.0 / steps
                     }
-                    Effect::ReduceNoise { .. }
+                    Effect::OilPainting { .. }
+                    | Effect::PencilSketch { .. }
+                    | Effect::InkSketch { .. }
+                    | Effect::ReduceNoise { .. }
                     | Effect::Relief { .. }
                     | Effect::Outline { .. }
                     | Effect::Morphology { .. }

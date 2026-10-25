@@ -21,7 +21,7 @@ Gaussian Blur	Blurs	partial	Separable normalized Gaussian, premultiplied alpha, 
 Glow	Photo	partial	Gaussian blur screened over the source with opacity-weighted amount; source alpha retained	External reference algorithm/ranges and color-space audit
 Highlights / Shadows	Adjustment	partial	Luminance-weighted tonal controls; alpha retained	External reference output, ranges and color-space audit
 Hue / Saturation	Adjustment	partial	HSL hue, saturation and lightness controls	Exact transfer function, ranges, color space and reference output audit
-Ink Sketch	Artistic	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Ink Sketch	Artistic	partial	Thresholded Sobel contours with adjustable retained color	External reference algorithm/ranges, edge quality and large-image performance audit
 Invert Alpha	Adjustment	partial	Invert alpha without changing RGB	External reference output, ranges and color-space audit
 Invert Colors	Adjustment	partial	RGB inversion; preserves alpha	Exact transfer function, ranges, color space and reference output audit
 Julia Fractal	Render	partial	Complex-plane iteration with editable constant, center, zoom, rotation and palette	External reference algorithms/ranges, palette options and large-image performance audit
@@ -30,9 +30,9 @@ Mandelbrot Fractal	Render	partial	Complex-plane iteration with center, zoom, rot
 Median Blur	Blurs	partial	Sliding alpha-weighted RGB histogram; radius and percentile controls	External reference output, ranges and color-space audit
 Morphology	Distort	partial	Square-neighborhood dilate/erode/open/close with premultiplied color and alpha extrema	External reference channels, kernels, ranges and large-image memory audit
 Motion Blur	Blurs	partial	Bilinear premultiplied sampling, angle, distance and centered mode	External reference output, ranges and color-space audit
-Oil Painting	Artistic	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Oil Painting	Artistic	partial	Alpha-weighted dominant tonal-bin painting with radius and bin count; sliding histogram	External reference algorithm/ranges, edge quality and large-image performance audit
 Outline	Stylize	partial	Local RGB extrema contours with radius and intensity; source alpha retained	External reference algorithm/ranges and large-image performance audit
-Pencil Sketch	Artistic	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Pencil Sketch	Artistic	partial	Grayscale color-dodge detail over Gaussian blur with strength control	External reference algorithm/ranges, edge quality and large-image performance audit
 Pixelate	Distort	partial	Alpha-weighted block averaging	Exact transfer function, ranges, color space and reference output audit
 Polar Inversion	Distort	partial	Adjustable radial inversion around a normalized center; replicated edges	External reference kernels/ranges, edge modes and large-image performance audit
 Posterize	Adjustment	partial	Shared channel quantization control	Exact transfer function, ranges, color space and reference output audit

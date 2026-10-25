@@ -1312,3 +1312,17 @@ source alpha and hidden RGB, support selection clipping and persist parameters.
 Tests cover isolated noise, strength blending, flat areas, edge contrast, opposite
 lighting directions, hidden pixels and parameter validation. Exact external
 algorithms and large-image measurements remain pending.
+
+Artistic effects
+-----------------
+Effects > Artistic provides Oil painting, Pencil sketch and Ink sketch.
+Oil painting averages the dominant alpha-weighted tonal group in a square
+neighborhood. A sliding histogram avoids rebuilding each neighborhood; radius
+and bin count control detail. Pencil sketch uses a luminance color-dodge ratio
+against Gaussian blur and blends its strength with the source. Ink sketch adds
+thresholded Sobel contours with an adjustable amount of source color.
+These effects retain source alpha and hidden RGB. Selection, cancellation,
+preview, undo, repeat and parameter persistence follow the common workflow.
+Tests cover weighted dominant colors, transparent neighbors, monochrome detail,
+flat regions, edge thresholds and invalid settings. Exact external algorithms,
+edge quality comparisons and large-image performance remain acceptance work.
