@@ -1,4 +1,5 @@
 mod colors;
+mod export;
 mod file_operations;
 mod lasso;
 mod panels;
@@ -129,6 +130,8 @@ pub struct Editor {
     new_dialog: bool,
     layer_properties: Option<(String, u8, BlendMode)>,
     resize_dialog: Option<ResizeDialog>,
+    export_dialog: Option<export::ExportDialog>,
+    export_options: files::RasterOptions,
     text_dialog: Option<TextDialog>,
     text_font: Option<(ab_glyph::FontArc, String)>,
     effect_dialog: Option<EffectDialog>,
@@ -237,6 +240,8 @@ impl Editor {
             new_dialog: false,
             layer_properties: None,
             resize_dialog: None,
+            export_dialog: None,
+            export_options: files::RasterOptions::new(files::RasterFormat::Png),
             text_dialog: None,
             text_font: None,
             effect_dialog: None,
@@ -325,7 +330,7 @@ impl Editor {
     fn export_image(&mut self, format: files::RasterFormat) {
         self.finish_stroke();
         let Some(path) = rfd::FileDialog::new()
-            .add_filter(format.label(), &[format.extension()])
+            .add_filter(format.label(), format.extensions())
             .set_file_name(format!("Untitled.{}", format.extension()))
             .save_file()
         else {
@@ -336,21 +341,19 @@ impl Editor {
         } else {
             path
         };
-        if !path
-            .extension()
-            .is_some_and(|e| e.eq_ignore_ascii_case(format.extension()))
-        {
+        if !path.extension().is_some_and(|e| {
+            format
+                .extensions()
+                .iter()
+                .any(|ext| e.eq_ignore_ascii_case(ext))
+        }) {
             self.status = format!(
                 "Could not export image: choose a filename ending in .{}",
                 format.extension()
             );
             return;
         }
-        let snapshot = self.document.snapshot();
-        self.start_cancellable_file_job("export image", move |cancel| {
-            files::save_raster_cancellable(&snapshot, &path, format, cancel)?;
-            Ok(Outcome::Exported(path))
-        });
+        self.begin_export(path, format);
     }
 
     fn import_layer(&mut self) {
@@ -1711,6 +1714,7 @@ impl Editor {
     }
 
     fn dialogs(&mut self, ctx: &egui::Context) {
+        self.show_export(ctx);
         if self.file_job.is_some() {
             egui::Window::new("Working")
                 .collapsible(false)
@@ -2318,6 +2322,7 @@ impl Editor {
         if self.file_job.is_none()
             && self.pending.is_none()
             && !self.new_dialog
+            && self.export_dialog.is_none()
             && self.text_dialog.is_none()
             && self.effect_dialog.is_none()
             && self.resize_dialog.is_none()
@@ -2340,6 +2345,10 @@ impl Editor {
             self.document.cancel();
             self.texture_dirty = true;
         }
+        if ctx.input(|i| i.viewport().close_requested()) && self.export_dialog.is_some() {
+            ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+            self.status = "Finish or cancel the export before closing".into();
+        }
         if ctx.input(|i| i.viewport().close_requested()) && self.text_dialog.is_some() {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
             self.status = "Apply or cancel the text before closing".into();
@@ -2359,6 +2368,7 @@ impl Editor {
         if ctx.input(|i| i.viewport().close_requested())
             && !self.allow_close
             && self.file_job.is_none()
+            && self.export_dialog.is_none()
             && self.text_dialog.is_none()
             && (self.document.dirty() || !self.documents.is_empty())
         {
@@ -2372,6 +2382,7 @@ impl Editor {
             && !self.new_dialog
             && self.layer_properties.is_none()
             && self.resize_dialog.is_none()
+            && self.export_dialog.is_none()
             && self.text_dialog.is_none()
             && self.effect_dialog.is_none()
             && !self.recovery_prompt;
@@ -2383,6 +2394,7 @@ impl Editor {
             && !self.new_dialog
             && self.layer_properties.is_none()
             && self.resize_dialog.is_none()
+            && self.export_dialog.is_none()
             && self.text_dialog.is_none()
             && self.effect_dialog.is_none()
             && !self.recovery_prompt;
@@ -2431,7 +2443,12 @@ impl Editor {
                     self.save(true);
                 }
                 ui.menu_button("Export", |ui| {
-                    for format in [files::RasterFormat::Png, files::RasterFormat::WebP] {
+                    for format in [
+                        files::RasterFormat::Png,
+                        files::RasterFormat::Jpeg,
+                        files::RasterFormat::Bmp,
+                        files::RasterFormat::WebP,
+                    ] {
                         if ui.add(Icon::SaveAs.button(format.label())).clicked() {
                             self.export_image(format);
                             ui.close();
@@ -4766,5 +4783,38 @@ mod tests {
         assert_eq!(editor.document.pixels(), &[[255; 4]; 25]);
         assert!(!editor.document.dirty());
         assert!(!editor.document.can_undo());
+    }
+    #[test]
+    fn export_preview_guards_document_switching_and_cancel_does_not_write_or_edit() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.install_document(Document::new(2, 2, [255; 4]).unwrap(), None);
+        editor.install_document(Document::new(3, 3, [100, 120, 140, 128]).unwrap(), None);
+        let active = editor.active_document_id;
+        let before = editor.document.pixels().to_vec();
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("preview.jpg");
+        editor.begin_export(path.clone(), files::RasterFormat::Jpeg);
+        editor.activate_document(0);
+        assert_eq!(editor.active_document_id, active);
+        frame(&mut editor, &ctx, vec![]);
+        frame(
+            &mut editor,
+            &ctx,
+            vec![egui::Event::Key {
+                key: Key::Escape,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers::NONE,
+            }],
+        );
+        assert!(editor.export_dialog.is_none());
+        assert!(!path.exists());
+        assert_eq!(editor.document.pixels(), before);
+        assert!(!editor.document.dirty());
+        assert!(!editor.document.can_undo());
+        editor.activate_document(0);
+        assert_eq!(editor.active_document_id, 0);
     }
 }

@@ -51,3 +51,79 @@ fn cancelled_webp_export_does_not_replace_destination() {
     assert_eq!(std::fs::read(&path).unwrap(), b"existing image");
     assert_eq!(std::fs::read_dir(directory.path()).unwrap().count(), 1);
 }
+
+#[test]
+fn opaque_formats_apply_the_selected_matte_and_preserve_preview_bytes_on_save() {
+    use files::RasterOptions;
+    let cancel = AtomicBool::new(false);
+    let source = [[200, 40, 80, 0], [200, 40, 80, 128], [200, 40, 80, 255]];
+    let options = RasterOptions {
+        format: RasterFormat::Bmp,
+        quality: 90,
+        matte: [20, 100, 180],
+    };
+    let bytes = files::encode_raster_bytes(&source, (3, 1), options, &cancel).unwrap();
+    let decoded = image::load_from_memory(&bytes).unwrap().to_rgba8();
+    assert_eq!(
+        decoded.as_raw(),
+        &[20, 100, 180, 255, 110, 70, 130, 255, 200, 40, 80, 255]
+    );
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("output.bmp");
+    files::save_encoded_raster(&bytes, &path, &cancel).unwrap();
+    assert_eq!(std::fs::read(&path).unwrap(), bytes);
+    assert!(files::save_encoded_raster(b"replacement", &path, &AtomicBool::new(true)).is_err());
+    assert_eq!(std::fs::read(&path).unwrap(), bytes);
+    assert_eq!(source[0], [200, 40, 80, 0]);
+}
+
+#[test]
+fn jpeg_export_has_valid_dimensions_quality_control_and_opaque_matte() {
+    use files::RasterOptions;
+    let cancel = AtomicBool::new(false);
+    for quality in [1, 50, 100] {
+        let bytes = files::encode_raster_bytes(
+            &vec![[255, 0, 0, 0]; 32 * 16],
+            (32, 16),
+            RasterOptions {
+                format: RasterFormat::Jpeg,
+                quality,
+                matte: [128; 3],
+            },
+            &cancel,
+        )
+        .unwrap();
+        let decoded = image::load_from_memory(&bytes).unwrap().to_rgba8();
+        assert_eq!(decoded.dimensions(), (32, 16));
+        assert!(
+            decoded
+                .pixels()
+                .all(|p| p[3] == 255 && p.0[..3].iter().all(|v| v.abs_diff(128) <= 3))
+        );
+    }
+    assert!(
+        files::encode_raster_bytes(
+            &[[0; 4]],
+            (1, 1),
+            RasterOptions {
+                quality: 0,
+                ..RasterOptions::new(RasterFormat::Jpeg)
+            },
+            &cancel
+        )
+        .is_err()
+    );
+    assert!(
+        files::encode_raster_bytes(&[], (1, 1), RasterOptions::new(RasterFormat::Bmp), &cancel)
+            .is_err()
+    );
+    assert!(
+        files::encode_raster_bytes(
+            &[[0; 4]],
+            (1, 1),
+            RasterOptions::new(RasterFormat::Png),
+            &AtomicBool::new(true)
+        )
+        .is_err()
+    );
+}

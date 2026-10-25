@@ -2,7 +2,7 @@ Dialog	Status	Current implementation or gap
 Updates	missing	Distribution/update workflow pending
 Image size	partial	Pixel dimensions; physical resolution pending
 Resize	partial	Dimensions/aspect/sampling controls
-Save configuration	missing	Encoded preview and per-format options pending
+Save configuration	partial	Decoded preview, exact byte count, JPEG quality and matte controls; advanced formats pending
 About	missing	Product and license dialog pending
 Canvas size	partial	Pixel dimensions, anchors and background options
 Color profile	missing	ICC interpretation and profile controls pending

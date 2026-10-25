@@ -1,7 +1,7 @@
 use crate::document::{BlendMode, Document, Layer};
 use image::{
     ImageEncoder, ImageReader,
-    codecs::{png::PngEncoder, webp::WebPEncoder},
+    codecs::{bmp::BmpEncoder, jpeg::JpegEncoder, png::PngEncoder, webp::WebPEncoder},
 };
 use std::{
     fs::File,
@@ -152,24 +152,84 @@ fn write_atomic(
     Ok(())
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RasterFormat {
+    Jpeg,
+    Bmp,
     Png,
     WebP,
 }
 impl RasterFormat {
     pub fn extension(self) -> &'static str {
         match self {
+            Self::Jpeg => "jpg",
+            Self::Bmp => "bmp",
             Self::Png => "png",
             Self::WebP => "webp",
         }
     }
+    pub fn extensions(self) -> &'static [&'static str] {
+        match self {
+            Self::Jpeg => &["jpg", "jpeg"],
+            Self::Bmp => &["bmp"],
+            Self::Png => &["png"],
+            Self::WebP => &["webp"],
+        }
+    }
+    pub fn image_format(self) -> image::ImageFormat {
+        match self {
+            Self::Jpeg => image::ImageFormat::Jpeg,
+            Self::Bmp => image::ImageFormat::Bmp,
+            Self::Png => image::ImageFormat::Png,
+            Self::WebP => image::ImageFormat::WebP,
+        }
+    }
     pub fn label(self) -> &'static str {
         match self {
+            Self::Jpeg => "JPEG",
+            Self::Bmp => "BMP",
             Self::Png => "PNG",
             Self::WebP => "WebP (lossless)",
         }
     }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RasterOptions {
+    pub format: RasterFormat,
+    pub quality: u8,
+    pub matte: [u8; 3],
+}
+impl RasterOptions {
+    pub fn new(format: RasterFormat) -> Self {
+        Self {
+            format,
+            quality: 90,
+            matte: [255; 3],
+        }
+    }
+}
+
+pub fn encode_raster_bytes(
+    pixels: &[[u8; 4]],
+    size: (u32, u32),
+    options: RasterOptions,
+    cancel: &AtomicBool,
+) -> Result<Vec<u8>, String> {
+    let mut bytes = Vec::new();
+    encode_raster_options(pixels, size, &mut bytes, cancel, options)?;
+    check_cancel(cancel)?;
+    Ok(bytes)
+}
+
+pub fn save_encoded_raster(bytes: &[u8], path: &Path, cancel: &AtomicBool) -> Result<(), String> {
+    write_atomic(path, cancel, |file| {
+        let mut writer = CancellableWriter {
+            inner: file,
+            cancel,
+        };
+        writer.write_all(bytes).map_err(|error| error.to_string())
+    })
 }
 
 fn encode_png(
@@ -189,17 +249,56 @@ fn encode_raster(
     cancel: &AtomicBool,
     format: RasterFormat,
 ) -> Result<(), String> {
+    encode_raster_options(pixels, size, writer, cancel, RasterOptions::new(format))
+}
+
+fn encode_raster_options(
+    pixels: &[[u8; 4]],
+    size: (u32, u32),
+    writer: impl Write,
+    cancel: &AtomicBool,
+    options: RasterOptions,
+) -> Result<(), String> {
     check_cancel(cancel)?;
-    let mut bytes = Vec::with_capacity(pixels.len() * 4);
+    Document::validate_size(size.0, size.1)?;
+    if pixels.len() != size.0 as usize * size.1 as usize || !(1..=100).contains(&options.quality) {
+        return Err("Invalid raster export pixels or quality.".into());
+    }
+    let opaque = matches!(options.format, RasterFormat::Jpeg | RasterFormat::Bmp);
+    let mut bytes = Vec::with_capacity(pixels.len() * if opaque { 3 } else { 4 });
     for chunk in pixels.chunks(4096) {
         check_cancel(cancel)?;
-        bytes.extend(chunk.iter().flatten().copied());
+        if opaque {
+            for pixel in chunk {
+                let alpha = u32::from(pixel[3]);
+                bytes.extend((0..3).map(|c| {
+                    ((u32::from(pixel[c]) * alpha
+                        + u32::from(options.matte[c]) * (255 - alpha)
+                        + 127)
+                        / 255) as u8
+                }));
+            }
+        } else {
+            bytes.extend(chunk.iter().flatten().copied());
+        }
     }
-    let writer = CancellableWriter {
+    let mut writer = CancellableWriter {
         inner: writer,
         cancel,
     };
-    match format {
+    match options.format {
+        RasterFormat::Jpeg => JpegEncoder::new_with_quality(writer, options.quality).encode(
+            &bytes,
+            size.0,
+            size.1,
+            image::ExtendedColorType::Rgb8,
+        ),
+        RasterFormat::Bmp => BmpEncoder::new(&mut writer).encode(
+            &bytes,
+            size.0,
+            size.1,
+            image::ExtendedColorType::Rgb8,
+        ),
         RasterFormat::Png => PngEncoder::new(writer).write_image(
             &bytes,
             size.0,

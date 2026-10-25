@@ -65,11 +65,11 @@ Features
 - Resize all layers, change canvas size with a nine-position anchor, rotate or mirror.
 - Free-transform selected pixels with rotation, scaling, mirroring and offsets.
 - Hold Shift for 45-degree line angles or equal shape dimensions.
-- Zoom from 10% to 400%, fit the canvas, and navigate with scrollbars.
+- Zoom from 1% to 6400%, fit the canvas, and navigate with scrollbars.
 - Use Ctrl+wheel or a pinch gesture to zoom around the pointer; middle-drag to pan.
 - Undo/redo complete strokes and edits; cancel a stroke with Escape.
-- Expand History in the layer panel to undo or redo multiple operations at once.
-- Open PNG, JPEG, BMP and WebP; export flattened RGBA PNG or lossless WebP.
+- Use the History panel to undo or redo multiple operations at once.
+- Open PNG, JPEG, BMP and WebP; export PNG, JPEG, BMP or lossless WebP with a decoded preview.
 - Add, duplicate, reorder, hide and delete layers; edit names, opacity and blend mode.
 - Flatten the visible image into one layer, with undo restoring every original layer.
 - Copy/cut active-layer pixels or copy the merged image; paste images as new layers.
@@ -119,8 +119,8 @@ temporary files instead of being evicted. Labels and metadata remain in RAM. The
 active document is limited to 256 MiB of layer pixels, excluding previews/history.
 A canvas is limited to 16,777,216 pixels. The New dialog permits up to 4096 per axis.
 
-Save writes an editable .prust project. Raster export writes only the visible composite
-and does not mark an edited project as saved. Project version 2 stores blend modes as well as dimensions,
+Save writes an editable .prust or .pdn project. Raster export writes only the visible composite
+and does not mark an edited project as saved. Project versions 2/3 store blend modes as well as dimensions,
 layer order, the active layer, UTF-8 names, visibility, opacity and lossless PNG
 pixels for every layer. The reader bounds layer counts, decoded memory, payloads
 and names, and rejects unsupported versions, truncation and trailing data. History
@@ -134,8 +134,10 @@ File I/O, recovery, raster previews, geometry, fill, clipboard operations and di
 history run in background workers with cooperative cancellation. Small brush edits
 use changed-region compositing and partial texture uploads. Initial copies of
 shared layer buffers, allocation and GPU uploads still take time on the UI thread;
-this is not a guarantee of constant frame time at the document limits. Metadata, orientation tags and embedded color profiles are not
-preserved or interpreted. PNG and lossless WebP are available for raster export. A user-local Linux installation helper is available; there is no signed
+this is not a guarantee of constant frame time at the document limits. PDN/PRUST
+preserve string metadata and layer background flags. Raster metadata, orientation
+tags and embedded color profiles are not yet preserved or interpreted. PNG, JPEG,
+BMP and lossless WebP are available for raster export. A user-local Linux installation helper is available; there is no signed
 distribution yet. Linux is the currently validated desktop target.
 
 Validation
@@ -883,3 +885,10 @@ mapping. Output endpoints may be reversed to invert a channel. Auto levels
 estimates ranges from selected pixels with nonzero alpha and optionally clips
 up to 5% from each histogram tail; constant channels are left unchanged.
 Both adjustments preserve alpha and participate in preview, undo and repeat.
+
+Raster export opens a decoded-output preview with the exact encoded byte count.
+JPEG offers quality 1–100; JPEG and BMP composite transparency onto a selectable
+background color (white by default). PNG and lossless WebP retain alpha. Save export
+writes the previewed bytes atomically; Cancel writes nothing. Export options are
+remembered within the session. The reduced preview is capped at 512x320 pixels.
+The project stays editable and its saved/modified state is unchanged by export.

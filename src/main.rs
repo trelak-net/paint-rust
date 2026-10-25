@@ -4,6 +4,7 @@ mod canvas_renderer;
 mod clipboard;
 mod icons;
 mod preview;
+mod raster_preview;
 
 fn main() -> eframe::Result {
     let icon = image::load_from_memory(include_bytes!("../assets/app-icon.png"))

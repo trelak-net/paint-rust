@@ -129,7 +129,8 @@ independent tasks; do not silently reduce the required scope.
 9. Files and color management
 [ ] Mandatory PDN import/export with real external interoperability fixtures.
 [ ] Preserve layer names, visibility, opacity, blend modes and metadata.
-[ ] Complete raster format inventory and export option previews.
+[x] Decoded-output export preview, byte count, JPEG quality and JPEG/BMP matte controls.
+[ ] Remaining raster codecs/options and unified raster Save/Save As routing.
 [ ] EXIF orientation and ICC color management.
 10. Reliability and performance
 [ ] Bounded foreground work, large-document/multi-document benchmarks.

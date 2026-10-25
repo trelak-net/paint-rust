@@ -76,6 +76,7 @@ impl Editor {
             || self.file_job.is_some()
             || self.document.editing()
             || self.text_dialog.is_some()
+            || self.export_dialog.is_some()
             || self.effect_dialog.is_some()
         {
             return;
