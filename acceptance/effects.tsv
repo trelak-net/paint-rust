@@ -28,7 +28,7 @@ Julia Fractal	Render	partial	Complex-plane iteration with editable constant, cen
 Levels	Adjustment	partial	Master/R/G/B input and output endpoints, gamma and background input/output histograms	Exact transfer function, ranges, color space and reference output audit
 Mandelbrot Fractal	Render	partial	Complex-plane iteration with center, zoom, rotation, iteration limit and two-color palette	External reference algorithms/ranges, palette options and large-image performance audit
 Median Blur	Blurs	partial	Sliding alpha-weighted RGB histogram; radius and percentile controls	External reference output, ranges and color-space audit
-Morphology	Distort	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Morphology	Distort	partial	Square-neighborhood dilate/erode/open/close with premultiplied color and alpha extrema	External reference channels, kernels, ranges and large-image memory audit
 Motion Blur	Blurs	partial	Bilinear premultiplied sampling, angle, distance and centered mode	External reference output, ranges and color-space audit
 Oil Painting	Artistic	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
 Outline	Stylize	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases

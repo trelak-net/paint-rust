@@ -1,6 +1,8 @@
 mod blurs;
 mod distort;
+mod morphology;
 mod object;
+pub use morphology::MorphologyOperation;
 mod photo;
 mod render;
 pub use render::{FractalSettings, NoiseSettings};
@@ -10,6 +12,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 #[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum Effect {
+    Morphology {
+        radius: u32,
+        operation: MorphologyOperation,
+    },
     Dents {
         scale: f32,
         amount: f32,
@@ -139,6 +145,7 @@ impl Effect {
         let range = |v: f32, min: f32, max: f32| v.is_finite() && (min..=max).contains(&v);
         match self {
             Self::Move(_) | Self::Shape(_) | Self::Gradient(_) | Self::FreeTransform(_) => false,
+            Self::Morphology { radius, .. } => radius <= 64,
             Self::Dents { scale, amount, .. } => {
                 range(scale, 1.0, 1000.0) && range(amount, 0.0, 200.0)
             }
@@ -251,7 +258,8 @@ impl Effect {
             | Self::BoxBlur(_)
             | Self::MotionBlur { .. }
             | Self::Median { .. } => "Blurs",
-            Self::Dents { .. }
+            Self::Morphology { .. }
+            | Self::Dents { .. }
             | Self::PolarInversion { .. }
             | Self::TileReflection { .. }
             | Self::Bulge(_)
@@ -282,6 +290,7 @@ impl Effect {
     }
     pub fn name(self) -> &'static str {
         match self {
+            Self::Morphology { .. } => "Morphology",
             Self::Dents { .. } => "Dents",
             Self::PolarInversion { .. } => "Polar inversion",
             Self::TileReflection { .. } => "Tile reflection",
@@ -457,6 +466,9 @@ pub fn render(
         return None;
     }
     let mut output = match effect {
+        Effect::Morphology { radius, operation } => {
+            morphology::render(source, width, height, radius, operation, cancel)?
+        }
         Effect::Dents {
             scale,
             amount,
@@ -698,7 +710,8 @@ pub fn render(
                         let steps = f64::from(levels.clamp(2, 32) - 1);
                         (f64::from(*channel) * steps / 255.0).round() * 255.0 / steps
                     }
-                    Effect::Dents { .. }
+                    Effect::Morphology { .. }
+                    | Effect::Dents { .. }
                     | Effect::PolarInversion { .. }
                     | Effect::TileReflection { .. }
                     | Effect::Clouds(_)

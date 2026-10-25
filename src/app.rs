@@ -2531,6 +2531,15 @@ impl Editor {
                                 changed |= ui.add(egui::Slider::new(shadows,-100..=100).text("Shadows")).changed();
                                 changed |= ui.add(egui::Slider::new(highlights,-100..=100).text("Highlights")).changed();
                             }
+                            Effect::Morphology {radius,operation} => {
+                                changed |= ui.add(egui::Slider::new(radius,0..=64).text("Radius (px)")).changed();
+                                egui::ComboBox::from_label("Operation").selected_text(operation.label()).show_ui(ui,|ui| {
+                                    for value in paint_rust::effects::MorphologyOperation::ALL {
+                                        changed |= ui.selectable_value(operation,value,value.label()).changed();
+                                    }
+                                });
+                                ui.small("Square neighborhood; color and opacity change together.");
+                            }
                             Effect::Dents {scale,amount,seed} => {
                                 changed |= ui.add(egui::Slider::new(scale,1.0..=1000.0).logarithmic(true).text("Scale (px)")).changed();
                                 changed |= ui.add(egui::Slider::new(amount,0.0..=200.0).text("Displacement (px)")).changed();
@@ -3134,6 +3143,7 @@ impl Editor {
                                 softness: 0.5,
                                 warmth: 0.1,
                             },
+                            Effect::Morphology {radius:1,operation:paint_rust::effects::MorphologyOperation::Dilate},
                             Effect::Dents {scale:40.0,amount:10.0,seed:1},
                             Effect::PolarInversion {amount:1.0,center:[0.5,0.5]},
                             Effect::TileReflection {size:40.0,amount:8.0,angle:0.0},

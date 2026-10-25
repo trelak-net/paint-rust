@@ -1288,3 +1288,16 @@ repeat and persistent settings use the common effect pipeline. Tests cover exact
 neutral output, known coordinate mappings, deterministic seeds, constant colors,
 hidden-color isolation, single-pixel images and invalid parameters. External
 kernel/range comparisons and additional edge modes remain outstanding.
+
+Morphology
+-----------
+Effects > Distort > Morphology offers Dilate, Erode, Open and Close with a square
+neighborhood and radius 0–64. Operations take component extrema in premultiplied
+RGBA, so color and opacity change together without leaking hidden RGB. Open runs
+erosion then dilation; Close reverses the order. Canvas edges replicate pixels.
+Horizontal/vertical sliding extrema keep computation linear in image size rather
+than proportional to the neighborhood area. Workers check cancellation during
+conversion and each pass. Radius zero preserves exact bytes. Regression checks
+compare optimized results with direct neighborhoods on varied partial-alpha
+pixels, and cover isolated defects, selected-area publication and bounds. More
+structuring elements, channel options and external comparisons remain pending.

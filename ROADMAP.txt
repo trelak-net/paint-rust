@@ -151,6 +151,7 @@ independent tasks; do not silently reduce the required scope.
 [x] Seeded noise, median/percentile blur, edge detection and directional emboss.
 [x] Bulge, twist, frosted glass, crystalize, vignette and red-eye correction.
 [x] Seeded dents, centered polar inversion and rotated tile-reflection distortions.
+[x] Alpha-aware dilation, erosion, opening and closing with separable sliding extrema.
 [x] Seeded clouds/turbulence and configurable Mandelbrot/Julia generators with selection-aware previews.
 [ ] Complete remaining blur, distortion, noise and stylization inventory.
 [x] Repeat last effect and restore last-applied parameters within the session.
