@@ -58,6 +58,8 @@ pub fn decode(mut reader: impl Read + Seek, cancel: &AtomicBool) -> Result<Docum
                 70..=72 => 1,
                 73..=75 => 2,
                 76..=78 => 3,
+                79 | 80 => 4,
+                82 | 83 => 5,
                 _ => 0,
             };
             if matches!(format, 28 | 29 | 87 | 88 | 91 | 93) {
@@ -79,6 +81,8 @@ pub fn decode(mut reader: impl Read + Seek, cancel: &AtomicBool) -> Result<Docum
                 b"DXT1" => 1,
                 b"DXT3" => 2,
                 b"DXT5" => 3,
+                b"ATI1" | b"BC4U" => 4,
+                b"ATI2" | b"BC5U" => 5,
                 _ => 0,
             };
             true
@@ -198,7 +202,7 @@ fn decode_blocks(
     cancel: &AtomicBool,
 ) -> Result<Document, String> {
     let mut pixels = vec![[0; 4]; width as usize * height as usize];
-    let length = if format == 1 { 8 } else { 16 };
+    let length = if matches!(format, 1 | 4) { 8 } else { 16 };
     for by in 0..height.div_ceil(4) {
         check(cancel)?;
         for bx in 0..width.div_ceil(4) {
@@ -206,6 +210,22 @@ fn decode_blocks(
             reader
                 .read_exact(&mut block[..length])
                 .map_err(|e| e.to_string())?;
+            if matches!(format, 4 | 5) {
+                let red = decode_channel(&block[..8]);
+                let green = if format == 5 {
+                    decode_channel(&block[8..])
+                } else {
+                    [0; 16]
+                };
+                for i in 0..16u32 {
+                    let (x, y) = (bx * 4 + i % 4, by * 4 + i / 4);
+                    if x < width && y < height {
+                        pixels[y as usize * width as usize + x as usize] =
+                            [red[i as usize], green[i as usize], 0, 255];
+                    }
+                }
+                continue;
+            }
             let colors = &block[length - 8..length];
             let c0 = u16::from_le_bytes([colors[0], colors[1]]);
             let c1 = u16::from_le_bytes([colors[2], colors[3]]);
@@ -267,4 +287,21 @@ fn decode_blocks(
     }
     check(cancel)?;
     Document::from_pixels(width, height, pixels)
+}
+
+fn decode_channel(block: &[u8]) -> [u8; 16] {
+    let mut palette = [0u8; 8];
+    palette[0] = block[0];
+    palette[1] = block[1];
+    let divisor = if palette[0] > palette[1] { 7 } else { 5 };
+    for i in 1..divisor {
+        palette[i + 1] = (((divisor - i) as u16 * u16::from(palette[0])
+            + i as u16 * u16::from(palette[1]))
+            / divisor as u16) as u8;
+    }
+    if divisor == 5 {
+        palette[7] = 255;
+    }
+    let bits = u64::from_le_bytes(block.try_into().unwrap()) >> 16;
+    std::array::from_fn(|i| palette[((bits >> (i * 3)) & 7) as usize])
 }

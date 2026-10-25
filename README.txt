@@ -1483,7 +1483,10 @@ file destinations and viewport metadata remain outside the snapshot format.
 DDS textures
 ------------
 DDS import reads the top surface of legacy RGB16/24/32, BC1/BC2/BC3, and supported
-DX10 RGBA8/BGRA8/BGRX8 or BC1/2/3 textures. Channel masks, row pitch, dimensions,
+DX10 RGBA8/BGRA8/BGRX8 or BC1/2/3 textures. BC4/BC5 UNORM supports
+legacy ATI1/ATI2 and BC4U/BC5U as well as DX10 headers; channels map to red
+and red/green respectively, with blue zero and opaque alpha. Signed variants
+remain unsupported. Channel masks, row pitch, dimensions,
 alpha conventions and input bounds are validated. BC1 transparent indices and
 partial edge blocks are preserved. Cube maps, arrays, volumes, premultiplied alpha
 and other block formats are rejected. Mipmap editing and regeneration are pending.
@@ -1540,7 +1543,11 @@ PRUST, PDN and recovery snapshots preserve these tags and unrelated metadata.
 Metadata participates in image dirty state, undo/redo and cancellation, including
 disk-backed history. A synthetic 300 DPI PDN fixture was displayed as 1 x 0.5 inches
 in the native Windows editor and re-saved without changing its resolution or pixels.
-Raster density tags remain a separate implementation step.
+PNG, JPEG, BMP, WebP and TIFF imports/exports preserve independent X/Y DPI.
+PNG/BMP use integer pixels per meter (rounding error at most 0.013 DPI); JPEG
+and WebP use minimal resolution-only EXIF, and TIFF uses rational density tags.
+Orientation changes swap density axes when needed. Source descriptive tags are
+not copied. DDS/GIF/TGA do not retain DPI; the export dialog explains this.
 
 Physical units in the workspace
 -------------------------------
@@ -1552,3 +1559,9 @@ dimensions with visible pixel dimensions, independent or linked X/Y DPI, and
 aspect-ratio control. DPI-only changes keep pixels and selection intact; combined
 DPI/geometry changes publish one undo step. The resize dialog now defaults to
 gamma-corrected bicubic and accepts Enter to apply or Escape to cancel.
+
+Resize image and Canvas size also support percentages relative to the original
+pixel dimensions. Canvas expansion can fill each layer's new pixels with
+transparency, primary/secondary color, white or black. Existing pixels, hidden
+layers and layer properties are preserved; one undo restores the entire edit.
+The resize dialog keeps Apply/Cancel outside its scrollable option area.

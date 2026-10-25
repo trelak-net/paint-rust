@@ -189,6 +189,7 @@ independent tasks; do not silently reduce the required scope.
 [x] GIF first-frame import and single-frame export with explicit transparency policy.
 [x] Unified project/raster Save and Save As with confirmed flattening and undo.
 [x] DDS top-surface RGB/RGBA and BC1/2/3 import, lossless RGBA8 export and independent fixtures.
+[x] DDS BC4/BC5 UNORM import through legacy and DX10 headers with partial-block clipping.
 [ ] Remaining raster codecs, DDS mipmaps/additional block formats and advanced export options.
 [x] Apply all eight EXIF orientations once on raster import.
 [x] Convert embedded raster RGB/grayscale ICC to sRGB and tag supported exports.

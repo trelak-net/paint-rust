@@ -201,3 +201,70 @@ fn dx10_rgba_and_opaque_bc3_are_supported_but_arrays_are_rejected() {
         &[[255, 0, 0, 255]]
     );
 }
+
+#[test]
+fn bc4_and_bc5_unorm_preserve_channel_indices_and_dx10_layout() {
+    let indices = (0..16).fold(0u64, |bits, i| bits | ((i % 8) << (i * 3)));
+    let mut red = vec![255, 0];
+    red.extend(&indices.to_le_bytes()[..6]);
+    let mut green = vec![0, 255];
+    green.extend(&indices.to_le_bytes()[..6]);
+    let expected_red = [255, 0, 218, 182, 145, 109, 72, 36];
+    let expected_green = [0, 255, 51, 102, 153, 204, 0, 255];
+    for (fourcc, dxgi, two) in [
+        (b"ATI1", 80, false),
+        (b"BC4U", 80, false),
+        (b"ATI2", 83, true),
+        (b"BC5U", 83, true),
+    ] {
+        let mut blocks = red.clone();
+        if two {
+            blocks.extend(&green);
+        }
+        for dx10 in [false, true] {
+            let bytes = if dx10 {
+                let mut payload = Vec::new();
+                for n in [dxgi, 3u32, 0, 1, 0] {
+                    payload.extend(n.to_le_bytes());
+                }
+                payload.extend(&blocks);
+                compressed(b"DX10", (4, 4), &payload)
+            } else {
+                compressed(fourcc, (4, 4), &blocks)
+            };
+            let doc = dds::decode(Cursor::new(&bytes), &cancel()).unwrap();
+            for (i, p) in doc.pixels().iter().enumerate() {
+                assert_eq!(
+                    *p,
+                    [
+                        expected_red[i % 8],
+                        if two { expected_green[i % 8] } else { 0 },
+                        0,
+                        255
+                    ]
+                );
+            }
+            for n in 1..=blocks.len() {
+                assert!(dds::decode(Cursor::new(&bytes[..bytes.len() - n]), &cancel()).is_err());
+            }
+        }
+    }
+}
+
+#[test]
+fn bc5_partial_blocks_clip_edges_without_swapping_channels() {
+    let block = [50, 50, 0, 0, 0, 0, 0, 0, 200, 200, 0, 0, 0, 0, 0, 0];
+    let mut blocks = block.to_vec();
+    blocks.extend([80, 80, 0, 0, 0, 0, 0, 0, 160, 160, 0, 0, 0, 0, 0, 0]);
+    let doc = dds::decode(Cursor::new(compressed(b"ATI2", (5, 3), &blocks)), &cancel()).unwrap();
+    for (i, p) in doc.pixels().iter().enumerate() {
+        assert_eq!(
+            *p,
+            if i % 5 == 4 {
+                [80, 160, 0, 255]
+            } else {
+                [50, 200, 0, 255]
+            }
+        );
+    }
+}
