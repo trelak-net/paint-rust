@@ -198,7 +198,7 @@ impl Editor {
                     dialog.request();
                 }
                 ui.small(
-                    "Changes only the selection boundary. Pixels and image history stay unchanged.",
+                    "Changes only the selection boundary. Image pixels stay unchanged; the boundary change can be undone.",
                 );
                 if let Some(error) = &dialog.error {
                     ui.label(error);
@@ -220,6 +220,10 @@ impl Editor {
             self.document.set_selection(Some(dialog.original.clone()));
             self.status = "Selection transform cancelled".into();
         } else if apply {
+            let selection = self.document.selection();
+            self.document.set_selection(Some(dialog.original.clone()));
+            self.document
+                .set_selection_with_history(selection, "Transform selection boundary");
             self.status = "Selection boundary transformed".into();
         } else {
             self.selection_transform = Some(dialog);
@@ -363,6 +367,15 @@ mod tests {
         assert_eq!(editor.document.selection(), result);
         assert_eq!(editor.document.pixels(), &[[20, 30, 40, 255]; 400]);
         assert!(!editor.document.dirty());
-        assert!(!editor.document.can_undo());
+        assert_eq!(editor.document.history().count(), 1);
+        editor.undo();
+        assert_eq!(
+            editor.document.selection(),
+            Some(Selection::elliptical(2, 2, 6, 6))
+        );
+        assert!(!editor.document.dirty());
+        editor.redo();
+        assert_eq!(editor.document.selection(), result);
+        assert!(!editor.document.dirty());
     }
 }

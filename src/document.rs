@@ -288,6 +288,23 @@ impl Document {
     pub fn selection(&self) -> Option<Selection> {
         self.selection.clone()
     }
+    /// Record a boundary change without changing the saved image revision.
+    pub fn set_selection_with_history(
+        &mut self,
+        selection: Option<Selection>,
+        label: &str,
+    ) -> bool {
+        if self.editing() {
+            return false;
+        }
+        let previous = self.selection.clone();
+        self.set_selection(selection);
+        let next = std::mem::replace(&mut self.selection, previous);
+        self.begin(label);
+        self.selection = next;
+        self.commit()
+    }
+
     pub fn set_selection(&mut self, selection: Option<Selection>) {
         if self.editing() {
             return;
@@ -1049,16 +1066,18 @@ impl Document {
         let Some(before) = self.pending.take() else {
             return false;
         };
-        if before.layers == self.layers
-            && before.width == self.width
-            && before.height == self.height
-        {
+        let image_changed = before.layers != self.layers
+            || before.width != self.width
+            || before.height != self.height;
+        if !image_changed && before.selection == self.selection {
             return false;
         }
         self.undo.push_back(Entry::Memory(before));
         self.redo.clear();
-        self.revision = self.next_revision;
-        self.next_revision += 1;
+        if image_changed {
+            self.revision = self.next_revision;
+            self.next_revision += 1;
+        }
         self.trim_history();
         true
     }

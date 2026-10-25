@@ -138,7 +138,8 @@ independent tasks; do not silently reduce the required scope.
 [x] Exact external merge-down pixel/property fixtures for all fourteen blend modes.
 [x] Exact active-layer horizontal/vertical flips and half-turn with one-step undo.
 [ ] Complete remaining layer transformations and acceptance comparisons.
-[ ] History action grouping and full state restoration audit.
+[x] Undoable selection operations with clean saved-image revisions and disk-backed mask restoration.
+[ ] Remaining history action grouping and full state restoration audit.
 8. Adjustments and effects
 [x] Hue, saturation and lightness adjustment with selection and alpha preservation.
 [x] Master/per-channel levels, gamma and automatic histogram-tail clipping.

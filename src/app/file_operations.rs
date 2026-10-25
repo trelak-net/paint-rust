@@ -508,7 +508,11 @@ impl Editor {
                 let selection_changed = selection != self.document.selection();
                 match self.document.apply_transformed(*document, &label) {
                     Ok(changed) => {
-                        self.document.set_selection(selection);
+                        if !changed && selection_changed {
+                            self.document.set_selection_with_history(selection, &label);
+                        } else {
+                            self.document.set_selection(selection);
+                        }
                         self.texture_dirty |= changed;
                         self.status = if changed || selection_changed {
                             format!("{label} completed")
@@ -521,7 +525,8 @@ impl Editor {
             }
             Ok(Outcome::Selection(selection)) => {
                 let empty = selection.width == 0 || selection.height == 0;
-                self.document.set_selection(Some(selection));
+                self.document
+                    .set_selection_with_history(Some(selection), operation);
                 self.status = if empty {
                     "Selection is empty".into()
                 } else {

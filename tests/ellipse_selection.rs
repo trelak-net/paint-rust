@@ -35,7 +35,7 @@ fn clipped_ellipse_keeps_original_geometry_when_selection_moves() {
     doc.set_selection(Some(Selection::elliptical(0, 0, 5, 5)));
     doc.begin("Move selection");
     doc.preview_move(-2, 0, false, true);
-    assert!(!doc.commit());
+    assert!(doc.commit());
     let selection = doc.selection().unwrap();
     assert_eq!((selection.x, selection.width), (0, 3));
     assert_eq!(selection.ellipse.unwrap().x, -2);
@@ -44,6 +44,9 @@ fn clipped_ellipse_keeps_original_geometry_when_selection_moves() {
     assert_eq!(doc.pixels()[0], [0, 0, 0, 255]);
     assert_eq!(doc.pixels()[2], [255; 4]);
     doc.undo();
+    assert!(!doc.dirty());
+    assert!(doc.undo());
+    assert_eq!(doc.selection(), Some(Selection::elliptical(0, 0, 5, 5)));
     assert!(!doc.dirty());
 }
 

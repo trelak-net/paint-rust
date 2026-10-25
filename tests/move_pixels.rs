@@ -59,7 +59,7 @@ fn copy_and_selection_only_moves_do_not_clear_source_pixels() {
     doc.cancel();
     doc.begin("Move selection");
     doc.preview_move(2, 2, false, true);
-    assert!(!doc.commit());
+    assert!(doc.commit());
     assert!(!doc.dirty());
     assert_eq!(
         doc.selection(),

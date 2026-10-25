@@ -1378,7 +1378,8 @@ large-image performance remain pending.
 Selection-boundary transforms
 -----------------------------
 Selection > Transform selection boundary (Ctrl+Alt+M), also available from Move
-selection options, transforms the mask without changing image pixels or history.
+selection options, transforms the mask without changing image pixels. Applying
+the preview records one undoable selection change and keeps the saved image clean.
 Scale X/Y, proportional scaling, rotation, flips and pixel offsets use the original
 selection center. A coalescing background worker cancels superseded requests and
 publishes only the latest generation. Apply/Enter keeps the ready preview;
@@ -1387,7 +1388,7 @@ image undo, file operations and automatic history storage are blocked during the
 preview. The boundary uses binary nearest sampling and clips to canvas bounds;
 an off-canvas result remains an explicit empty selection. Tests cover geometry,
 ellipses and irregular masks, clipping, cancellation, stale results, tab guards,
-Apply and pixel/history/path preservation. On-canvas handles and antialiased
+Apply and image-pixel/saved-revision/path preservation. On-canvas handles and antialiased
 selection coverage remain pending.
 
 Layer orientation and selected-area fill
@@ -1418,11 +1419,23 @@ and XOR. Rectangular runs merge vertically during export, preserving exact binar
 masks including holes. Import uses even-odd filling across all polygons and clips
 to the current canvas. Inputs are bounded to 8 MiB, 16,384 polygons and 81,920
 vertices; overly complex exports report an error before replacing the clipboard.
-Native image pixels and image history remain unchanged by geometry clipboard
-operations; selection-only undo remains a compatibility gap. Workers check
+Image pixels remain unchanged by geometry clipboard operations. Pasting records
+one undoable selection change without changing the saved image revision. Workers check
 cancellation during parsing, scan conversion and combination. Tests include
 ellipses, holes, malformed text, publication guards and the complete clipboard
 flow. An independently executed Windows clipboard round-trip preserves an
 elliptical ring; native inversion produces its exact pixel complement. Fixtures
 and provenance live in tests/fixtures/selection/. Copy merged also supports
 Ctrl+Shift+C alongside the menu command.
+
+Selection history
+------------------
+Rectangle/ellipse gestures, lasso/polygon/color selection, selection combinations,
+inversion, select-all/deselect, boundary moves/transforms and geometry clipboard
+paste now participate in undo/redo. Selection-only commits retain the saved image
+revision, so selecting or deselecting does not mark a clean image as unsaved.
+Preview cancellation and unchanged selections add no history entry. Selection
+steps interleave with pixel edits and survive disk-backed history storage.
+Ctrl+D deselects; Ctrl+Shift+A remains an alternative. Regression checks cover
+single-step gestures, mixed image/selection history, saved revisions, branching,
+preview cancellation, clipboard modes and disk restoration.

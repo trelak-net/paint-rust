@@ -31,3 +31,8 @@ text. Paste selection geometry can replace, add to, subtract from or intersect
 an existing selection; XOR keeps areas covered by only one of the two shapes.
 Ctrl+Alt+Shift+V pastes with Replace. This copies the boundary rather than image
 pixels, so it can be reused on another layer or document.
+
+Undo selections
+Selection changes can be undone and redone alongside image edits. Selecting,
+deselecting, moving or transforming a selection boundary does not make a saved
+image dirty. Press Ctrl+D to deselect; Ctrl+Shift+A is also supported.

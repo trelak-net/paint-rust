@@ -706,12 +706,20 @@ impl Editor {
             self.texture_dirty = true;
         }
         if self.tool == Tool::Select
-            && self.selection_mode != CombineMode::Replace
             && let Some(previous) = self.selection_before.take()
         {
             let candidate = self.document.selection();
             self.document.set_selection(previous.clone());
-            if let Some(candidate) = candidate {
+            if self.selection_mode == CombineMode::Replace {
+                self.document.set_selection_with_history(
+                    candidate,
+                    if self.ellipse_selection {
+                        "Ellipse selection"
+                    } else {
+                        "Rectangle selection"
+                    },
+                );
+            } else if let Some(candidate) = candidate {
                 let (width, height, mode) = (
                     self.document.width,
                     self.document.height,
@@ -1005,7 +1013,7 @@ impl Editor {
                 Some(4)
             } else if i.consume_key(egui::Modifiers::COMMAND, Key::Z) {
                 Some(5)
-            } else if i.consume_key(egui::Modifiers::COMMAND | egui::Modifiers::SHIFT, Key::A) {
+            } else if i.consume_key(egui::Modifiers::COMMAND, Key::D) || i.consume_key(egui::Modifiers::COMMAND | egui::Modifiers::SHIFT, Key::A) {
                 Some(8)
             } else if i.consume_key(egui::Modifiers::COMMAND, Key::A) {
                 Some(7)
@@ -1110,18 +1118,21 @@ impl Editor {
             }
             Some(7) => {
                 self.finish_stroke();
-                self.document.set_selection(Some(Selection {
-                    mask: None,
-                    ellipse: None,
-                    x: 0,
-                    y: 0,
-                    width: self.document.width,
-                    height: self.document.height,
-                }));
+                self.document.set_selection_with_history(
+                    Some(Selection {
+                        mask: None,
+                        ellipse: None,
+                        x: 0,
+                        y: 0,
+                        width: self.document.width,
+                        height: self.document.height,
+                    }),
+                    "Select all",
+                );
             }
             Some(8) => {
                 self.finish_stroke();
-                self.document.set_selection(None);
+                self.document.set_selection_with_history(None, "Deselect");
             }
             Some(9) => {
                 self.finish_stroke();
@@ -3139,23 +3150,15 @@ impl Editor {
                     }
                     if ui.button("Select all    Ctrl+A").clicked() {
                         self.finish_stroke();
-                        self.document.set_selection(Some(Selection {
-                            mask: None,
-                            ellipse: None,
-                            x: 0,
-                            y: 0,
-                            width: self.document.width,
-                            height: self.document.height,
-                        }));
+                        self.document.set_selection_with_history(Some(Selection {mask:None,ellipse:None,x:0,y:0,width:self.document.width,height:self.document.height}),"Select all");
                         ui.close();
                     }
                     if ui.button("Invert selection    Ctrl+I").clicked() {
                         self.invert_selection();
                         ui.close();
                     }
-                    if ui.button("Deselect    Ctrl+Shift+A").clicked() {
-                        self.finish_stroke();
-                        self.document.set_selection(None);
+                    if ui.button("Deselect    Ctrl+D").clicked() {
+                        self.finish_stroke();self.document.set_selection_with_history(None,"Deselect");
                         ui.close();
                     }
                     if ui.button("Delete pixels    Del").clicked() {
@@ -4498,7 +4501,12 @@ mod tests {
             wait_for_files(&mut editor, &ctx);
             assert_eq!(editor.document.selection(), Some(expected));
             assert_eq!(editor.document.pixels(), pixels.as_slice());
-            assert!(!editor.document.can_undo());
+            assert!(editor.document.can_undo());
+            let completed = editor.document.selection();
+            editor.undo();
+            assert_eq!(editor.document.selection(), Some(previous.clone()));
+            editor.redo();
+            assert_eq!(editor.document.selection(), completed);
             assert!(!editor.document.dirty());
         }
         let before = editor.document.selection();
@@ -5092,7 +5100,40 @@ mod tests {
         assert!(editor.status.starts_with("Could not resize image:"));
     }
     #[test]
-    fn elliptical_selection_gesture_sets_shape_and_stays_out_of_history() {
+    fn select_all_and_deselect_shortcuts_are_clean_undoable_operations() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.document = Document::new(8, 6, [20, 30, 40, 255]).unwrap();
+        let command = |key| egui::Event::Key {
+            key,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers {
+                ctrl: true,
+                command: true,
+                ..Default::default()
+            },
+        };
+        frame(&mut editor, &ctx, vec![command(Key::A)]);
+        let selected = editor.document.selection();
+        assert_eq!(selected.as_ref().unwrap().width, 8);
+        assert_eq!(editor.document.history().count(), 1);
+        assert!(!editor.document.dirty());
+        frame(&mut editor, &ctx, vec![command(Key::D)]);
+        assert!(editor.document.selection().is_none());
+        assert_eq!(editor.document.history().count(), 2);
+        assert!(!editor.document.dirty());
+        editor.undo();
+        assert_eq!(editor.document.selection(), selected);
+        editor.undo();
+        assert!(editor.document.selection().is_none());
+        assert!(!editor.document.dirty());
+        assert_eq!(editor.document.pixels(), &[[20, 30, 40, 255]; 48]);
+    }
+
+    #[test]
+    fn elliptical_selection_gesture_has_clean_undo_and_redo() {
         let ctx = egui::Context::default();
         let mut editor = Editor::blank(&ctx);
         editor.tool = Tool::Select;
@@ -5115,7 +5156,13 @@ mod tests {
         assert!(selected.ellipse.is_some());
         assert_eq!((selected.width, selected.height), (100, 80));
         assert!(!editor.document.dirty());
-        assert!(!editor.document.can_undo());
+        assert_eq!(editor.document.history().count(), 1);
+        editor.undo();
+        assert!(editor.document.selection().is_none());
+        assert!(!editor.document.dirty());
+        editor.redo();
+        assert_eq!(editor.document.selection(), Some(selected));
+        assert!(!editor.document.dirty());
     }
     #[test]
     fn arrow_nudges_move_copy_and_selection_bounds_with_undo() {
@@ -5561,7 +5608,7 @@ mod tests {
         assert!(!editor.document.can_redo());
     }
     #[test]
-    fn additive_selection_gesture_publishes_mask_without_image_history() {
+    fn additive_selection_gesture_publishes_one_clean_history_step() {
         let ctx = egui::Context::default();
         let mut editor = Editor::blank(&ctx);
         editor.document = Document::new(100, 100, [255; 4]).unwrap();
@@ -5596,7 +5643,12 @@ mod tests {
         let (_, _, copied) = editor.document.copy_pixels(false);
         assert_eq!(copied.iter().filter(|p| p[3] > 0).count(), 401);
         assert!(!editor.document.dirty());
-        assert!(!editor.document.can_undo());
+        assert_eq!(editor.document.history().count(), 1);
+        editor.undo();
+        assert_eq!(editor.document.selection().unwrap().width, 1);
+        assert!(!editor.document.dirty());
+        editor.redo();
+        assert!(editor.document.selection().unwrap().mask.is_some());
     }
 
     #[test]
@@ -5686,7 +5738,7 @@ mod tests {
         frame(&mut editor, &ctx, vec![key(Key::Escape)]);
         assert!(editor.polygon_points.is_empty());
         assert_eq!(editor.document.selection(), previous);
-        assert!(!editor.document.can_undo());
+        assert!(editor.document.can_undo());
     }
     #[test]
     fn layer_and_fill_commands_publish_in_background_with_single_undo() {
@@ -5903,7 +5955,12 @@ mod tests {
         assert!(editor.file_job.is_none());
         assert!(editor.document.layers() == original);
         assert!(!editor.document.dirty());
-        assert!(!editor.document.can_undo());
+        assert_eq!(editor.document.history().count(), 4);
+        editor.navigate_history(4, false);
+        assert!(editor.document.selection().is_none());
+        assert!(!editor.document.dirty());
+        editor.navigate_history(4, true);
+        assert_eq!(editor.document.selection(), Some(selection));
     }
     #[test]
     fn lasso_drag_closes_on_release_and_escape_preserves_previous_selection() {
@@ -5949,7 +6006,7 @@ mod tests {
                 .all(|p| *p == 1)
         );
         assert!(!editor.document.dirty());
-        assert!(!editor.document.can_undo());
+        assert!(editor.document.can_undo());
         frame(
             &mut editor,
             &ctx,
@@ -6135,7 +6192,7 @@ mod tests {
         );
         assert_eq!(editor.document.pixels(), &[[255; 4]; 25]);
         assert!(!editor.document.dirty());
-        assert!(!editor.document.can_undo());
+        assert!(editor.document.can_undo());
     }
     #[test]
     fn export_preview_guards_document_switching_and_cancel_does_not_write_or_edit() {

@@ -19,17 +19,17 @@ Edit.Paste	Paste	partial	Ctrl+V	Ctrl+V	Currently creates a new layer; active-lay
 Edit.PasteInToNewLayer	Paste into New Layer	partial	Ctrl+Shift+V	-	Current Paste creates a layer; dedicated shortcut pending
 Edit.PasteInToNewImage	Paste into New Image	supported	Ctrl+Alt+V	Ctrl+Alt+V	Exact clipboard dimensions and RGBA in a new unsaved tab; existing work preserved, cancellation guarded
 Edit.CopySelection	Copy Selection	supported	Ctrl+Alt+Shift+C	Ctrl+Alt+Shift+C	Bounded polygon-list JSON text; exact binary masks and external clipboard fixture
-Edit.PasteSelection	Paste Selection	partial	-	Ctrl+Alt+Shift+V	Polygon-list JSON with five combination modes, canvas clipping and cancellable publication; selection-only undo pending
-Edit.Replace	Replace	partial	Ctrl+Alt+Shift+V	Ctrl+Alt+Shift+V	Selection tool and Paste selection submenu; selection-only undo pending
-Edit.Union	Union	partial	-	-	Selection tool and Paste selection submenu; selection-only undo pending
-Edit.Exclude	Exclude	partial	-	-	Selection tool and Paste selection submenu; selection-only undo pending
-Edit.Intersect	Intersect	partial	-	-	Selection tool and Paste selection submenu; selection-only undo pending
-Edit.Xor	Xor	partial	-	-	Selection tool and Paste selection submenu; selection-only undo pending
+Edit.PasteSelection	Paste Selection	partial	-	Ctrl+Alt+Shift+V	Polygon-list JSON with five combination modes, canvas clipping and cancellable publication; undoable selection changes without image dirty flags
+Edit.Replace	Replace	partial	Ctrl+Alt+Shift+V	Ctrl+Alt+Shift+V	Selection tool and Paste selection submenu; undoable selection changes without image dirty flags
+Edit.Union	Union	partial	-	-	Selection tool and Paste selection submenu; undoable selection changes without image dirty flags
+Edit.Exclude	Exclude	partial	-	-	Selection tool and Paste selection submenu; undoable selection changes without image dirty flags
+Edit.Intersect	Intersect	partial	-	-	Selection tool and Paste selection submenu; undoable selection changes without image dirty flags
+Edit.Xor	Xor	partial	-	-	Selection tool and Paste selection submenu; undoable selection changes without image dirty flags
 Edit.EraseSelection	Erase Selection	supported	Delete	Delete	Available; see workflow cases
 Edit.FillSelection	Fill Selection	supported	-	-	Primary/secondary RGBA replacement within selection on active layer; cancellable one-step undo
 Edit.InvertSelection	Invert Selection	supported	Ctrl+I	Ctrl+I	Available; see workflow cases
 Edit.SelectAll	Select All	supported	Ctrl+A	Ctrl+A	Available; see workflow cases
-Edit.Deselect	Deselect	partial	Ctrl+D	Ctrl+Shift+A	Available as Ctrl+Shift+A; shortcut alignment pending
+Edit.Deselect	Deselect	supported	Ctrl+D	Ctrl+D; Ctrl+Shift+A	Undoable deselection without changing image saved state
 View.ZoomIn	Zoom In	partial	Ctrl+Add	-	Zoom tool and Ctrl+wheel; ratio sequence/shortcuts pending
 View.ZoomOut	Zoom Out	partial	Ctrl+Subtract	-	Zoom tool and Ctrl+wheel; ratio sequence/shortcuts pending
 View.ZoomToWindow	Zoom to Window	supported	Ctrl+B	Ctrl+B	Fit image in the available canvas viewport
