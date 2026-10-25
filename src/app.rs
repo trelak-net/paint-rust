@@ -74,6 +74,9 @@ struct ResizeDialog {
     lock_ratio: bool,
     ratio: f64,
     resampling: paint_rust::resample::Options,
+    units: paint_rust::resolution::Unit,
+    dpi: paint_rust::resolution::Dpi,
+    link_resolution: bool,
     anchor: usize,
 }
 
@@ -2219,42 +2222,32 @@ impl Editor {
             })
             .collapsible(false)
             .resizable(false)
+            .vscroll(true)
+            .max_height((ctx.content_rect().height()-100.0).max(180.0))
             .anchor(egui::Align2::CENTER_CENTER, Vec2::ZERO)
             .show(ctx, |ui| {
-                ui.horizontal(|ui| {
-                    let label = ui.label("Width");
-                    if ui
-                        .add(
-                            egui::DragValue::new(&mut dialog.width)
-                                .range(1..=16384)
-                                .suffix(" px"),
-                        )
-                        .labelled_by(label.id)
-                        .changed()
-                        && dialog.lock_ratio
-                    {
-                        dialog.height = (f64::from(dialog.width) / dialog.ratio)
-                            .round()
-                            .clamp(1.0, 16384.0) as u32;
-                    }
+                egui::ComboBox::from_label("Measurement units").selected_text(dialog.units.label()).show_ui(ui,|ui| {
+                    for unit in paint_rust::resolution::Unit::ALL {ui.selectable_value(&mut dialog.units,unit,unit.label());}
                 });
-                ui.horizontal(|ui| {
-                    let label = ui.label("Height");
-                    if ui
-                        .add(
-                            egui::DragValue::new(&mut dialog.height)
-                                .range(1..=16384)
-                                .suffix(" px"),
-                        )
-                        .labelled_by(label.id)
-                        .changed()
-                        && dialog.lock_ratio
-                    {
-                        dialog.width = (f64::from(dialog.height) * dialog.ratio)
-                            .round()
-                            .clamp(1.0, 16384.0) as u32;
-                    }
+                for axis in 0..2 {
+                    let factor=dialog.units.pixels_per_unit(if axis==0 {dialog.dpi.x}else{dialog.dpi.y});
+                    let mut value=f64::from(if axis==0 {dialog.width}else{dialog.height})/factor;
+                    ui.horizontal(|ui| {
+                        ui.label(if axis==0 {"Width"}else{"Height"});
+                        if ui.add(egui::DragValue::new(&mut value).range(1.0/factor..=16384.0/factor).speed(if dialog.units==paint_rust::resolution::Unit::Pixels {1.0}else{0.01}).suffix(format!(" {}",dialog.units.suffix()))).changed() {
+                            let pixels=(value*factor).round().clamp(1.0,16384.0) as u32;
+                            if axis==0 {dialog.width=pixels; if dialog.lock_ratio {dialog.height=(f64::from(pixels)/dialog.ratio).round().clamp(1.0,16384.0) as u32;}}
+                            else {dialog.height=pixels; if dialog.lock_ratio {dialog.width=(f64::from(pixels)*dialog.ratio).round().clamp(1.0,16384.0) as u32;}}
+                        }
+                    });
+                }
+                ui.label(format!("Pixel size: {} × {}",dialog.width,dialog.height));
+                ui.horizontal_wrapped(|ui| {
+                    if ui.add(egui::DragValue::new(&mut dialog.dpi.x).range(1.0..=10000.0).prefix("DPI X ").speed(1.0)).changed() && dialog.link_resolution {dialog.dpi.y=dialog.dpi.x;}
+                    if ui.add(egui::DragValue::new(&mut dialog.dpi.y).range(1.0..=10000.0).prefix("DPI Y ").speed(1.0)).changed() && dialog.link_resolution {dialog.dpi.x=dialog.dpi.y;}
                 });
+                ui.checkbox(&mut dialog.link_resolution,"Link X/Y resolution");
+                ui.small("Changing DPI keeps pixel dimensions and changes physical print size.");
                 ui.checkbox(&mut dialog.lock_ratio, "Keep aspect ratio");
                 if dialog.canvas {
                     let anchors = [
@@ -2287,23 +2280,8 @@ impl Editor {
                     ui.small("Gamma correction filters light in linear sRGB. Nearest neighbor copies exact pixels.");
                 }
                 ui.horizontal(|ui| {
-                    if ui.button("Apply").clicked() {
-                        let (width, height, canvas, anchor, resampling) = (
-                            dialog.width,
-                            dialog.height,
-                            dialog.canvas,
-                            dialog.anchor,
-                            dialog.resampling,
-                        );
-                        if self.transform_in_background("resize image", move |document, cancel| {
-                            if canvas {
-                                document.resize_canvas_cancellable(width, height, anchor, cancel)
-                            } else {
-                                document.resize_image_with_options_cancellable(width, height, resampling, cancel)
-                            }
-                        }) {
-                            keep = false;
-                        }
+                    if ui.button("Apply").clicked() && self.apply_resize_dialog(&dialog) {
+                        keep = false;
                     }
                     if ui.button("Cancel").clicked() {
                         keep = false;
@@ -2313,6 +2291,13 @@ impl Editor {
                     ui.colored_label(Color32::LIGHT_RED, &self.status);
                 }
             });
+            if keep
+                && !ctx.wants_keyboard_input()
+                && ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::Enter))
+                && self.apply_resize_dialog(&dialog)
+            {
+                keep = false;
+            }
             if keep {
                 self.resize_dialog = Some(dialog);
             }
@@ -3436,7 +3421,8 @@ impl Editor {
                     }
                     if ui.button("Actual size    Ctrl+0").clicked() { self.set_view_zoom(1.0); ui.close(); }
                     self.preferences_menu(ui);
-                    ui.checkbox(&mut self.preferences.rulers, "Pixel rulers");
+                    ui.checkbox(&mut self.preferences.rulers, "Rulers");
+                    ui.menu_button("Measurement units",|ui| { for unit in paint_rust::resolution::Unit::ALL {ui.selectable_value(&mut self.preferences.units,unit,unit.label());} });
                     if ui.button("Fit image    Ctrl+B").clicked() {
                         self.fit_canvas = true;
                         ui.close();
@@ -3648,6 +3634,43 @@ impl eframe::App for Editor {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn resolution_only_dialog_apply_preserves_pixels_and_has_one_undo_step() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.document = Document::new(300, 150, [40, 80, 120, 255]).unwrap();
+        let selected = Some(Selection::elliptical(10, 10, 30, 30));
+        editor.document.set_selection(selected.clone());
+        editor.open_resize_dialog(false);
+        let mut dialog = editor.resize_dialog.take().unwrap();
+        dialog.dpi = paint_rust::resolution::Dpi { x: 300.0, y: 300.0 };
+        dialog.units = paint_rust::resolution::Unit::Inches;
+        assert!(editor.apply_resize_dialog(&dialog));
+        wait_for_files(&mut editor, &ctx);
+        assert_eq!(editor.document.resolution(), dialog.dpi);
+        assert_eq!(editor.document.selection(), selected);
+        assert_eq!((editor.document.width, editor.document.height), (300, 150));
+        assert!(
+            editor
+                .document
+                .pixels()
+                .iter()
+                .all(|p| *p == [40, 80, 120, 255])
+        );
+        assert_eq!(editor.document.history().count(), 1);
+        editor.undo();
+        assert_eq!(editor.document.resolution(), Default::default());
+        assert!(!editor.document.dirty());
+        dialog.width = 600;
+        dialog.height = 300;
+        assert!(editor.apply_resize_dialog(&dialog));
+        wait_for_files(&mut editor, &ctx);
+        assert_eq!(editor.document.history().count(), 1);
+        assert_eq!(editor.document.resolution(), dialog.dpi);
+        editor.undo();
+        assert_eq!((editor.document.width, editor.document.height), (300, 150));
+        assert_eq!(editor.document.resolution(), Default::default());
+    }
     #[test]
     fn image_and_layer_shortcuts_route_to_their_commands_without_collisions() {
         use egui::Modifiers as M;

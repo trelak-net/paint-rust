@@ -106,7 +106,8 @@ independent tasks; do not silently reduce the required scope.
 [x] Pixel rulers with zoom/scroll-aware ticks, pointer markers and saved visibility.
 [x] Fit image and fit selection commands with keyboard shortcuts.
 [x] Undoable physical-resolution EXIF project metadata and native 300 DPI PDN round-trip fixture.
-[ ] Physical measurement UI, rulers and raster density tags.
+[x] Pixel/inch/centimeter resize controls, linked X/Y DPI and persistent physical rulers.
+[ ] Raster density tags.
 4. Rendering
 [x] Brush/eraser antialiasing, hardness, stroke opacity and blend/replacement modes.
 [x] Shape antialiasing and combined outline/fill with primary/secondary colors.

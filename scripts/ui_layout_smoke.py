@@ -64,6 +64,7 @@ def main():
     parser.add_argument("--theme", choices=("system", "light", "dark"), default="system")
     parser.add_argument("--scale", type=float)
     parser.add_argument("--rulers", action="store_true")
+    parser.add_argument("--units", choices=("pixels", "inches", "centimeters"), default="pixels")
     parser.add_argument("--size", help="Requested native window size, e.g. 800x600")
     dialogs = parser.add_mutually_exclusive_group()
     dialogs.add_argument("--show-help", action="store_true")
@@ -103,7 +104,8 @@ def main():
         settings.parent.mkdir()
         settings.write_text("workspace-v1\n1\n1\n1\n1\n1\n")
         preferences = settings.with_name("preferences.txt")
-        preferences.write_text(f"preferences-v1\n{args.theme} 1 12 1 1 0 0 {int(args.rulers)}\n")
+        units = ("pixels", "inches", "centimeters").index(args.units)
+        preferences.write_text(f"preferences-v1\n{args.theme} 1 12 1 1 0 0 {int(args.rulers)} 0 {units}\n")
         saved = []
         saved_preferences = []
         effects = settings.with_name("effects.json")

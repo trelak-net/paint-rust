@@ -10,6 +10,26 @@ enum Command {
     Flatten,
 }
 impl Editor {
+    pub(super) fn apply_resize_dialog(&mut self, dialog: &ResizeDialog) -> bool {
+        let (width, height, canvas, anchor, resampling, dpi) = (
+            dialog.width,
+            dialog.height,
+            dialog.canvas,
+            dialog.anchor,
+            dialog.resampling,
+            dialog.dpi,
+        );
+        self.transform_in_background("resize image", move |document, cancel| {
+            let resolution_changed = document.set_resolution(dpi)?;
+            let geometry_changed = if canvas {
+                document.resize_canvas_cancellable(width, height, anchor, cancel)
+            } else {
+                document.resize_image_with_options_cancellable(width, height, resampling, cancel)
+            }?;
+            Ok(resolution_changed || geometry_changed)
+        })
+    }
+
     pub(super) fn open_resize_dialog(&mut self, canvas: bool) {
         self.finish_stroke();
         self.resize_dialog = Some(ResizeDialog {
@@ -18,7 +38,13 @@ impl Editor {
             canvas,
             lock_ratio: !canvas,
             ratio: f64::from(self.document.width) / f64::from(self.document.height),
-            resampling: Default::default(),
+            resampling: paint_rust::resample::Options {
+                gamma_correct: true,
+                ..Default::default()
+            },
+            units: self.preferences.units,
+            dpi: self.document.resolution(),
+            link_resolution: self.document.resolution().x == self.document.resolution().y,
             anchor: 4,
         });
     }

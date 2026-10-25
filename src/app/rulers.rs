@@ -33,6 +33,81 @@ fn ticks(offset: f32, span: f32, zoom: f32, extent: u32) -> Vec<(f32, u32, bool)
         .collect()
 }
 
+fn physical_ticks(
+    offset: f32,
+    span: f32,
+    zoom: f32,
+    extent: u32,
+    ppu: f64,
+) -> Vec<(f32, f64, bool)> {
+    if !offset.is_finite()
+        || !span.is_finite()
+        || !zoom.is_finite()
+        || zoom <= 0.0
+        || span <= 0.0
+        || !ppu.is_finite()
+        || ppu <= 0.0
+    {
+        return Vec::new();
+    }
+    let scale = f64::from(zoom) * ppu;
+    let desired = 60.0 / scale;
+    let magnitude = 10.0_f64.powf(desired.log10().floor());
+    let major = [1.0, 2.0, 5.0, 10.0]
+        .into_iter()
+        .find(|v| v * magnitude >= desired)
+        .unwrap()
+        * magnitude;
+    let subdivisions: u32 = if major * scale / 5.0 >= 7.0 { 5 } else { 1 };
+    let minor = major / f64::from(subdivisions);
+    let first = (f64::from(offset.max(0.0)) / (minor * scale)).ceil() as u64;
+    let last = ((f64::from(offset.max(0.0)) + f64::from(span))
+        .min(f64::from(extent) * f64::from(zoom))
+        / (minor * scale))
+        .floor() as u64;
+    (first..=last)
+        .take(4096)
+        .map(|i| {
+            let value = i as f64 * minor;
+            (
+                (value * scale - f64::from(offset)) as f32,
+                value,
+                i % u64::from(subdivisions) == 0,
+            )
+        })
+        .collect()
+}
+fn ruler_ticks(
+    offset: f32,
+    span: f32,
+    zoom: f32,
+    extent: u32,
+    unit: paint_rust::resolution::Unit,
+    dpi: f64,
+) -> Vec<(f32, String, bool)> {
+    if unit == paint_rust::resolution::Unit::Pixels {
+        return ticks(offset, span, zoom, extent)
+            .into_iter()
+            .map(|(p, v, m)| (p, v.to_string(), m))
+            .collect();
+    }
+    let ppu = unit.pixels_per_unit(dpi);
+    let decimals = ((ppu * f64::from(zoom) / 60.0)
+        .log10()
+        .ceil()
+        .clamp(0.0, 6.0)) as usize;
+    physical_ticks(offset, span, zoom, extent, ppu)
+        .into_iter()
+        .map(|(p, v, m)| {
+            let mut label = format!("{v:.decimals$}");
+            if label.contains('.') {
+                label = label.trim_end_matches('0').trim_end_matches('.').to_owned();
+            }
+            (p, label, m)
+        })
+        .collect()
+}
+
 const ZOOM_STEPS: &[f32] = &[
     0.01, 0.02, 0.03, 0.04, 0.05, 0.0625, 0.0833, 0.125, 0.1667, 0.25, 0.3333, 0.5, 0.6667, 1.0,
     1.5, 2.0, 3.0, 4.0, 6.0, 8.0, 12.0, 16.0, 24.0, 32.0, 48.0, 64.0,
@@ -121,16 +196,19 @@ impl Editor {
         painter.text(
             area.min + Vec2::new(5.0, 4.0),
             egui::Align2::LEFT_TOP,
-            "px",
+            self.preferences.units.suffix(),
             egui::FontId::proportional(10.0),
             foreground,
         );
+        let dpi = self.document.resolution();
         let h = painter.with_clip_rect(horizontal);
-        for (position, value, major) in ticks(
+        for (position, value, major) in ruler_ticks(
             self.canvas_offset.x,
             self.canvas_viewport.width(),
             self.zoom,
             self.document.width,
+            self.preferences.units,
+            dpi.x,
         ) {
             let x = self.canvas_viewport.left() + position;
             h.line_segment(
@@ -144,18 +222,20 @@ impl Editor {
                 h.text(
                     Pos2::new(x + 2.0, horizontal.top()),
                     egui::Align2::LEFT_TOP,
-                    value.to_string(),
+                    value,
                     egui::FontId::proportional(9.0),
                     foreground,
                 );
             }
         }
         let v = painter.with_clip_rect(vertical);
-        for (position, value, major) in ticks(
+        for (position, value, major) in ruler_ticks(
             self.canvas_offset.y,
             self.canvas_viewport.height(),
             self.zoom,
             self.document.height,
+            self.preferences.units,
+            dpi.y,
         ) {
             let y = self.canvas_viewport.top() + position;
             v.line_segment(
@@ -169,7 +249,7 @@ impl Editor {
                 v.text(
                     Pos2::new(vertical.left() + 2.0, y + 2.0),
                     egui::Align2::LEFT_TOP,
-                    value.to_string(),
+                    value,
                     egui::FontId::proportional(9.0),
                     foreground,
                 );
@@ -200,6 +280,29 @@ impl Editor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn physical_ruler_ticks_follow_resolution_and_keep_fractional_labels() {
+        let values = physical_ticks(0.0, 1000.0, 2.0, 600, 300.0);
+        assert!(values.iter().any(|(screen, value, major)| *major
+            && (*value - 1.0).abs() < 1e-8
+            && (*screen - 600.0).abs() < 0.01));
+        let centimeters = physical_ticks(0.0, 1000.0, 1.0, 1000, 300.0 / 2.54);
+        for (screen, value, _) in centimeters {
+            assert!((f64::from(screen) - value * 300.0 / 2.54).abs() < 0.001);
+        }
+        let labels = ruler_ticks(
+            0.0,
+            1000.0,
+            64.0,
+            100,
+            paint_rust::resolution::Unit::Inches,
+            10000.0,
+        );
+        let major: Vec<_> = labels.iter().filter(|v| v.2).map(|v| v.1.clone()).collect();
+        assert!(major.len() > 2);
+        assert!(major.windows(2).all(|pair| pair[0] != pair[1]));
+        assert!(physical_ticks(0.0, 100.0, 1.0, 100, f64::NAN).is_empty());
+    }
     #[test]
     fn ticks_follow_zoom_and_scroll_without_dense_or_negative_labels() {
         for zoom in [0.01, 0.1, 1.0, 8.0, 64.0] {

@@ -519,10 +519,17 @@ impl Editor {
                 }
             }
             Ok(Outcome::Transformed(document, label)) => {
+                let selection = document.selection();
+                let selection_changed = selection != self.document.selection();
                 match self.document.apply_transformed(*document, &label) {
                     Ok(changed) => {
+                        if changed {
+                            self.document.set_selection(selection);
+                        } else if selection_changed {
+                            self.document.set_selection_with_history(selection, &label);
+                        }
                         self.texture_dirty |= changed;
-                        self.status = if changed {
+                        self.status = if changed || selection_changed {
                             format!("{label} completed")
                         } else {
                             "Image unchanged".into()
@@ -660,7 +667,10 @@ impl Editor {
                 .next()
                 .unwrap_or("Transform image")
                 .to_owned();
-            Ok(Outcome::Transformed(Box::new(snapshot.snapshot()), label))
+            let selection = snapshot.selection();
+            let mut result = snapshot.snapshot();
+            result.set_selection(selection);
+            Ok(Outcome::Transformed(Box::new(result), label))
         })
     }
 

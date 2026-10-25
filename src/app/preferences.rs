@@ -13,6 +13,7 @@ pub(super) struct Preferences {
     pub theme: Theme,
     pub pixel_grid: bool,
     pub rulers: bool,
+    pub units: paint_rust::resolution::Unit,
     pub brush_size: f32,
     pub brush: paint_rust::brush::Options,
     pub recent: Vec<PathBuf>,
@@ -23,6 +24,7 @@ impl Default for Preferences {
             theme: Theme::System,
             pixel_grid: false,
             rulers: false,
+            units: Default::default(),
             brush_size: 12.0,
             brush: Default::default(),
             recent: Vec::new(),
@@ -35,7 +37,7 @@ impl Preferences {
     }
     fn encode(&self) -> String {
         let mut text = format!(
-            "preferences-v1\n{} {} {} {} {} {} {} {} {}\n",
+            "preferences-v1\n{} {} {} {} {} {} {} {} {} {}\n",
             match self.theme {
                 Theme::System => "system",
                 Theme::Light => "light",
@@ -48,7 +50,8 @@ impl Preferences {
             u8::from(self.brush.antialias),
             u8::from(self.brush.blend),
             u8::from(self.rulers),
-            self.brush.blend_mode as u8
+            self.brush.blend_mode as u8,
+            self.units as u8
         );
         for path in self.recent.iter().take(16) {
             if let Some(path) = path.to_str()
@@ -76,7 +79,7 @@ impl Preferences {
             .ok_or_else(invalid)?
             .split_whitespace()
             .collect();
-        if !(7..=9).contains(&fields.len()) {
+        if !(7..=10).contains(&fields.len()) {
             return Err(invalid());
         }
         let boolean = |v: &str| match v {
@@ -105,9 +108,16 @@ impl Preferences {
             } else {
                 false
             },
+            units: if fields.len() == 10 {
+                *paint_rust::resolution::Unit::ALL
+                    .get(fields[9].parse::<usize>().map_err(|_| invalid())?)
+                    .ok_or_else(invalid)?
+            } else {
+                Default::default()
+            },
             brush_size: number(fields[2], 1.0, 128.0)?,
             brush: paint_rust::brush::Options {
-                blend_mode: if fields.len() == 9 {
+                blend_mode: if fields.len() >= 9 {
                     *BlendMode::ALL
                         .get(fields[8].parse::<usize>().map_err(|_| invalid())?)
                         .ok_or_else(invalid)?
@@ -274,6 +284,7 @@ mod tests {
     #[test]
     fn preferences_roundtrip_bound_recent_paths_and_validate_numbers() {
         let mut settings = Preferences {
+            units: paint_rust::resolution::Unit::Centimeters,
             theme: Theme::Dark,
             brush: paint_rust::brush::Options {
                 hardness: 0.25,

@@ -118,3 +118,35 @@ fn rational(value: f64) -> Vec<u8> {
     }
     [(numerator / a).to_le_bytes(), (10000 / a).to_le_bytes()].concat()
 }
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Unit {
+    #[default]
+    Pixels,
+    Inches,
+    Centimeters,
+}
+impl Unit {
+    pub const ALL: [Self; 3] = [Self::Pixels, Self::Inches, Self::Centimeters];
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Pixels => "Pixels",
+            Self::Inches => "Inches",
+            Self::Centimeters => "Centimeters",
+        }
+    }
+    pub fn suffix(self) -> &'static str {
+        match self {
+            Self::Pixels => "px",
+            Self::Inches => "in",
+            Self::Centimeters => "cm",
+        }
+    }
+    pub fn pixels_per_unit(self, dpi: f64) -> f64 {
+        match self {
+            Self::Pixels => 1.0,
+            Self::Inches => dpi,
+            Self::Centimeters => dpi / 2.54,
+        }
+    }
+}

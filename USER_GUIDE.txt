@@ -86,3 +86,10 @@ Ctrl+R offers several resampling filters. Bicubic is the default; nearest neighb
 keeps hard pixel edges, while Lanczos offers sharper filtering. Area averaging is
 useful for reducing images. Enable Gamma correction to average light in linear
 sRGB. Transparency is handled independently of color. Escape cancels the dialog.
+
+Physical size and rulers
+Select pixels, inches or centimeters under View > Measurement units. Rulers use
+the active image resolution. Resize image and Canvas size also accept these units
+and let you set linked or independent X/Y DPI. Changing DPI alone changes print
+size without resampling pixels. Editing width or height changes the target pixel
+size shown in the dialog. Apply records the complete change in one undo step.

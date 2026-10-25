@@ -1540,4 +1540,15 @@ PRUST, PDN and recovery snapshots preserve these tags and unrelated metadata.
 Metadata participates in image dirty state, undo/redo and cancellation, including
 disk-backed history. A synthetic 300 DPI PDN fixture was displayed as 1 x 0.5 inches
 in the native Windows editor and re-saved without changing its resolution or pixels.
-Raster density tags and physical-unit UI are separate implementation steps.
+Raster density tags remain a separate implementation step.
+
+Physical units in the workspace
+-------------------------------
+View > Measurement units selects pixels, inches or centimeters for rulers and
+new resize dialogs. Preferences retain the unit and remain compatible with older
+settings files. Rulers use the active document's X/Y DPI independently and retain
+fractional labels at high zoom. Resize image and Canvas size accept physical
+dimensions with visible pixel dimensions, independent or linked X/Y DPI, and
+aspect-ratio control. DPI-only changes keep pixels and selection intact; combined
+DPI/geometry changes publish one undo step. The resize dialog now defaults to
+gamma-corrected bicubic and accepts Enter to apply or Escape to cancel.
