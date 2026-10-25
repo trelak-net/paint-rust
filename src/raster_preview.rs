@@ -190,7 +190,7 @@ mod tests {
 }
 
 #[cfg(test)]
-mod jpeg_xl_tests {
+mod custom_codec_tests {
     use super::*;
     #[test]
     fn lossless_custom_codec_preview_decodes_the_saved_bytes() {
@@ -224,5 +224,46 @@ mod jpeg_xl_tests {
                 .all(|pixel| *pixel == egui::Color32::from_rgb(13, 27, 53))
         );
         assert_eq!(result.image.size, [17, 9]);
+    }
+    #[test]
+    fn every_dds_compression_previews_using_the_application_decoder() {
+        for compression in paint_rust::dds::Compression::ALL {
+            let ctx = egui::Context::default();
+            let document = Document::new(16, 9, [12, 68, 190, 128]).unwrap();
+            let options = RasterOptions {
+                dds_compression: compression,
+                ..RasterOptions::new(files::RasterFormat::Dds)
+            };
+            let mut preview = RasterPreview::new(ctx, document, options);
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+            let result = loop {
+                if let Some(result) = preview.poll() {
+                    break result.unwrap();
+                }
+                assert!(std::time::Instant::now() < deadline);
+                std::thread::sleep(std::time::Duration::from_millis(2));
+            };
+            let decoded = files::decode_raster_bytes(
+                &result.bytes,
+                files::RasterFormat::Dds,
+                &AtomicBool::new(false),
+            )
+            .unwrap();
+            assert_eq!(result.image.size, [16, 9]);
+            for (index, (pixel, expected)) in
+                result.image.pixels.iter().zip(decoded.pixels()).enumerate()
+            {
+                let checker = if ((index % 16) / 8 + (index / 16) / 8) % 2 == 0 {
+                    224
+                } else {
+                    176
+                };
+                let alpha = u32::from(expected[3]);
+                let rgb = std::array::from_fn::<_, 3, _>(|c| {
+                    ((u32::from(expected[c]) * alpha + checker * (255 - alpha) + 127) / 255) as u8
+                });
+                assert_eq!(pixel.to_array(), [rgb[0], rgb[1], rgb[2], 255]);
+            }
+        }
     }
 }

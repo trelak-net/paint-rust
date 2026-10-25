@@ -1,4 +1,4 @@
-//! Bounded DDS import and RGBA8/BC1/BC3 export with optional mipmaps.
+//! Bounded DDS import and RGBA8/BC1/BC3/BC4/BC5 export with optional mipmaps.
 mod compress;
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Compression {
@@ -6,14 +6,37 @@ pub enum Compression {
     Rgba8,
     Bc1,
     Bc3,
+    Bc4,
+    Bc5,
 }
 impl Compression {
-    pub const ALL: [Self; 3] = [Self::Rgba8, Self::Bc1, Self::Bc3];
+    pub const ALL: [Self; 5] = [Self::Rgba8, Self::Bc1, Self::Bc3, Self::Bc4, Self::Bc5];
+    fn data_channels(self) -> bool {
+        matches!(self, Self::Bc4 | Self::Bc5)
+    }
+    fn block_bytes(self) -> u32 {
+        if matches!(self, Self::Bc1 | Self::Bc4) {
+            8
+        } else {
+            16
+        }
+    }
+    fn fourcc(self) -> [u8; 4] {
+        match self {
+            Self::Bc1 => *b"DXT1",
+            Self::Bc3 => *b"DXT5",
+            Self::Bc4 => *b"DX10",
+            Self::Bc5 => *b"DX10",
+            Self::Rgba8 => [0; 4],
+        }
+    }
     pub fn label(self) -> &'static str {
         match self {
             Self::Rgba8 => "RGBA8 (uncompressed)",
             Self::Bc1 => "BC1 (DXT1, binary alpha)",
             Self::Bc3 => "BC3 (DXT5, interpolated alpha)",
+            Self::Bc4 => "BC4 (red channel)",
+            Self::Bc5 => "BC5 (red and green channels)",
         }
     }
 }
@@ -232,25 +255,51 @@ pub fn encode_with_options(
     if compression != Compression::Rgba8 {
         let flags = 0x81007u32 | if levels > 1 { 0x20000 } else { 0 };
         header[8..12].copy_from_slice(&flags.to_le_bytes());
-        let size = size.0.div_ceil(4)
-            * size.1.div_ceil(4)
-            * if compression == Compression::Bc1 {
-                8
-            } else {
-                16
-            };
+        let size = size.0.div_ceil(4) * size.1.div_ceil(4) * compression.block_bytes();
         header[20..24].copy_from_slice(&size.to_le_bytes());
         header[80..108].fill(0);
         header[80..84].copy_from_slice(&4u32.to_le_bytes());
-        header[84..88].copy_from_slice(if compression == Compression::Bc1 {
-            b"DXT1"
-        } else {
-            b"DXT5"
-        });
+        header[84..88].copy_from_slice(&compression.fourcc());
     }
     writer.write_all(&header).map_err(|e| e.to_string())?;
+    if compression.data_channels() {
+        for value in [
+            if compression == Compression::Bc4 {
+                80u32
+            } else {
+                83
+            },
+            3,
+            0,
+            1,
+            3,
+        ] {
+            writer
+                .write_all(&value.to_le_bytes())
+                .map_err(|e| e.to_string())?;
+        }
+    }
     let mut dimensions = size;
     let mut level_pixels = std::borrow::Cow::Borrowed(pixels);
+    if levels > 1 && compression.data_channels() {
+        let mut data = Vec::with_capacity(pixels.len());
+        for chunk in pixels.chunks(65536) {
+            check(cancel)?;
+            data.extend(chunk.iter().map(|p| {
+                [
+                    p[0],
+                    if compression == Compression::Bc5 {
+                        p[1]
+                    } else {
+                        0
+                    },
+                    0,
+                    255,
+                ]
+            }));
+        }
+        level_pixels = std::borrow::Cow::Owned(data);
+    }
     for level in 0..levels {
         if compression == Compression::Rgba8 {
             for row in level_pixels.chunks(dimensions.0 as usize) {
@@ -270,7 +319,7 @@ pub fn encode_with_options(
                 next_size,
                 crate::resample::Options {
                     filter: crate::resample::Filter::Area,
-                    gamma_correct: true,
+                    gamma_correct: !compression.data_channels(),
                 },
                 cancel,
             )?;

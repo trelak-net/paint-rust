@@ -32,3 +32,16 @@ at zero alpha is not required to survive the native clipboard.
 
 A second clipboard-PNG capture of the BC1 export preserved alpha exactly and
 matched FFmpeg visible RGB within one level.
+
+export-bc4.dds and export-bc5.dds use the same original grid and generator, with
+DX10 BC4_UNORM/BC5_UNORM headers. FFmpeg 8.1.3 produced the corresponding .rgba references
+using the commands above with bc4/bc5 substituted. Comparisons cover stored red
+and red/green channels; decoder presentation of unstored channels can differ.
+Data mipmaps average channel values directly and discard source transparency.
+The explicit DX10 formats avoid legacy ATI2/3Dc channel-swizzle conventions.
+FFmpeg legacy ATI2 handling is documented in its decoder source:
+https://github.com/FFmpeg/FFmpeg/blob/master/libavcodec/dds.c
+
+DX10 BC4 and BC5 exports also opened in the native Windows editor 5.1.12 on
+2026-10-25. Its BC5 clipboard PNG retained red/green within one level of FFmpeg,
+with blue zero and opaque alpha.

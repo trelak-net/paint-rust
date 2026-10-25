@@ -1513,7 +1513,14 @@ remain unsupported. Channel masks, row pitch, dimensions,
 alpha conventions and input bounds are validated. BC1 transparent indices and
 partial edge blocks are preserved. Cube maps, arrays, volumes, premultiplied alpha
 and other block formats are rejected. Mip-level import selection remains pending.
-DDS Save/Export offers exact RGBA8, BC1/DXT1 and BC3/DXT5, with optional mipmaps.
+DDS Save/Export offers exact RGBA8, BC1/DXT1, BC3/DXT5, BC4/BC5 with explicit DX10 formats,
+with optional mipmaps. BC4/BC5 are lossy UNORM data formats: red and red/green
+respectively. Unstored color channels become zero, and alpha becomes opaque.
+Their mipmaps average stored channel values without sRGB correction or alpha
+weighting. Some external viewers display single-channel textures as grayscale.
+The explicit DX10 formats avoid legacy ATI2/3Dc channel-swizzle conventions;
+legacy channel presentation remains an interoperability audit item. All DDS
+export previews use the application decoder, including uncompressed textures.
 BC1 thresholds alpha at 128; BC3 uses an eight-entry alpha palette. Both compressed
 choices are lossy and use fast farthest-color endpoint fitting and RGB565 palettes.
 Hidden RGB is not preserved by compression. Inspect the decoded preview for color

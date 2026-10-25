@@ -76,9 +76,9 @@ fn colors(pixels: &[[u8; 4]; 16], alpha: bool) -> [u8; 8] {
     output[4..].copy_from_slice(&indices.to_le_bytes());
     output
 }
-fn alpha(pixels: &[[u8; 4]; 16]) -> [u8; 8] {
-    let high = pixels.iter().map(|p| p[3]).max().unwrap();
-    let low = pixels.iter().map(|p| p[3]).min().unwrap();
+fn channel(pixels: &[[u8; 4]; 16], component: usize) -> [u8; 8] {
+    let high = pixels.iter().map(|p| p[component]).max().unwrap();
+    let low = pixels.iter().map(|p| p[component]).min().unwrap();
     let mut palette = [high, low, 0, 0, 0, 0, 0, 0];
     if high > low {
         for i in 1..7 {
@@ -91,7 +91,7 @@ fn alpha(pixels: &[[u8; 4]; 16]) -> [u8; 8] {
     let mut bits = u64::from(high) | (u64::from(low) << 8);
     for (i, pixel) in pixels.iter().enumerate() {
         let index = (0..8)
-            .min_by_key(|&index| pixel[3].abs_diff(palette[index]))
+            .min_by_key(|&index| pixel[component].abs_diff(palette[index]))
             .unwrap();
         bits |= (index as u64) << (16 + 3 * i);
     }
@@ -112,9 +112,20 @@ pub(super) fn write(
                 let y = (by * 4 + i as u32 / 4).min(size.1 - 1);
                 pixels[y as usize * size.0 as usize + x as usize]
             });
+            if compression.data_channels() {
+                writer
+                    .write_all(&channel(&block, 0))
+                    .map_err(|e| e.to_string())?;
+                if compression == Compression::Bc5 {
+                    writer
+                        .write_all(&channel(&block, 1))
+                        .map_err(|e| e.to_string())?;
+                }
+                continue;
+            }
             if compression == Compression::Bc3 {
                 writer
-                    .write_all(&alpha(&block))
+                    .write_all(&channel(&block, 3))
                     .map_err(|e| e.to_string())?;
             }
             writer

@@ -103,8 +103,11 @@ impl Editor {
                 egui::ComboBox::from_label("Compression").selected_text(dialog.options.dds_compression.label()).show_ui(ui,|ui| {
                     for compression in paint_rust::dds::Compression::ALL { changed |= ui.selectable_value(&mut dialog.options.dds_compression,compression,compression.label()).changed(); }
                 });
+                if matches!(dialog.options.dds_compression,paint_rust::dds::Compression::Bc4|paint_rust::dds::Compression::Bc5) {
+                    ui.small("BC4 lossily stores red; BC5 lossily stores red and green. Other channels and transparency are discarded. Mipmaps average channel data without sRGB correction or alpha weighting.");
+                }
                 changed |= ui.checkbox(&mut dialog.options.dds_mipmaps, "Generate mipmaps down to 1 × 1").changed();
-                ui.small("RGBA8 is lossless. BC1/BC3 use fast lossy block compression; BC1 makes alpha below 128 transparent and other pixels opaque. Inspect the decoded preview. Mipmaps use alpha-aware, linear-light area filtering. The preview shows the full-size image. Texture arrays and cube maps are not written.");
+                ui.small("RGBA8 is lossless. BC1/BC3 use fast lossy block compression; BC1 makes alpha below 128 transparent and other pixels opaque. Inspect the decoded preview. Color-format mipmaps use alpha-aware, linear-light area filtering. The preview shows the full-size image. Texture arrays and cube maps are not written.");
             }
             if dialog.options.format==files::RasterFormat::Gif {
                 changed |= ui.checkbox(&mut dialog.options.gif_dither, "Dither colors (Floyd–Steinberg)").changed();
@@ -178,10 +181,12 @@ mod tests {
                 files::RasterFormat::JpegXl,
                 files::RasterFormat::Avif,
                 files::RasterFormat::Heic,
+                files::RasterFormat::Dds,
             ] {
                 let ctx = egui::Context::default();
                 let mut editor = Editor::blank(&ctx);
                 editor.document = Document::new(512, 320, [40, 80, 120, 255]).unwrap();
+                editor.export_options.dds_compression = paint_rust::dds::Compression::Bc5;
                 editor.begin_raster_save(
                     PathBuf::from("/tmp/example-output-image").with_extension(format.extension()),
                     format,
@@ -198,6 +203,11 @@ mod tests {
                 let deadline = std::time::Instant::now() + std::time::Duration::from_secs(timeout);
                 while !editor.export_dialog.as_ref().unwrap().preview.ready {
                     let _ = ctx.run(input(), |ctx| editor.show_export(ctx));
+                    assert!(
+                        editor.export_dialog.as_ref().unwrap().error.is_none(),
+                        "{format:?} preview failed: {:?}",
+                        editor.export_dialog.as_ref().unwrap().error
+                    );
                     assert!(
                         std::time::Instant::now() < deadline,
                         "{format:?} export preview timed out"

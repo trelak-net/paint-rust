@@ -22,6 +22,8 @@ fn main() {
     for (name, compression) in [
         ("export-bc1", Compression::Bc1),
         ("export-bc3", Compression::Bc3),
+        ("export-bc4", Compression::Bc4),
+        ("export-bc5", Compression::Bc5),
     ] {
         let bytes = files::encode_raster_bytes(
             &pixels,

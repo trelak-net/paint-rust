@@ -146,3 +146,9 @@ lossy block-compressed textures. BC1 makes alpha below 128 transparent and other
 pixels opaque; BC3 keeps an interpolated alpha channel. Review the decoded preview
 before saving. Generate mipmaps includes every level down to 1x1 in the chosen
 compression format; the preview shows the largest level.
+
+DDS data textures
+BC4 stores red only; BC5 stores red and green. Both are lossy, discard blue and
+transparency, and reopen with opaque alpha. Their mipmaps average channel values
+directly, without color-space correction or alpha weighting. These choices are
+for channel data; use RGBA8 for exact pixels or BC3 for compressed color/alpha.

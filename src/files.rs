@@ -374,9 +374,8 @@ impl RasterFormat {
     pub fn image_format(self) -> Option<image::ImageFormat> {
         Some(match self {
             Self::Avif => image::ImageFormat::Avif,
-            Self::JpegXl | Self::Heic => return None,
+            Self::JpegXl | Self::Heic | Self::Dds => return None,
             Self::Gif => image::ImageFormat::Gif,
-            Self::Dds => image::ImageFormat::Dds,
             Self::Tiff => image::ImageFormat::Tiff,
             Self::Tga => image::ImageFormat::Tga,
             Self::Jpeg => image::ImageFormat::Jpeg,

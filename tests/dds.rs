@@ -490,3 +490,100 @@ fn bc3_export_matches_native_windows_visible_pixels_with_rounding_tolerance() {
         }
     }
 }
+
+#[test]
+fn data_compression_preserves_selected_channels_and_discards_alpha() {
+    for compression in [dds::Compression::Bc4, dds::Compression::Bc5] {
+        let bytes = files::encode_raster_bytes(
+            &[[12, 243, 90, 0]; 35],
+            (7, 5),
+            RasterOptions {
+                dds_compression: compression,
+                ..RasterOptions::new(RasterFormat::Dds)
+            },
+            &cancel(),
+        )
+        .unwrap();
+        let document = files::decode_raster_bytes(&bytes, RasterFormat::Dds, &cancel()).unwrap();
+        assert_eq!((document.width, document.height), (7, 5));
+        let expected = [
+            12,
+            if compression == dds::Compression::Bc5 {
+                243
+            } else {
+                0
+            },
+            0,
+            255,
+        ];
+        assert!(document.pixels().iter().all(|pixel| *pixel == expected));
+    }
+}
+#[test]
+fn data_mipmaps_average_values_without_alpha_weighting_or_srgb_conversion() {
+    for compression in [dds::Compression::Bc4, dds::Compression::Bc5] {
+        let bytes = files::encode_raster_bytes(
+            &[[0, 255, 0, 0], [255, 0, 255, 255]],
+            (2, 1),
+            RasterOptions {
+                dds_compression: compression,
+                dds_mipmaps: true,
+                ..RasterOptions::new(RasterFormat::Dds)
+            },
+            &cancel(),
+        )
+        .unwrap();
+        let length = if compression == dds::Compression::Bc4 {
+            8
+        } else {
+            16
+        };
+        assert_eq!(bytes.len(), 148 + 2 * length);
+        let mut mip = bytes[..148].to_vec();
+        set(&mut mip, 16, 1);
+        set(&mut mip, 12, 1);
+        mip.extend_from_slice(&bytes[148 + length..]);
+        let document = dds::decode(Cursor::new(mip), &cancel()).unwrap();
+        assert_eq!(
+            document.pixels(),
+            &[[
+                128,
+                if compression == dds::Compression::Bc5 {
+                    128
+                } else {
+                    0
+                },
+                0,
+                255
+            ]]
+        );
+    }
+}
+
+#[test]
+fn compressed_data_channels_match_independent_decoder() {
+    for (encoded, expected, channels) in [
+        (
+            include_bytes!("fixtures/dds/export-bc4.dds").as_slice(),
+            include_bytes!("fixtures/dds/export-bc4.rgba").as_slice(),
+            1,
+        ),
+        (
+            include_bytes!("fixtures/dds/export-bc5.dds").as_slice(),
+            include_bytes!("fixtures/dds/export-bc5.rgba").as_slice(),
+            2,
+        ),
+    ] {
+        let actual = dds::decode(Cursor::new(encoded), &cancel()).unwrap();
+        assert_eq!(actual.pixels().len() * 4, expected.len());
+        for (actual, expected) in actual.pixels().iter().zip(expected.as_chunks::<4>().0) {
+            assert_eq!(actual[3], 255);
+            for c in 0..channels {
+                assert!(
+                    actual[c].abs_diff(expected[c]) <= 1,
+                    "{actual:?} != {expected:?}"
+                );
+            }
+        }
+    }
+}
