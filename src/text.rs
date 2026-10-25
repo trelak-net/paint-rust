@@ -186,3 +186,43 @@ pub fn render_cancellable(
     }
     !cancel.load(Ordering::Relaxed)
 }
+
+/// Load a bounded local font without modifying any editor state.
+pub fn load_font_cancellable(
+    path: &std::path::Path,
+    cancel: &AtomicBool,
+) -> Result<FontArc, String> {
+    use std::io::Read;
+    const LIMIT: usize = 16 * 1024 * 1024;
+    if cancel.load(Ordering::Relaxed) {
+        return Err(crate::files::CANCELLED.into());
+    }
+    let mut file =
+        std::fs::File::open(path).map_err(|error| format!("Could not open font: {error}"))?;
+    if file.metadata().map_err(|error| error.to_string())?.len() > LIMIT as u64 {
+        return Err("Font files are limited to 16 MiB.".into());
+    }
+    let mut data = Vec::new();
+    let mut buffer = [0_u8; 65536];
+    loop {
+        if cancel.load(Ordering::Relaxed) {
+            return Err(crate::files::CANCELLED.into());
+        }
+        let count = file
+            .read(&mut buffer)
+            .map_err(|error| format!("Could not read font: {error}"))?;
+        if count == 0 {
+            break;
+        }
+        if data.len() + count > LIMIT {
+            return Err("Font files are limited to 16 MiB.".into());
+        }
+        data.extend_from_slice(&buffer[..count]);
+    }
+    let font =
+        FontArc::try_from_vec(data).map_err(|_| "Unsupported or invalid font file.".to_string())?;
+    if cancel.load(Ordering::Relaxed) {
+        return Err(crate::files::CANCELLED.into());
+    }
+    Ok(font)
+}

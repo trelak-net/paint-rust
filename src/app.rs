@@ -59,6 +59,7 @@ struct ResizeDialog {
 }
 
 struct TextDialog {
+    font_name: String,
     layout: paint_rust::text::TextLayout,
     preview: crate::preview::EffectPreview,
     content: String,
@@ -129,6 +130,7 @@ pub struct Editor {
     layer_properties: Option<(String, u8, BlendMode)>,
     resize_dialog: Option<ResizeDialog>,
     text_dialog: Option<TextDialog>,
+    text_font: Option<(ab_glyph::FontArc, String)>,
     effect_dialog: Option<EffectDialog>,
     gesture_preview: Option<EffectDialog>,
     transform_drag: Option<transform_handles::TransformDrag>,
@@ -233,6 +235,7 @@ impl Editor {
             layer_properties: None,
             resize_dialog: None,
             text_dialog: None,
+            text_font: None,
             effect_dialog: None,
             gesture_preview: None,
             transform_drag: None,
@@ -389,6 +392,11 @@ impl Editor {
                 ab_glyph::FontVec::try_from_vec_and_index(data.font.to_vec(), data.index).ok()
             })
             .map(ab_glyph::FontArc::new);
+        let (font, font_name) = if let Some((font, name)) = &self.text_font {
+            (Some(font.clone()), name.clone())
+        } else {
+            (font, "System UI font".into())
+        };
         if let Some(font) = font {
             self.document.begin("Text");
             let preview = crate::preview::EffectPreview::new_text(
@@ -407,6 +415,7 @@ impl Editor {
                 },
             );
             self.text_dialog = Some(TextDialog {
+                font_name,
                 layout: Default::default(),
                 preview,
                 content: String::new(),
@@ -1874,6 +1883,7 @@ impl Editor {
         }
         if let Some(mut dialog) = self.text_dialog.take() {
             let mut keep = true;
+            let mut font_path = None;
             if let Some(pixels) = dialog.preview.poll() {
                 match self.document.publish_preview(pixels) {
                     Ok(()) => self.texture_dirty = true,
@@ -1891,6 +1901,20 @@ impl Editor {
                     .resizable(true)
                     .default_width(320.0)
                     .show(ctx, |ui| {
+                        ui.horizontal_wrapped(|ui| {
+                            ui.label(format!("Font: {}", dialog.font_name));
+                            if ui
+                                .add_enabled(
+                                    self.file_job.is_none(),
+                                    egui::Button::new("Load font…"),
+                                )
+                                .clicked()
+                            {
+                                font_path = rfd::FileDialog::new()
+                                    .add_filter("Font", &["ttf", "otf", "ttc"])
+                                    .pick_file();
+                            }
+                        });
                         let label = ui.label("Text content");
                         let response = ui
                             .add(
@@ -1960,7 +1984,10 @@ impl Editor {
 
                         ui.horizontal(|ui| {
                             if ui
-                                .add_enabled(dialog.preview.ready, egui::Button::new("Apply"))
+                                .add_enabled(
+                                    dialog.preview.ready && self.file_job.is_none(),
+                                    egui::Button::new("Apply"),
+                                )
                                 .clicked()
                             {
                                 self.document.commit();
@@ -1978,6 +2005,9 @@ impl Editor {
             }
             if keep {
                 self.text_dialog = Some(dialog);
+                if let Some(path) = font_path {
+                    self.load_text_font(path);
+                }
             } else {
                 self.last_point = None;
                 self.shape_origin = None;
@@ -4482,5 +4512,40 @@ mod tests {
         frame(&mut editor, &ctx, vec![pointer(start, false)]);
         assert!(editor.file_job.is_none());
         assert_eq!(editor.document.selection(), Some(selection));
+    }
+    #[test]
+    fn loading_a_font_updates_only_the_open_text_draft_and_failure_keeps_the_font() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        frame(&mut editor, &ctx, vec![]);
+        editor.begin_text(&ctx, (10.0, 10.0), Color32::BLACK);
+        editor.text_dialog.as_mut().unwrap().content = "Keep draft".into();
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("chosen.ttf");
+        let definitions = egui::FontDefinitions::default();
+        let name = &definitions.families[&egui::FontFamily::Proportional][0];
+        std::fs::write(&path, definitions.font_data[name].font.as_ref()).unwrap();
+        editor.load_text_font(path.clone());
+        wait_for_files(&mut editor, &ctx);
+        let dialog = editor.text_dialog.as_ref().unwrap();
+        assert_eq!(dialog.font_name, "chosen.ttf");
+        assert_eq!(dialog.content, "Keep draft");
+        assert!(editor.text_font.is_some());
+        assert!(editor.document.editing());
+        assert!(!editor.document.can_undo());
+        std::fs::write(&path, b"invalid").unwrap();
+        editor.load_text_font(path.clone());
+        wait_for_files(&mut editor, &ctx);
+        assert_eq!(editor.text_dialog.as_ref().unwrap().font_name, "chosen.ttf");
+        assert_eq!(editor.text_dialog.as_ref().unwrap().content, "Keep draft");
+        assert!(editor.status.contains("invalid font"));
+        // A late worker result must not recreate a dismissed text editor.
+        std::fs::write(&path, definitions.font_data[name].font.as_ref()).unwrap();
+        editor.load_text_font(path);
+        editor.text_dialog = None;
+        editor.document.cancel();
+        wait_for_files(&mut editor, &ctx);
+        assert!(editor.text_dialog.is_none());
+        assert!(!editor.document.dirty());
     }
 }

@@ -241,3 +241,28 @@ fn invalid_text_layout_is_rejected_before_modifying_pixels() {
         assert!(pixels.iter().all(|p| *p == [23, 45, 67, 255]));
     }
 }
+
+#[test]
+fn font_loader_accepts_valid_files_and_rejects_invalid_oversized_or_cancelled_reads() {
+    use ab_glyph::Font;
+    use std::sync::atomic::AtomicBool;
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("chosen.ttf");
+    let definitions = eframe::egui::FontDefinitions::default();
+    let name = &definitions.families[&eframe::egui::FontFamily::Proportional][0];
+    std::fs::write(&path, definitions.font_data[name].font.as_ref()).unwrap();
+    let loaded = paint_rust::text::load_font_cancellable(&path, &AtomicBool::new(false)).unwrap();
+    assert_eq!(loaded.glyph_id('M'), font().glyph_id('M'));
+    assert!(paint_rust::text::load_font_cancellable(&path, &AtomicBool::new(true)).is_err());
+    std::fs::write(&path, b"not a font").unwrap();
+    assert!(paint_rust::text::load_font_cancellable(&path, &AtomicBool::new(false)).is_err());
+    std::fs::File::create(&path)
+        .unwrap()
+        .set_len(16 * 1024 * 1024 + 1)
+        .unwrap();
+    assert!(
+        paint_rust::text::load_font_cancellable(&path, &AtomicBool::new(false))
+            .unwrap_err()
+            .contains("16 MiB")
+    );
+}

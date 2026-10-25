@@ -10,6 +10,7 @@ pub(super) enum DocumentEdit {
 }
 
 pub(super) enum Outcome {
+    TextFont(ab_glyph::FontArc, String),
     Copied(Option<Box<Document>>),
     Opened(Box<Document>, PathBuf),
     Recovered(Box<Document>, usize),
@@ -162,6 +163,21 @@ impl Editor {
         });
     }
 
+    pub(super) fn load_text_font(&mut self, path: PathBuf) {
+        if self.text_dialog.is_none() {
+            return;
+        }
+        self.start_cancellable_file_job("load font", move |cancel| {
+            let font = paint_rust::text::load_font_cancellable(&path, cancel)?;
+            let name = path
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .into_owned();
+            Ok(Outcome::TextFont(font, name))
+        });
+    }
+
     pub(super) fn start_file_job(
         &mut self,
         operation: &'static str,
@@ -222,6 +238,22 @@ impl Editor {
         let operation = job.operation;
         self.file_job = None;
         match result {
+            Ok(Outcome::TextFont(font, name)) => {
+                if let Some(dialog) = &mut self.text_dialog {
+                    self.text_font = Some((font.clone(), name.clone()));
+                    dialog.font = font;
+                    dialog.font_name = name;
+                    dialog.preview.request_text(crate::preview::TextInput {
+                        layout: dialog.layout,
+                        font: dialog.font.clone(),
+                        content: dialog.content.clone(),
+                        origin: dialog.origin,
+                        size: dialog.size,
+                        color: dialog.color.to_srgba_unmultiplied(),
+                    });
+                    self.status = "Font loaded".into();
+                }
+            }
             Ok(Outcome::History(mut document, count, redo)) => {
                 document.defer_history_storage(true);
                 self.document = *document;

@@ -856,3 +856,8 @@ Text alignment positions each line relative to the clicked anchor: Left, Center
 or Right. Letter spacing adjusts the gap between glyphs; line spacing scales the
 font line height. Antialias text can be disabled for binary edge coverage. All
 controls update the background preview; Apply remains one undoable text edit.
+
+The text dialog can load a local TTF, OTF or TTC font file (the first face of a
+collection). Font files are limited to 16 MiB and are read in a background worker.
+Invalid files leave the current draft intact. The chosen font is reused for new
+text within the current application session; font files are not bundled in projects.
