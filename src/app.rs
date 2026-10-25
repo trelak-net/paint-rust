@@ -2410,6 +2410,24 @@ impl Editor {
                                     )
                                     .changed();
                             }
+                            Effect::Bulge(amount) => {changed |= ui.add(egui::Slider::new(amount,-100.0..=100.0).text("Amount")).changed();}
+                            Effect::Twist(angle) => {changed |= ui.add(egui::Slider::new(angle,-720.0..=720.0).text("Angle (degrees)")).changed();}
+                            Effect::FrostedGlass { radius,seed } => {
+                                changed |= ui.add(egui::Slider::new(radius,0..=100).text("Scatter radius (px)")).changed();
+                                let label=ui.label("Seed");changed |= ui.add(egui::DragValue::new(seed)).labelled_by(label.id).changed();
+                            }
+                            Effect::Crystalize { size,seed } => {
+                                changed |= ui.add(egui::Slider::new(size,1..=200).text("Cell size (px)")).changed();
+                                let label=ui.label("Seed");changed |= ui.add(egui::DragValue::new(seed)).labelled_by(label.id).changed();
+                            }
+                            Effect::Vignette { amount,roundness } => {
+                                changed |= ui.add(egui::Slider::new(amount,0.0..=1.0).text("Amount")).changed();
+                                changed |= ui.add(egui::Slider::new(roundness,0.0..=1.0).text("Clear center radius")).changed();
+                            }
+                            Effect::RedEye(threshold) => {
+                                changed |= ui.add(egui::Slider::new(threshold,1.0..=3.0).text("Red dominance threshold")).changed();
+                                ui.small("Select the eye area first to protect other red objects.");
+                            }
                             Effect::AddNoise { amount,coverage,monochrome,seed } => {
                                 changed |= ui.add(egui::Slider::new(amount,0..=100).text("Intensity")).changed();
                                 changed |= ui.add(egui::Slider::new(coverage,0..=100).text("Coverage (%)")).changed();
@@ -2930,6 +2948,15 @@ impl Editor {
                     (
                         "Effects",
                         &[
+                            Effect::Bulge(30.0),
+                            Effect::Twist(45.0),
+                            Effect::FrostedGlass { radius: 3, seed: 1 },
+                            Effect::Crystalize { size: 12, seed: 1 },
+                            Effect::Vignette {
+                                amount: 0.5,
+                                roundness: 0.5,
+                            },
+                            Effect::RedEye(1.5),
                             Effect::AddNoise {
                                 amount: 20,
                                 coverage: 100,
@@ -2982,10 +3009,26 @@ impl Editor {
                             }
                             ui.separator();
                         }
-                        for &effect in effects {
-                            if ui.button(effect.name()).clicked() {
-                                self.begin_effect(ctx, effect);
-                                ui.close();
+                        if title == "Effects" {
+                            for category in ["Blurs", "Distort", "Noise", "Photo", "Stylize"] {
+                                ui.menu_button(category, |ui| {
+                                    for &effect in effects
+                                        .iter()
+                                        .filter(|effect| effect.category() == category)
+                                    {
+                                        if ui.button(effect.name()).clicked() {
+                                            self.begin_effect(ctx, effect);
+                                            ui.close();
+                                        }
+                                    }
+                                });
+                            }
+                        } else {
+                            for &effect in effects {
+                                if ui.button(effect.name()).clicked() {
+                                    self.begin_effect(ctx, effect);
+                                    ui.close();
+                                }
                             }
                         }
                     });

@@ -1,10 +1,26 @@
 mod blurs;
+mod distort;
 mod stylize;
 use crate::document::{Pixel, Selection};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Effect {
+    Bulge(f32),
+    Twist(f32),
+    FrostedGlass {
+        radius: u32,
+        seed: u32,
+    },
+    Crystalize {
+        size: u32,
+        seed: u32,
+    },
+    Vignette {
+        amount: f32,
+        roundness: f32,
+    },
+    RedEye(f32),
     AddNoise {
         amount: u8,
         coverage: u8,
@@ -57,6 +73,27 @@ pub enum Effect {
     Sharpen(f32),
 }
 impl Effect {
+    pub fn category(self) -> &'static str {
+        match self {
+            Self::GaussianBlur(_)
+            | Self::BoxBlur(_)
+            | Self::MotionBlur { .. }
+            | Self::Median { .. } => "Blurs",
+            Self::Bulge(_)
+            | Self::Twist(_)
+            | Self::FrostedGlass { .. }
+            | Self::Crystalize { .. }
+            | Self::Pixelate(_) => "Distort",
+            Self::AddNoise { .. } => "Noise",
+            Self::RedEye(_) | Self::Vignette { .. } | Self::Sharpen(_) => "Photo",
+            Self::EdgeDetect | Self::Emboss(_) => "Stylize",
+            Self::Move(_) | Self::Shape(_) | Self::Gradient(_) | Self::FreeTransform(_) => {
+                "Geometry"
+            }
+            _ => "Adjustments",
+        }
+    }
+
     pub fn repeatable(self) -> bool {
         !matches!(
             self,
@@ -65,6 +102,12 @@ impl Effect {
     }
     pub fn name(self) -> &'static str {
         match self {
+            Self::Bulge(_) => "Bulge",
+            Self::Twist(_) => "Twist",
+            Self::FrostedGlass { .. } => "Frosted glass",
+            Self::Crystalize { .. } => "Crystalize",
+            Self::Vignette { .. } => "Vignette",
+            Self::RedEye(_) => "Red eye removal",
             Self::AddNoise { .. } => "Add noise",
             Self::Median { .. } => "Median blur",
             Self::EdgeDetect => "Edge detect",
@@ -160,6 +203,11 @@ pub fn render(
     {
         return None;
     }
+    if matches!(effect,Effect::Vignette {amount,roundness} if !amount.is_finite() || !roundness.is_finite())
+        || matches!(effect,Effect::RedEye(v) if !v.is_finite())
+    {
+        return None;
+    }
     let level_tables = match effect {
         Effect::Curves(parameters) => Some(parameters.tables()),
         Effect::Levels(parameters) => Some(parameters.tables()?),
@@ -169,6 +217,26 @@ pub fn render(
         _ => None,
     };
     let mut output = match effect {
+        Effect::Bulge(amount) => {
+            distort::render(source, width, height, distort::Warp::Bulge(amount), cancel)?
+        }
+        Effect::Twist(angle) => {
+            distort::render(source, width, height, distort::Warp::Twist(angle), cancel)?
+        }
+        Effect::FrostedGlass { radius, seed } => distort::render(
+            source,
+            width,
+            height,
+            distort::Warp::Frosted { radius, seed },
+            cancel,
+        )?,
+        Effect::Crystalize { size, seed } => distort::render(
+            source,
+            width,
+            height,
+            distort::Warp::Crystal { size, seed },
+            cancel,
+        )?,
         Effect::Median { radius, percentile } => {
             stylize::median(source, width, height, radius, percentile, cancel)?
         }
@@ -203,6 +271,31 @@ pub fn render(
                 continue;
             }
             let p = source[i];
+            if let Effect::Vignette { amount, roundness } = effect {
+                let dx = (x as f64 + 0.5 - f64::from(width) / 2.0) / (f64::from(width) / 2.0);
+                let dy = (y as f64 + 0.5 - f64::from(height) / 2.0) / (f64::from(height) / 2.0);
+                let radius = f64::from(roundness.clamp(0.0, 1.0));
+                let falloff = ((dx.hypot(dy) - radius) / (std::f64::consts::SQRT_2 - radius))
+                    .clamp(0.0, 1.0)
+                    .powi(2);
+                let gain = 1.0 - f64::from(amount.clamp(0.0, 1.0)) * falloff;
+                if p[3] > 0 {
+                    for (c, channel) in p[..3].iter().enumerate() {
+                        output[i][c] = (f64::from(*channel) * gain).round() as u8;
+                    }
+                }
+                continue;
+            }
+            if let Effect::RedEye(threshold) = effect {
+                if p[3] > 0
+                    && p[0] > 40
+                    && f32::from(p[0])
+                        > f32::from(p[1].max(p[2]).saturating_add(1)) * threshold.clamp(1.0, 3.0)
+                {
+                    output[i][0] = ((u16::from(p[1]) + u16::from(p[2])) / 2) as u8;
+                }
+                continue;
+            }
             if let Effect::AddNoise {
                 amount,
                 coverage,
@@ -290,7 +383,13 @@ pub fn render(
                         let steps = f64::from(levels.clamp(2, 32) - 1);
                         (f64::from(*channel) * steps / 255.0).round() * 255.0 / steps
                     }
-                    Effect::AddNoise { .. }
+                    Effect::Bulge(_)
+                    | Effect::Twist(_)
+                    | Effect::FrostedGlass { .. }
+                    | Effect::Crystalize { .. }
+                    | Effect::Vignette { .. }
+                    | Effect::RedEye(_)
+                    | Effect::AddNoise { .. }
                     | Effect::Median { .. }
                     | Effect::EdgeDetect
                     | Effect::Emboss(_)

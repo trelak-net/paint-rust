@@ -1,13 +1,13 @@
 Capability	Category	Status	Current implementation	Remaining validation or work
 Quantize	Color	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
-Red Eye Removal	Photo	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Red Eye Removal	Photo	partial	Selection-aware red-dominance correction	Reference algorithm/ranges, center controls and color-space audit
 Add Noise	Noise	partial	Deterministic seeded uniform noise, coverage and monochrome/color controls	External reference output, ranges and color-space audit
 Auto-Level	Adjustment	partial	Auto levels; selected nontransparent histogram, configurable tail clipping	Exact transfer function, ranges, color space and reference output audit
 Bokeh Blur	Blurs	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
 Brightness / Contrast	Adjustment	partial	CPU transfer curve and live preview	Exact transfer function, ranges, color space and reference output audit
-Bulge	Distort	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Bulge	Distort	partial	Centered radial power warp with signed amount	Reference algorithm/ranges, center controls and color-space audit
 Clouds	Render	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
-Crystalize	Distort	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Crystalize	Distort	partial	Seeded Voronoi cells and size control	Reference algorithm/ranges, center controls and color-space audit
 Curves	Adjustment	partial	RGB/per-channel point editor, numeric controls, cubic LUT and preview	Luminance mode, presets and external reference cases
 Dents	Distort	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
 Black and White	Adjustment	partial	Grayscale with weighted RGB luminance	Exact transfer function, ranges, color space and reference output audit
@@ -16,7 +16,7 @@ Edge Detect	Stylize	partial	Sobel magnitude with premultiplied input; source alp
 Emboss	Stylize	partial	Directional grayscale Sobel relief; source alpha retained	External reference output, ranges and color-space audit
 Exposure	Adjustment	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
 Fragment Blur	Blurs	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
-Frosted Glass	Distort	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Frosted Glass	Distort	partial	Deterministic seeded disk scatter and bilinear sampling	Reference algorithm/ranges, center controls and color-space audit
 Gaussian Blur	Blurs	partial	Separable normalized Gaussian, premultiplied alpha, replicated edges	External reference output, ranges and color-space audit
 Glow	Photo	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
 Highlights / Shadows	Adjustment	partial	Luminance-weighted tonal controls; alpha retained	External reference output, ranges and color-space audit
@@ -50,6 +50,6 @@ Surface Blur	Blurs	missing	No implementation yet	Kernel, parameter UI, cancellat
 Temperature / Tint	Adjustment	partial	Warm/cool and green/magenta channel controls; alpha retained	External reference output, ranges and color-space audit
 Tile Reflection	Distort	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
 Turbulence	Render	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
-Twist	Distort	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
-Vignette	Photo	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Twist	Distort	partial	Centered radial twist with angle control	Reference algorithm/ranges, center controls and color-space audit
+Vignette	Photo	partial	Elliptical edge darkening with clear center radius	Reference algorithm/ranges, center controls and color-space audit
 Zoom Blur	Blurs	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases

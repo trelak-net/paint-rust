@@ -1049,3 +1049,15 @@ new options are off. Previews, selection masks, cancellation and one-step undo
 are shared with the existing gesture workflow. Tests cover all geometries, reverse
 drag, combined colors, hidden RGB, selection boundaries and secondary gestures.
 Persistent handles, editable curves and exact reference coverage remain pending.
+
+Distortion and photo corrections
+--------------------------------
+Effects are grouped into Blurs, Distort, Noise, Photo and Stylize. Bulge and Twist
+use centered radial mappings; Frosted glass uses seeded disk scatter; Crystalize
+uses seeded Voronoi cells. Sampling is bilinear with premultiplied alpha and
+clamped canvas edges. Neutral settings preserve exact input bytes. Vignette
+darkens image edges with an adjustable clear center; Red eye removal reduces
+strong red dominance and should be restricted to the eye selection. Both retain
+alpha. All six effects share cancellable previews, selection output masks, undo
+and session parameter recall. Determinism, identity, alpha, selection and invalid
+parameters are tested; movable centers and external output comparisons remain.

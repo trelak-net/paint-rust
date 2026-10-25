@@ -138,6 +138,7 @@ independent tasks; do not silently reduce the required scope.
 [ ] Remaining adjustment parity audit.
 [x] Gaussian and motion blur with premultiplied-alpha sampling and live previews.
 [x] Seeded noise, median/percentile blur, edge detection and directional emboss.
+[x] Bulge, twist, frosted glass, crystalize, vignette and red-eye correction.
 [ ] Complete remaining blur, distortion, noise and stylization inventory.
 [x] Repeat last effect and restore last-applied parameters within the session.
 [ ] Persist effect parameters across restarts and complete preview/cancel parity audit.
