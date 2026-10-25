@@ -906,3 +906,17 @@ input endpoints, unique sorted inputs and shape-preserving cubic interpolation.
 Master RGB is applied before per-channel curves. Alpha and pixels outside the
 selection are preserved. Preview, cancellation, undo and session parameter recall
 use the existing effect workflow. Luminance mode and reusable presets are pending.
+
+Retouch tools
+-------------
+Clone stamp (C): Ctrl+click to set a source, then drag to clone from the active
+layer. Aligned source keeps the source/destination offset between strokes; turn
+it off to restart at the source anchor for each stroke. A cross marks the source.
+Source pixels are frozen at stroke start, so overlapping edits do not feed back.
+Source coordinates outside the canvas are skipped. Source anchors belong to the
+document in which they were set. Independent source-layer selection is pending.
+Recolor (J): left drag replaces secondary with primary; right drag reverses them.
+Tolerance is the maximum RGB channel distance. Replacement preserves alpha and
+skips transparent pixels. Shading-preserving recoloring remains pending.
+Both tools use brush size, hardness, opacity, antialiasing and selection masks.
+Clone supports source-over blending or replacement, including transparent samples.

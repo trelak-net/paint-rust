@@ -1,3 +1,4 @@
+mod clone;
 mod colors;
 mod curves;
 mod export;
@@ -21,6 +22,8 @@ use std::path::PathBuf;
 
 #[derive(Clone, Copy, PartialEq)]
 enum Tool {
+    Clone,
+    Recolor,
     Lasso,
     ColorSelect,
     Polygon,
@@ -104,6 +107,9 @@ pub struct Editor {
     gradient_mode: paint_rust::gradient::GradientMode,
     brush_size: f32,
     brush_options: paint_rust::brush::Options,
+    clone_anchor: Option<(u64, (i32, i32))>,
+    clone_offset: Option<(i32, i32)>,
+    clone_aligned: bool,
     shape_filled: bool,
     move_selection_only: bool,
     ellipse_selection: bool,
@@ -215,6 +221,9 @@ impl Editor {
             gradient_mode: paint_rust::gradient::GradientMode::Blend,
             brush_size: 12.0,
             brush_options: Default::default(),
+            clone_anchor: None,
+            clone_offset: None,
+            clone_aligned: true,
             shape_filled: false,
             move_selection_only: false,
             ellipse_selection: false,
@@ -876,6 +885,8 @@ impl Editor {
                 Some(6)
             } else if !i.modifiers.command && !self.document.editing() && self.last_point.is_none()
             {
+                if i.key_pressed(Key::C) { self.tool = Tool::Clone; }
+                if i.key_pressed(Key::J) { self.tool = Tool::Recolor; }
                 if i.key_pressed(Key::Q) { self.tool = Tool::Lasso; }
                 if i.key_pressed(Key::W) { self.tool = Tool::ColorSelect; }
                 if i.key_pressed(Key::P) { self.tool = Tool::Polygon; }
@@ -1276,7 +1287,10 @@ impl Editor {
                 self.transform_handles(ui, rect, &painter);
                 if response.hovered()
                     && !self.panning
-                    && matches!(self.tool, Tool::Brush | Tool::Pencil | Tool::Eraser)
+                    && matches!(
+                        self.tool,
+                        Tool::Brush | Tool::Pencil | Tool::Eraser | Tool::Clone | Tool::Recolor
+                    )
                 {
                     ui.ctx().set_cursor_icon(egui::CursorIcon::Crosshair);
                     if let Some(pos) = response.hover_pos() {
@@ -1353,6 +1367,7 @@ impl Editor {
                 } else if matches!(
                     self.tool,
                     Tool::Brush
+                        | Tool::Recolor
                         | Tool::Pencil
                         | Tool::Fill
                         | Tool::Picker
@@ -1368,7 +1383,13 @@ impl Editor {
                 } else {
                     egui::PointerButton::Primary
                 };
+                self.clone_source(ui, &response, rect, &painter, temporary_pan);
                 if ui.is_enabled()
+                    && (self.tool != Tool::Clone
+                        || (self
+                            .clone_anchor
+                            .is_some_and(|(id, _)| id == self.active_document_id)
+                            && !ui.input(|i| i.modifiers.ctrl)))
                     && !matches!(
                         self.tool,
                         Tool::Polygon | Tool::Lasso | Tool::Pan | Tool::Zoom
@@ -1400,6 +1421,18 @@ impl Editor {
                         let origin = (origin - rect.min) / self.zoom;
                         self.shape_origin = Some((origin.x, origin.y));
                         match self.tool {
+                            Tool::Clone => {
+                                if (!self.clone_aligned || self.clone_offset.is_none())
+                                    && let Some((_, anchor)) = self.clone_anchor
+                                {
+                                    self.clone_offset = Some((
+                                        anchor.0 - origin.x.floor() as i32,
+                                        anchor.1 - origin.y.floor() as i32,
+                                    ));
+                                }
+                                self.document.begin("Clone stamp");
+                            }
+                            Tool::Recolor => self.document.begin("Recolor"),
                             Tool::Pencil => self.document.begin("Pencil stroke"),
                             Tool::Gradient => self.document.begin("Gradient"),
                             Tool::Move => self.document.begin(if self.move_selection_only {
@@ -1471,6 +1504,32 @@ impl Editor {
                             drawing_color.to_srgba_unmultiplied(),
                             self.brush_options,
                             self.tool == Tool::Eraser,
+                        );
+                        self.texture_dirty = true;
+                    }
+                    if matches!(self.tool, Tool::Clone | Tool::Recolor) {
+                        let paint = if self.tool == Tool::Clone {
+                            paint_rust::brush::Paint::Clone {
+                                offset: self.clone_offset.unwrap_or((0, 0)),
+                            }
+                        } else {
+                            let from = if drawing_button == egui::PointerButton::Secondary {
+                                self.color
+                            } else {
+                                self.secondary_color
+                            };
+                            paint_rust::brush::Paint::Recolor {
+                                from: from.to_srgba_unmultiplied(),
+                                to: drawing_color.to_srgba_unmultiplied(),
+                                tolerance: self.color_tolerance,
+                            }
+                        };
+                        self.document.paint_segment(
+                            self.last_point.or(self.shape_origin).unwrap_or(point),
+                            point,
+                            self.brush_size,
+                            paint,
+                            self.brush_options,
                         );
                         self.texture_dirty = true;
                     }
@@ -1621,7 +1680,13 @@ impl Editor {
     fn tool_options(&mut self, ui: &mut egui::Ui) {
         if matches!(
             self.tool,
-            Tool::Brush | Tool::Eraser | Tool::Line | Tool::Rectangle | Tool::Ellipse
+            Tool::Brush
+                | Tool::Eraser
+                | Tool::Clone
+                | Tool::Recolor
+                | Tool::Line
+                | Tool::Rectangle
+                | Tool::Ellipse
         ) {
             ui.add(
                 egui::Slider::new(&mut self.brush_size, 1.0..=128.0)
@@ -1629,16 +1694,38 @@ impl Editor {
                     .text("Brush size"),
             );
         }
-        if matches!(self.tool, Tool::Brush | Tool::Eraser) {
+        if matches!(
+            self.tool,
+            Tool::Brush | Tool::Eraser | Tool::Clone | Tool::Recolor
+        ) {
             ui.add(egui::Slider::new(&mut self.brush_options.hardness, 0.0..=1.0).text("Hardness"));
             ui.add(
                 egui::Slider::new(&mut self.brush_options.opacity, 0.0..=1.0)
                     .text("Stroke opacity"),
             );
             ui.checkbox(&mut self.brush_options.antialias, "Antialias");
-            if self.tool == Tool::Brush {
+            if matches!(self.tool, Tool::Brush | Tool::Clone) {
                 ui.checkbox(&mut self.brush_options.blend, "Blend color");
             }
+        }
+        if self.tool == Tool::Clone {
+            if ui
+                .checkbox(&mut self.clone_aligned, "Aligned source")
+                .changed()
+            {
+                self.clone_offset = None;
+            }
+            ui.small("Ctrl+click: set source on active layer · Drag: clone");
+            if !self
+                .clone_anchor
+                .is_some_and(|(id, _)| id == self.active_document_id)
+            {
+                ui.label("Set a source before painting.");
+            }
+        }
+        if self.tool == Tool::Recolor {
+            ui.add(egui::Slider::new(&mut self.color_tolerance, 0..=255).text("Color tolerance"));
+            ui.small("Left: secondary → primary · Right: primary → secondary");
         }
         if self.tool == Tool::Pencil {
             ui.label("Pencil: 1 px");
@@ -2779,6 +2866,54 @@ impl eframe::App for Editor {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn clone_requires_source_and_recolor_uses_secondary_color() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.tool = Tool::Clone;
+        frame(&mut editor, &ctx, vec![]);
+        frame(&mut editor, &ctx, vec![]);
+        let point = editor.canvas_viewport.min + Vec2::new(100.0, 100.0);
+        for pressed in [true, false] {
+            frame(
+                &mut editor,
+                &ctx,
+                vec![
+                    egui::Event::PointerMoved(point),
+                    egui::Event::PointerButton {
+                        pos: point,
+                        pressed,
+                        button: egui::PointerButton::Primary,
+                        modifiers: egui::Modifiers::NONE,
+                    },
+                ],
+            );
+        }
+        assert!(!editor.document.dirty());
+        assert!(!editor.document.editing());
+        editor.tool = Tool::Recolor;
+        editor.color = Color32::RED;
+        editor.secondary_color = Color32::WHITE;
+        for pressed in [true, false] {
+            frame(
+                &mut editor,
+                &ctx,
+                vec![
+                    egui::Event::PointerMoved(point),
+                    egui::Event::PointerButton {
+                        pos: point,
+                        pressed,
+                        button: egui::PointerButton::Primary,
+                        modifiers: egui::Modifiers::NONE,
+                    },
+                ],
+            );
+        }
+        assert!(editor.document.pixels().contains(&[255, 0, 0, 255]));
+        assert!(editor.document.undo());
+        assert!(editor.document.pixels().iter().all(|p| *p == [255; 4]));
+    }
+
     fn wait_for_files(editor: &mut Editor, ctx: &egui::Context) {
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
         while editor.file_job.is_some() {

@@ -16,5 +16,5 @@ Gradient	partial	G	G	Five geometries and blend/replace/transparency modes	Persis
 Line/curve	partial	O	L	Straight line with constrained angles	Editable curves, joins, caps, dashes and arrows
 Shapes	partial	O	R / O	Rectangle and ellipse, outline or fill	Complete shape catalogue, combined outline/fill and editable handles
 Text	partial	T	T	File font selection, alignment, spacing and antialiasing	Installed-font browser, style controls, shaping and decoration
-Clone stamp	missing	L	-	None	Source anchor, alignment, layer identity and brush controls
-Recolor	missing	R	-	None	Color matching, sampling and brush controls
+Clone stamp	partial	L	C	Ctrl-click source, aligned/unaligned active-layer cloning and brush controls	Independent source-layer identity and merged sampling
+Recolor	partial	R	J	RGB tolerance, primary/secondary replacement, alpha preservation and brush controls	Reference matching, shading preservation and sampling controls

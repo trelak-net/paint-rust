@@ -31,3 +31,6 @@ MIT OR Apache-2.0, version 1. No external source artwork.
 
 icons/lasso.svg: original freehand-selection icon, authored for this project;
 MIT OR Apache-2.0, version 1. No external source artwork.
+
+icons/clone.svg and icons/recolor.svg: original project tool artwork, version 1,
+2026-10-25, MIT OR Apache-2.0. No external source artwork.

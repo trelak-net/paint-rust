@@ -1157,6 +1157,27 @@ impl Document {
         options: crate::brush::Options,
         erase: bool,
     ) {
+        self.paint_segment(
+            from,
+            to,
+            diameter,
+            if erase {
+                crate::brush::Paint::Erase
+            } else {
+                crate::brush::Paint::Color(color)
+            },
+            options,
+        );
+    }
+
+    pub fn paint_segment(
+        &mut self,
+        from: (f32, f32),
+        to: (f32, f32),
+        diameter: f32,
+        paint: crate::brush::Paint,
+        options: crate::brush::Options,
+    ) {
         let before = self
             .pending
             .as_ref()
@@ -1175,8 +1196,7 @@ impl Document {
                 from,
                 to,
                 diameter,
-                color,
-                erase,
+                paint,
                 options,
             },
         );

@@ -19,12 +19,27 @@ impl Default for Options {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Paint {
+    Color(Pixel),
+    Erase,
+    /// Sample the active layer as it was before the current stroke.
+    Clone {
+        offset: (i32, i32),
+    },
+    /// Replace matching RGB values while retaining the original alpha.
+    Recolor {
+        from: Pixel,
+        to: Pixel,
+        tolerance: u8,
+    },
+}
+
 pub(crate) struct Segment {
     pub from: (f32, f32),
     pub to: (f32, f32),
     pub diameter: f32,
-    pub color: Pixel,
-    pub erase: bool,
+    pub paint: Paint,
     pub options: Options,
 }
 
@@ -40,8 +55,7 @@ pub(crate) fn render(
         from,
         to,
         diameter,
-        color,
-        erase,
+        paint,
         options,
     } = segment;
     if [
@@ -111,8 +125,36 @@ pub(crate) fn render(
             if amount <= coverage[i] {
                 continue;
             }
+            let (color, blend, erase) = match paint {
+                Paint::Color(color) => (color, options.blend, false),
+                Paint::Erase => ([0; 4], false, true),
+                Paint::Clone { offset } => {
+                    let sx = i64::from(x) + i64::from(offset.0);
+                    let sy = i64::from(y) + i64::from(offset.1);
+                    if sx < 0 || sy < 0 || sx >= i64::from(width) || sy >= i64::from(height) {
+                        continue;
+                    }
+                    (
+                        source[sy as usize * width as usize + sx as usize],
+                        options.blend,
+                        false,
+                    )
+                }
+                Paint::Recolor {
+                    from,
+                    to,
+                    tolerance,
+                } => {
+                    if source[i][3] == 0
+                        || (0..3).any(|c| source[i][c].abs_diff(from[c]) > tolerance)
+                    {
+                        continue;
+                    }
+                    ([to[0], to[1], to[2], source[i][3]], false, false)
+                }
+            };
             coverage[i] = amount;
-            pixels[i] = composite(source[i], color, amount, options.blend, erase);
+            pixels[i] = composite(source[i], color, amount, blend, erase);
         }
     }
 }

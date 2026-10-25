@@ -24,6 +24,8 @@ impl Editor {
                 (Tool::Pan, Icon::Pan, "Pan", "H"),
                 (Tool::Gradient, Icon::Gradient, "Gradient", "G"),
                 (Tool::Text, Icon::Text, "Text", "T"),
+                (Tool::Clone, Icon::Clone, "Clone stamp", "C"),
+                (Tool::Recolor, Icon::Recolor, "Recolor", "J"),
                 (Tool::Brush, Icon::Brush, "Brush", "B"),
                 (Tool::Pencil, Icon::Pencil, "Pencil", "N"),
                 (Tool::Eraser, Icon::Eraser, "Eraser", "E"),

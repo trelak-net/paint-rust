@@ -2,6 +2,8 @@ use eframe::egui::{self, Button, Image, ImageSource};
 
 #[derive(Clone, Copy)]
 pub enum Icon {
+    Clone,
+    Recolor,
     Lasso,
     ColorSelect,
     Zoom,
@@ -37,6 +39,8 @@ pub enum Icon {
 impl Icon {
     fn source(self) -> ImageSource<'static> {
         match self {
+            Self::Clone => egui::include_image!("../assets/icons/clone.svg"),
+            Self::Recolor => egui::include_image!("../assets/icons/recolor.svg"),
             Self::Lasso => egui::include_image!("../assets/icons/lasso.svg"),
             Self::ColorSelect => egui::include_image!("../assets/icons/color-select.svg"),
             Self::Zoom => egui::include_image!("../assets/icons/zoom.svg"),
