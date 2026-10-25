@@ -1,22 +1,85 @@
 use super::*;
 
+/// Straight RGBA values; display conversion never changes the stored bytes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) struct Rgba([u8; 4]);
+impl Rgba {
+    pub const BLACK: Self = Self([0, 0, 0, 255]);
+    pub const WHITE: Self = Self([255; 4]);
+    pub const fn from_rgb(r: u8, g: u8, b: u8) -> Self {
+        Self([r, g, b, 255])
+    }
+    pub const fn from_rgba_unmultiplied(r: u8, g: u8, b: u8, a: u8) -> Self {
+        Self([r, g, b, a])
+    }
+    pub fn to_srgba_unmultiplied(self) -> [u8; 4] {
+        self.0
+    }
+    pub fn r(self) -> u8 {
+        self.0[0]
+    }
+    pub fn g(self) -> u8 {
+        self.0[1]
+    }
+    pub fn b(self) -> u8 {
+        self.0[2]
+    }
+    fn hsva(self) -> egui::ecolor::Hsva {
+        let mut hsv = egui::ecolor::Hsva::from_srgb([self.r(), self.g(), self.b()]);
+        hsv.a = f32::from(self.0[3]) / 255.0;
+        hsv
+    }
+    fn from_hsva(hsv: egui::ecolor::Hsva) -> Self {
+        Self(hsv.to_srgba_unmultiplied())
+    }
+    pub fn edit(&mut self, ui: &mut egui::Ui) -> egui::Response {
+        let mut hsv = self.hsva();
+        let response = egui::color_picker::color_edit_button_hsva(
+            ui,
+            &mut hsv,
+            egui::color_picker::Alpha::OnlyBlend,
+        );
+        if response.changed() {
+            *self = Self::from_hsva(hsv);
+        }
+        response
+    }
+}
+impl From<Rgba> for Color32 {
+    fn from(value: Rgba) -> Self {
+        Self::from_rgba_unmultiplied(value.0[0], value.0[1], value.0[2], value.0[3])
+    }
+}
+#[cfg(test)]
+impl From<Color32> for Rgba {
+    fn from(value: Color32) -> Self {
+        Self(value.to_srgba_unmultiplied())
+    }
+}
+#[cfg(test)]
+impl PartialEq<Color32> for Rgba {
+    fn eq(&self, other: &Color32) -> bool {
+        self.0 == other.to_srgba_unmultiplied()
+    }
+}
+
 pub(super) struct ColorPanel {
-    pub palette: Vec<Color32>,
+    pub palette: Vec<Rgba>,
     secondary: bool,
     hex: String,
-    last_color: Option<(bool, Color32)>,
+    last_color: Option<(bool, Rgba)>,
 }
 impl Default for ColorPanel {
     fn default() -> Self {
         Self {
             palette: vec![
-                Color32::BLACK,
-                Color32::WHITE,
-                Color32::from_rgb(225, 65, 75),
-                Color32::from_rgb(245, 170, 40),
-                Color32::from_rgb(70, 175, 115),
-                Color32::from_rgb(42, 113, 224),
-                Color32::from_rgb(153, 90, 210),
+                Rgba::BLACK,
+                Rgba::WHITE,
+                Rgba::from_rgb(225, 65, 75),
+                Rgba::from_rgb(245, 170, 40),
+                Rgba::from_rgb(70, 175, 115),
+                Rgba::from_rgb(42, 113, 224),
+                Rgba::from_rgb(153, 90, 210),
             ],
             secondary: false,
             hex: String::new(),
@@ -24,7 +87,7 @@ impl Default for ColorPanel {
         }
     }
 }
-fn parse_hex(text: &str) -> Result<Color32, String> {
+fn parse_hex(text: &str) -> Result<Rgba, String> {
     let text = text.trim().strip_prefix('#').unwrap_or(text.trim());
     if text.len() != 6 && text.len() != 8 {
         return Err("Use RRGGBB or RRGGBBAA".into());
@@ -37,15 +100,15 @@ fn parse_hex(text: &str) -> Result<Color32, String> {
         *value = u8::from_str_radix(&text[index * 2..index * 2 + 2], 16)
             .map_err(|_| "Invalid hexadecimal color")?;
     }
-    Ok(Color32::from_rgba_unmultiplied(
+    Ok(Rgba::from_rgba_unmultiplied(
         rgba[0], rgba[1], rgba[2], rgba[3],
     ))
 }
-fn hex(color: Color32) -> String {
+fn hex(color: Rgba) -> String {
     let c = color.to_srgba_unmultiplied();
     format!("#{:02X}{:02X}{:02X}{:02X}", c[0], c[1], c[2], c[3])
 }
-fn decode_palette(text: &str) -> Result<Vec<Color32>, String> {
+fn decode_palette(text: &str) -> Result<Vec<Rgba>, String> {
     if text.len() > 8192 {
         return Err("Palette exceeds size limit".into());
     }
@@ -63,7 +126,7 @@ fn decode_palette(text: &str) -> Result<Vec<Color32>, String> {
     }
     Ok(colors)
 }
-fn encode_palette(colors: &[Color32]) -> String {
+fn encode_palette(colors: &[Rgba]) -> String {
     let mut text = "paint-rust-palette-v1\n".to_string();
     for color in colors {
         text.push_str(&hex(*color));
@@ -72,7 +135,7 @@ fn encode_palette(colors: &[Color32]) -> String {
     text
 }
 impl ColorPanel {
-    fn read(path: &std::path::Path) -> Result<Vec<Color32>, String> {
+    fn read(path: &std::path::Path) -> Result<Vec<Rgba>, String> {
         use std::io::Read;
         let file = std::fs::File::open(path).map_err(|e| e.to_string())?;
         let mut text = String::new();
@@ -143,9 +206,9 @@ impl Editor {
                     }
                 });
             if changed {
-                *color = Color32::from_rgba_unmultiplied(rgba[0], rgba[1], rgba[2], rgba[3]);
+                *color = Rgba::from_rgba_unmultiplied(rgba[0], rgba[1], rgba[2], rgba[3]);
             }
-            let hsva = egui::ecolor::Hsva::from(*color);
+            let hsva = color.hsva();
             let mut hsv = [hsva.h * 360.0, hsva.s * 100.0, hsva.v * 100.0];
             let mut changed = false;
             egui::Grid::new("hsv-inputs").num_columns(2).show(ui, |ui| {
@@ -167,7 +230,7 @@ impl Editor {
                 }
             });
             if changed {
-                *color = Color32::from(egui::ecolor::Hsva::new(
+                *color = Rgba::from_hsva(egui::ecolor::Hsva::new(
                     hsv[0] / 360.0,
                     hsv[1] / 100.0,
                     hsv[2] / 100.0,
@@ -261,16 +324,46 @@ impl Editor {
 mod tests {
     use super::*;
     #[test]
+    fn straight_rgba_retains_hidden_rgb_and_all_alpha_values() {
+        for alpha in 0..=255 {
+            let color = Rgba::from_rgba_unmultiplied(17, 123, 241, alpha);
+            assert_eq!(color.to_srgba_unmultiplied(), [17, 123, 241, alpha]);
+            assert_eq!(parse_hex(&hex(color)).unwrap(), color);
+            assert_eq!(
+                decode_palette(&encode_palette(&[color])).unwrap(),
+                vec![color]
+            );
+            assert_eq!(Rgba::from_hsva(color.hsva()), color);
+        }
+    }
+    #[test]
+    fn idle_color_controls_do_not_quantize_transparent_colors() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        for alpha in [0, 1, 2, 37, 128] {
+            editor.color = Rgba::from_rgba_unmultiplied(17, 123, 241, alpha);
+            editor.secondary_color = Rgba::from_rgba_unmultiplied(99, 33, 11, alpha);
+            let before = (editor.color, editor.secondary_color);
+            for _ in 0..3 {
+                let _ = ctx.run(
+                    egui::RawInput {
+                        screen_rect: Some(Rect::from_min_size(
+                            Pos2::ZERO,
+                            Vec2::new(1180.0, 800.0),
+                        )),
+                        ..Default::default()
+                    },
+                    |ctx| editor.show(ctx),
+                );
+            }
+            assert_eq!((editor.color, editor.secondary_color), before);
+        }
+    }
+
+    #[test]
     fn hex_and_palette_roundtrip_keep_colors_and_alpha() {
-        assert_eq!(
-            parse_hex("#12ab34").unwrap(),
-            Color32::from_rgb(18, 171, 52)
-        );
-        let colors = vec![
-            Color32::BLACK,
-            Color32::WHITE,
-            parse_hex("#FF000080").unwrap(),
-        ];
+        assert_eq!(parse_hex("#12ab34").unwrap(), Rgba::from_rgb(18, 171, 52));
+        let colors = vec![Rgba::BLACK, Rgba::WHITE, parse_hex("#FF000080").unwrap()];
         assert_eq!(decode_palette(&encode_palette(&colors)).unwrap(), colors);
         let temp = tempfile::tempdir().unwrap();
         let path = temp.path().join("colors.palette");

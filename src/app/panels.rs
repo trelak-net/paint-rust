@@ -95,13 +95,11 @@ impl Editor {
         }
         ui.horizontal(|ui| {
             let label = ui.label("Primary");
-            ui.color_edit_button_srgba(&mut self.color)
-                .labelled_by(label.id);
+            self.color.edit(ui).labelled_by(label.id);
         });
         ui.horizontal(|ui| {
             let label = ui.label("Secondary");
-            ui.color_edit_button_srgba(&mut self.secondary_color)
-                .labelled_by(label.id);
+            self.secondary_color.edit(ui).labelled_by(label.id);
         });
         if ui.button("Swap colors    X").clicked() {
             std::mem::swap(&mut self.color, &mut self.secondary_color);
@@ -129,8 +127,8 @@ impl Editor {
             }
         });
         if ui.button("Reset colors").clicked() {
-            self.color = Color32::BLACK;
-            self.secondary_color = Color32::WHITE;
+            self.color = Rgba::BLACK;
+            self.secondary_color = Rgba::WHITE;
         }
         self.palette_actions(ui);
         self.color_channels(ui);

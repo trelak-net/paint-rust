@@ -10,6 +10,7 @@ mod thumbnails;
 mod transform_handles;
 mod workspace;
 use crate::icons::Icon;
+use colors::Rgba;
 use eframe::egui::{self, Color32, Key, Pos2, Rect, Sense, TextureHandle, TextureOptions, Vec2};
 use file_operations::{DocumentEdit, FileJob, Outcome};
 use paint_rust::effects::Effect;
@@ -72,7 +73,7 @@ struct TextDialog {
     font: ab_glyph::FontArc,
     origin: (f32, f32),
     size: f32,
-    color: Color32,
+    color: Rgba,
     focus: bool,
 }
 
@@ -103,8 +104,8 @@ pub struct Editor {
     canvas_renderer: crate::canvas_renderer::CanvasRenderer,
     texture_dirty: bool,
     tool: Tool,
-    color: Color32,
-    secondary_color: Color32,
+    color: Rgba,
+    secondary_color: Rgba,
     gradient_shape: paint_rust::gradient::GradientShape,
     gradient_mode: paint_rust::gradient::GradientMode,
     brush_size: f32,
@@ -217,8 +218,8 @@ impl Editor {
             canvas_renderer: crate::canvas_renderer::CanvasRenderer::new(ctx.clone()),
             texture_dirty: true,
             tool: Tool::Brush,
-            color: Color32::from_rgb(42, 113, 224),
-            secondary_color: Color32::WHITE,
+            color: Rgba::from_rgb(42, 113, 224),
+            secondary_color: Rgba::WHITE,
             gradient_shape: paint_rust::gradient::GradientShape::Linear,
             gradient_mode: paint_rust::gradient::GradientMode::Blend,
             brush_size: 12.0,
@@ -400,7 +401,7 @@ impl Editor {
         });
     }
 
-    fn begin_text(&mut self, ctx: &egui::Context, origin: (f32, f32), color: Color32) {
+    fn begin_text(&mut self, ctx: &egui::Context, origin: (f32, f32), color: Rgba) {
         let data = ctx.fonts(|fonts| {
             let definitions = fonts.definitions();
             definitions
@@ -1472,7 +1473,7 @@ impl Editor {
                                     .document
                                     .sample(local.x.floor() as i32, local.y.floor() as i32)
                                 {
-                                    let sampled = Color32::from_rgba_unmultiplied(
+                                    let sampled = Rgba::from_rgba_unmultiplied(
                                         pixel[0], pixel[1], pixel[2], pixel[3],
                                     );
                                     if drawing_button == egui::PointerButton::Secondary {
@@ -2128,10 +2129,7 @@ impl Editor {
                             .checkbox(&mut dialog.layout.antialias, "Antialias text")
                             .changed();
                         let label = ui.label("Text color");
-                        changed |= ui
-                            .color_edit_button_srgba(&mut dialog.color)
-                            .labelled_by(label.id)
-                            .changed();
+                        changed |= dialog.color.edit(ui).labelled_by(label.id).changed();
                         if changed {
                             dialog.preview.request_text(crate::preview::TextInput {
                                 layout: dialog.layout,
@@ -2943,8 +2941,8 @@ mod tests {
         assert!(!editor.document.dirty());
         assert!(!editor.document.editing());
         editor.tool = Tool::Recolor;
-        editor.color = Color32::RED;
-        editor.secondary_color = Color32::WHITE;
+        editor.color = Color32::RED.into();
+        editor.secondary_color = Color32::WHITE.into();
         for pressed in [true, false] {
             frame(
                 &mut editor,
@@ -3082,8 +3080,8 @@ mod tests {
                 let ctx = egui::Context::default();
                 let mut editor = Editor::blank(&ctx);
                 editor.tool = tool;
-                editor.color = Color32::BLACK;
-                editor.secondary_color = Color32::RED;
+                editor.color = Color32::BLACK.into();
+                editor.secondary_color = Color32::RED.into();
                 frame(&mut editor, &ctx, vec![]);
                 let start = Pos2::new(350.0, 250.0);
                 let end = Pos2::new(390.0, 280.0);
@@ -3136,8 +3134,8 @@ mod tests {
             let ctx = egui::Context::default();
             let mut editor = Editor::blank(&ctx);
             editor.tool = tool;
-            editor.color = Color32::BLACK;
-            editor.secondary_color = Color32::RED;
+            editor.color = Color32::BLACK.into();
+            editor.secondary_color = Color32::RED.into();
             frame(&mut editor, &ctx, vec![]);
             let pos = Pos2::new(350.0, 250.0);
             for pressed in [true, false] {
@@ -3255,8 +3253,8 @@ mod tests {
         for button in [egui::PointerButton::Primary, egui::PointerButton::Secondary] {
             let ctx = egui::Context::default();
             let mut editor = Editor::blank(&ctx);
-            editor.color = Color32::BLACK;
-            editor.secondary_color = Color32::RED;
+            editor.color = Color32::BLACK.into();
+            editor.secondary_color = Color32::RED.into();
             editor.brush_size = 48.0;
             frame(&mut editor, &ctx, vec![]);
             frame(
@@ -3316,8 +3314,8 @@ mod tests {
             let ctx = egui::Context::default();
             let mut editor = Editor::blank(&ctx);
             editor.tool = Tool::Fill;
-            editor.color = Color32::from_rgb(200, 30, 40);
-            editor.secondary_color = Color32::from_rgb(20, 80, 210);
+            editor.color = Color32::from_rgb(200, 30, 40).into();
+            editor.secondary_color = Color32::from_rgb(20, 80, 210).into();
             frame(&mut editor, &ctx, vec![]);
             let point = Pos2::new(350.0, 200.0);
             for pressed in [true, false] {
@@ -3371,7 +3369,7 @@ mod tests {
             mask: None,
         };
         editor.document.set_selection(Some(selection.clone()));
-        editor.color = Color32::BLACK;
+        editor.color = Color32::BLACK.into();
         editor.start_fill(3, 3, editor.color.to_srgba_unmultiplied());
         assert!(!editor.document.dirty());
         wait_for_files(&mut editor, &ctx);
@@ -4844,7 +4842,7 @@ mod tests {
         let ctx = egui::Context::default();
         let mut editor = Editor::blank(&ctx);
         frame(&mut editor, &ctx, vec![]);
-        editor.begin_text(&ctx, (10.0, 10.0), Color32::BLACK);
+        editor.begin_text(&ctx, (10.0, 10.0), Rgba::BLACK);
         editor.text_dialog.as_mut().unwrap().content = "Keep draft".into();
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("chosen.ttf");

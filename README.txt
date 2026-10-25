@@ -948,3 +948,12 @@ view combines channel counts; single-channel views show their own counts. Linear
 and logarithmic heights, exact hovered-bin counts and the selected pixel count
 are available. Closing the dialog cancels unfinished histogram work. Output
 histograms and external reference comparisons remain pending.
+
+Exact tool colors
+-----------------
+Primary, secondary, text and palette colors retain unmultiplied RGBA bytes.
+Numeric and HEX edits, sampling and palette persistence preserve hidden RGB at
+zero alpha and channel values at low alpha. Color display converts to the UI's
+premultiplied representation without changing stored values. The popup uses HSV
+with independent alpha and updates the stored bytes only after a user edit.
+Tests cover every alpha value, HEX/palette/HSV round-trips and idle UI frames.
