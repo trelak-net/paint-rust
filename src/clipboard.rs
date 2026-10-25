@@ -2,6 +2,12 @@ use paint_rust::document::{Document, Pixel};
 use std::borrow::Cow;
 
 pub trait Backend: Send {
+    fn write_text(&mut self, _text: &str) -> Result<(), String> {
+        Err("Text clipboard is unavailable".into())
+    }
+    fn read_text(&mut self) -> Result<String, String> {
+        Err("Text clipboard is unavailable".into())
+    }
     fn write(&mut self, width: u32, height: u32, pixels: &[Pixel]) -> Result<(), String>;
     fn read(&mut self) -> Result<(u32, u32, Vec<Pixel>), String>;
 }
@@ -19,6 +25,14 @@ impl Clipboard {
 }
 
 impl Backend for Clipboard {
+    fn write_text(&mut self, text: &str) -> Result<(), String> {
+        self.handle
+            .set_text(text)
+            .map_err(|error| error.to_string())
+    }
+    fn read_text(&mut self) -> Result<String, String> {
+        self.handle.get_text().map_err(|error| error.to_string())
+    }
     fn write(&mut self, width: u32, height: u32, pixels: &[Pixel]) -> Result<(), String> {
         self.handle
             .set_image(arboard::ImageData {

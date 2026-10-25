@@ -115,6 +115,7 @@ independent tasks; do not silently reduce the required scope.
 [x] Freehand lasso with closing preview, selection combination and Escape cancellation.
 [x] Replace/add/subtract/intersect/exclusive-or selection combination and inversion.
 [x] Explicit primary/secondary selected-area fill with cancellable background publication.
+[x] Polygon-list JSON selection clipboard with five combination modes and native round-trip/inversion fixtures.
 [x] Numeric selection-boundary rotation, scaling, flips and offsets with cancellable coalesced previews.
 [ ] Complete pixel/selection transform options and boundary handles.
 [ ] Interpolation, constraints and edge-case validation.

@@ -1409,3 +1409,20 @@ including hidden RGB, is preserved. Existing dirty documents remain in their
 own tabs with paths and histories intact. Invalid clipboard buffers and cancelled
 reads never install a tab. Tests exercise the native release-event shortcut,
 partial alpha, tab preservation, interrupted reads and invalid buffers.
+
+Selection geometry clipboard
+-----------------------------
+Copy selection geometry (Ctrl+Alt+Shift+C) writes polygon-list JSON text. Paste
+selection geometry supports Replace (Ctrl+Alt+Shift+V), Add, Subtract, Intersect
+and XOR. Rectangular runs merge vertically during export, preserving exact binary
+masks including holes. Import uses even-odd filling across all polygons and clips
+to the current canvas. Inputs are bounded to 8 MiB, 16,384 polygons and 81,920
+vertices; overly complex exports report an error before replacing the clipboard.
+Native image pixels and image history remain unchanged by geometry clipboard
+operations; selection-only undo remains a compatibility gap. Workers check
+cancellation during parsing, scan conversion and combination. Tests include
+ellipses, holes, malformed text, publication guards and the complete clipboard
+flow. An independently executed Windows clipboard round-trip preserves an
+elliptical ring; native inversion produces its exact pixel complement. Fixtures
+and provenance live in tests/fixtures/selection/. Copy merged also supports
+Ctrl+Shift+C alongside the menu command.

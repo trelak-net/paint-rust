@@ -12,6 +12,7 @@ pub(super) enum DocumentEdit {
 }
 
 pub(super) enum Outcome {
+    SelectionCopied,
     PastedImage(Box<Document>),
     TextFont(ab_glyph::FontArc, String),
     FontCatalog(Vec<paint_rust::fonts::InstalledFont>),
@@ -132,6 +133,51 @@ impl Editor {
                 return Err(files::CANCELLED.into());
             }
             Ok(Outcome::Edited(Box::new(document), label.into(), false))
+        });
+    }
+
+    pub(super) fn copy_selection_geometry(&mut self) {
+        self.finish_stroke();
+        let (width, height) = (self.document.width, self.document.height);
+        let selection = self.document.selection();
+        let clipboard = self.clipboard.clone();
+        self.start_cancellable_file_job("copy selection geometry", move |cancel| {
+            let text = paint_rust::selection::clipboard::encode(
+                width,
+                height,
+                selection.as_ref(),
+                cancel,
+            )?;
+            if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+                return Err(files::CANCELLED.into());
+            }
+            crate::clipboard::with_backend(&clipboard, |backend| backend.write_text(&text))?;
+            if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+                return Err(files::CANCELLED.into());
+            }
+            Ok(Outcome::SelectionCopied)
+        });
+    }
+    pub(super) fn paste_selection_geometry(&mut self, mode: CombineMode) {
+        self.finish_stroke();
+        let (width, height) = (self.document.width, self.document.height);
+        let previous = self.document.selection();
+        let clipboard = self.clipboard.clone();
+        self.start_cancellable_file_job("paste selection geometry", move |cancel| {
+            if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+                return Err(files::CANCELLED.into());
+            }
+            let text = crate::clipboard::with_backend(&clipboard, |backend| backend.read_text())?;
+            let candidate = paint_rust::selection::clipboard::decode(width, height, &text, cancel)?;
+            paint_rust::selection::combine_cancellable(
+                width,
+                height,
+                previous.as_ref(),
+                &candidate,
+                mode,
+                cancel,
+            )
+            .map(Outcome::Selection)
         });
     }
 
@@ -345,6 +391,9 @@ impl Editor {
         let operation = job.operation;
         self.file_job = None;
         match result {
+            Ok(Outcome::SelectionCopied) => {
+                self.status = "Copied selection geometry as JSON text".into()
+            }
             Ok(Outcome::FontCatalog(fonts)) => {
                 self.status = format!("Found {} installed font faces", fonts.len());
                 self.system_fonts = fonts;

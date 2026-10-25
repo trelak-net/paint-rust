@@ -956,10 +956,13 @@ impl Editor {
             }
         });
         let command = ctx.input_mut(|i| {
-            if i.events.iter().any(|event| matches!(event,egui::Event::Copy)) { Some(11)
+            if i.consume_key(egui::Modifiers::COMMAND | egui::Modifiers::ALT | egui::Modifiers::SHIFT,Key::C) {Some(28)
+            } else if i.consume_key(egui::Modifiers::COMMAND | egui::Modifiers::SHIFT,Key::C) {Some(30)
+            } else if i.events.iter().any(|event| matches!(event,egui::Event::Copy)) {Some(if i.modifiers.alt && i.modifiers.shift {28}else if i.modifiers.shift {30}else{11})
             } else if i.events.iter().any(|event| matches!(event,egui::Event::Cut)) { Some(12)
             // The window backend consumes Ctrl+V presses when no text is available.
             // Its release event remains available for image clipboard handling.
+            } else if i.events.iter().any(|event| matches!(event,egui::Event::Key{key:Key::V,pressed:false,modifiers,..} if modifiers.command && modifiers.alt && modifiers.shift)) {Some(29)
             } else if i.events.iter().any(|event| matches!(event,egui::Event::Key{key:Key::V,pressed:false,modifiers,..} if modifiers.command && modifiers.alt)) { Some(27)
             } else if i.events.iter().any(|event| matches!(event,egui::Event::Key{key:Key::V,pressed:false,modifiers,..} if modifiers.command)) { Some(13)
             } else if i.consume_key(egui::Modifiers::COMMAND | egui::Modifiers::SHIFT, Key::Tab) {
@@ -1057,6 +1060,9 @@ impl Editor {
             }
         });
         match command {
+            Some(28) => self.copy_selection_geometry(),
+            Some(29) => self.paste_selection_geometry(CombineMode::Replace),
+            Some(30) => self.copy(false, true),
             Some(27) => self.paste_new_image(),
             Some(26) => {
                 let layer = &self.document.layers()[self.document.active_layer()];
@@ -3072,6 +3078,12 @@ impl Editor {
                         ui.close();
                     }
                     ui.separator();
+                    if ui.button("Copy selection geometry    Ctrl+Alt+Shift+C").clicked() {self.copy_selection_geometry();ui.close();}
+                    ui.menu_button("Paste selection geometry",|ui| {
+                        for mode in [CombineMode::Replace,CombineMode::Add,CombineMode::Subtract,CombineMode::Intersect,CombineMode::Xor] {
+                            if ui.button(mode.label()).clicked() {self.paste_selection_geometry(mode);ui.close();}
+                        }
+                    });
                     if ui.button("Paste into new image    Ctrl+Alt+V").clicked() {self.paste_new_image();ui.close();}
                     if ui.button("Fill selection with primary").clicked() {self.start_document_edit(DocumentEdit::Fill(self.color.to_srgba_unmultiplied()));ui.close();}
                     if ui.button("Fill selection with secondary").clicked() {self.start_document_edit(DocumentEdit::Fill(self.secondary_color.to_srgba_unmultiplied()));ui.close();}
@@ -4407,6 +4419,95 @@ mod tests {
         fn read(&mut self) -> Result<(u32, u32, Vec<[u8; 4]>), String> {
             self.image.clone().ok_or_else(|| "No image".into())
         }
+    }
+
+    #[test]
+    fn selection_geometry_clipboard_roundtrip_modes_and_invalid_input_preserve_pixels() {
+        struct TextClipboard(std::sync::Arc<std::sync::Mutex<String>>);
+        impl crate::clipboard::Backend for TextClipboard {
+            fn write(&mut self, _: u32, _: u32, _: &[[u8; 4]]) -> Result<(), String> {
+                panic!("Expected text clipboard write")
+            }
+            fn read(&mut self) -> Result<(u32, u32, Vec<[u8; 4]>), String> {
+                panic!("Expected text clipboard read")
+            }
+            fn write_text(&mut self, text: &str) -> Result<(), String> {
+                *self.0.lock().unwrap() = text.into();
+                Ok(())
+            }
+            fn read_text(&mut self) -> Result<String, String> {
+                Ok(self.0.lock().unwrap().clone())
+            }
+        }
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.document = Document::new(12, 10, [20, 30, 40, 255]).unwrap();
+        let source = Selection::elliptical(2, 2, 8, 6);
+        editor.document.set_selection(Some(source.clone()));
+        let pixels = editor.document.shared_pixels();
+        let text = std::sync::Arc::new(std::sync::Mutex::new(String::new()));
+        *editor.clipboard.lock().unwrap() = Some(Box::new(TextClipboard(text.clone())));
+        frame(
+            &mut editor,
+            &ctx,
+            vec![egui::Event::Key {
+                key: Key::C,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers {
+                    ctrl: true,
+                    command: true,
+                    alt: true,
+                    shift: true,
+                    ..Default::default()
+                },
+            }],
+        );
+        wait_for_files(&mut editor, &ctx);
+        assert!(text.lock().unwrap().contains("polygonList"));
+        assert_eq!(editor.document.selection(), Some(source));
+        assert!(!editor.document.dirty());
+        let candidate = paint_rust::selection::clipboard::decode(
+            12,
+            10,
+            &text.lock().unwrap(),
+            &std::sync::atomic::AtomicBool::new(false),
+        )
+        .unwrap();
+        let previous = Selection::elliptical(0, 0, 6, 6);
+        for mode in [
+            CombineMode::Replace,
+            CombineMode::Add,
+            CombineMode::Subtract,
+            CombineMode::Intersect,
+            CombineMode::Xor,
+        ] {
+            editor.document.set_selection(Some(previous.clone()));
+            let expected = paint_rust::selection::combine_cancellable(
+                12,
+                10,
+                Some(&previous),
+                &candidate,
+                mode,
+                &std::sync::atomic::AtomicBool::new(false),
+            )
+            .unwrap();
+            editor.paste_selection_geometry(mode);
+            assert_eq!(editor.document.selection(), Some(previous.clone()));
+            wait_for_files(&mut editor, &ctx);
+            assert_eq!(editor.document.selection(), Some(expected));
+            assert_eq!(editor.document.pixels(), pixels.as_slice());
+            assert!(!editor.document.can_undo());
+            assert!(!editor.document.dirty());
+        }
+        let before = editor.document.selection();
+        *text.lock().unwrap() = "invalid JSON".into();
+        editor.paste_selection_geometry(CombineMode::Replace);
+        wait_for_files(&mut editor, &ctx);
+        assert_eq!(editor.document.selection(), before);
+        assert_eq!(editor.document.pixels(), pixels.as_slice());
+        assert!(editor.status.contains("Invalid selection geometry"));
     }
 
     #[test]

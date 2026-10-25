@@ -1,3 +1,4 @@
+pub mod clipboard;
 use std::sync::{
     Arc,
     atomic::{AtomicBool, Ordering},

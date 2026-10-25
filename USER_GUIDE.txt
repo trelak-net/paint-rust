@@ -24,3 +24,10 @@ Choose Selection > Transform selection boundary, or press Ctrl+Alt+M, to rotate,
 scale, flip or move only the selected area boundary. The preview keeps image
 pixels unchanged. Apply or Enter accepts it; Cancel or Escape restores the
 original selection. Use Free transform pixels when the image content should move.
+
+Reuse a selection shape
+Copy selection geometry (Ctrl+Alt+Shift+C) puts its shape on the clipboard as JSON
+text. Paste selection geometry can replace, add to, subtract from or intersect
+an existing selection; XOR keeps areas covered by only one of the two shapes.
+Ctrl+Alt+Shift+V pastes with Replace. This copies the boundary rather than image
+pixels, so it can be reused on another layer or document.
