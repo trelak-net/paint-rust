@@ -7,12 +7,12 @@ pub(super) struct DocumentSlot {
     zoom: f32,
     offset: Vec2,
     texture: Option<TextureHandle>,
+    renderer: crate::canvas_renderer::CanvasRenderer,
     history_paused: bool,
     recovery: Option<paint_rust::recovery::Recovery>,
 }
 impl Editor {
     fn reset_document_view(&mut self) {
-        self.canvas_renderer = crate::canvas_renderer::CanvasRenderer::new(self.context.clone());
         self.texture_dirty = true;
         self.selection_texture = None;
         self.polygon_points.clear();
@@ -42,6 +42,9 @@ impl Editor {
             self.clear_recovery();
             self.recovery.take()
         };
+        if self.texture_dirty {
+            self.canvas_renderer.request(&self.document);
+        }
         let previous = DocumentSlot {
             id: self.active_document_id,
             document: std::mem::replace(&mut self.document, document),
@@ -49,6 +52,10 @@ impl Editor {
             zoom: std::mem::replace(&mut self.zoom, 1.0),
             offset: std::mem::replace(&mut self.canvas_offset, Vec2::ZERO),
             texture: self.texture.take(),
+            renderer: std::mem::replace(
+                &mut self.canvas_renderer,
+                crate::canvas_renderer::CanvasRenderer::new(self.context.clone()),
+            ),
             history_paused: std::mem::replace(&mut self.history_storage_paused, false),
             recovery: std::mem::replace(&mut self.recovery, recovery),
         };
@@ -74,12 +81,16 @@ impl Editor {
         let Some(index) = self.documents.iter().position(|s| s.id == id) else {
             return;
         };
+        if self.texture_dirty {
+            self.canvas_renderer.request(&self.document);
+        }
         let slot = &mut self.documents[index];
         std::mem::swap(&mut self.document, &mut slot.document);
         std::mem::swap(&mut self.path, &mut slot.path);
         std::mem::swap(&mut self.zoom, &mut slot.zoom);
         std::mem::swap(&mut self.canvas_offset, &mut slot.offset);
         std::mem::swap(&mut self.texture, &mut slot.texture);
+        std::mem::swap(&mut self.canvas_renderer, &mut slot.renderer);
         std::mem::swap(&mut self.history_storage_paused, &mut slot.history_paused);
         std::mem::swap(&mut self.recovery, &mut slot.recovery);
         std::mem::swap(&mut self.active_document_id, &mut slot.id);
@@ -97,6 +108,8 @@ impl Editor {
             self.document = Document::new(960, 640, [255; 4]).unwrap();
             self.path = None;
             self.texture = None;
+            self.canvas_renderer =
+                crate::canvas_renderer::CanvasRenderer::new(self.context.clone());
             self.zoom = 1.0;
             self.canvas_offset = Vec2::ZERO;
             self.history_storage_paused = false;
@@ -108,62 +121,109 @@ impl Editor {
         }
     }
 
+    pub(super) fn cycle_document(&mut self, direction: isize) {
+        let index = self
+            .document_order
+            .iter()
+            .position(|id| *id == self.active_document_id)
+            .unwrap();
+        let next =
+            (index as isize + direction).rem_euclid(self.document_order.len() as isize) as usize;
+        self.activate_document(self.document_order[next]);
+    }
+
+    fn reorder_document(&mut self, source: u64, target: u64) {
+        if source == target {
+            return;
+        }
+        let Some(from) = self.document_order.iter().position(|id| *id == source) else {
+            return;
+        };
+        let Some(to) = self.document_order.iter().position(|id| *id == target) else {
+            return;
+        };
+        self.document_order.remove(from);
+        self.document_order.insert(to, source);
+    }
+
     pub(super) fn document_tabs(&mut self, ctx: &egui::Context, enabled: bool) {
         egui::TopBottomPanel::top("documents").show(ctx, |ui| {
-            if !enabled || self.document.editing() {
+            ui.spacing_mut().button_padding = egui::vec2(6.0, 2.0);
+            if !enabled || self.document.editing() || self.pending.is_some() || self.new_dialog {
                 ui.disable();
             }
             let mut activate = None;
-            egui::ScrollArea::horizontal()
-                .id_salt("document-tabs")
-                .show(ui, |ui| {
-                    ui.horizontal(|ui| {
-                        for id in &self.document_order {
-                            let (doc, path) = if *id == self.active_document_id {
-                                (&self.document, &self.path)
-                            } else {
-                                let slot = self.documents.iter().find(|s| s.id == *id).unwrap();
-                                (&slot.document, &slot.path)
-                            };
-                            let name = path
-                                .as_ref()
-                                .and_then(|p| p.file_name())
-                                .map(|s| s.to_string_lossy().into_owned())
-                                .unwrap_or_else(|| format!("Untitled {}", id + 1));
-                            let label = format!("{}{}", name, if doc.dirty() { " *" } else { "" });
-                            if ui
-                                .push_id(id, |ui| {
-                                    ui.selectable_label(*id == self.active_document_id, label)
-                                        .on_hover_text(format!("{} × {} px", doc.width, doc.height))
-                                })
-                                .inner
-                                .clicked()
-                            {
-                                activate = Some(*id);
-                            }
-                        }
-                    });
+            let mut close = None;
+            let mut reorder = None;
+            egui::ScrollArea::horizontal().id_salt("document-tabs").show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    for id in &self.document_order {
+                        let (doc, path, texture) = if *id == self.active_document_id {
+                            (&self.document, &self.path, &self.texture)
+                        } else {
+                            let slot = self.documents.iter().find(|s| s.id == *id).unwrap();
+                            (&slot.document, &slot.path, &slot.texture)
+                        };
+                        let name = path.as_ref().and_then(|p| p.file_name()).map(|s| s.to_string_lossy().into_owned())
+                            .unwrap_or_else(|| format!("Untitled {}", id + 1));
+                        let label = format!("{}{}", name, if doc.dirty() { " *" } else { "" });
+                        let response = ui.push_id(id, |ui| {
+                            let button = if let Some(texture) = texture {
+                                let scale = (48.0 / doc.width as f32).min(32.0 / doc.height as f32);
+                                let size = egui::vec2(doc.width as f32, doc.height as f32) * scale;
+                                egui::Button::image_and_text(egui::Image::new((texture.id(),size)), &label)
+                            } else { egui::Button::new(&label) };
+                            ui.add_sized([180.0, 36.0],button.selected(*id == self.active_document_id)
+                                .truncate().sense(Sense::click_and_drag()))
+                                .on_hover_text(format!("{name} — {} × {} px\nDrag to reorder; middle-click to close",doc.width,doc.height))
+                        }).inner;
+                        if response.clicked() { activate = Some(*id); }
+                        if response.clicked_by(egui::PointerButton::Middle) { close = Some(*id); }
+                        response.dnd_set_drag_payload(*id);
+                        if let Some(source) = response.dnd_release_payload::<u64>() { reorder = Some((*source,*id)); }
+                    }
+                    if ui.button("Close").on_hover_text("Close document (Ctrl+W)").clicked() {
+                        close = Some(self.active_document_id);
+                    }
+                    if ui.button("Close all").clicked() { self.request(Action::CloseAll,ctx); }
                 });
-            ui.horizontal(|ui| {
-                if ui
-                    .button("Close document")
-                    .on_hover_text("Ctrl+W")
-                    .clicked()
-                {
-                    self.request(Action::CloseDocument, ctx);
-                }
-                if ui.button("Close all").clicked() {
-                    self.request(Action::CloseAll, ctx);
-                }
             });
-            if let Some(id) = activate {
+            if let Some((source,target)) = reorder { self.reorder_document(source,target); }
+            if let Some(id) = activate { self.activate_document(id); }
+            if let Some(id) = close {
                 self.activate_document(id);
+                self.request(Action::CloseDocument,ctx);
             }
         });
     }
 
     pub(super) fn tick_inactive_recovery(&mut self, ctx: &egui::Context) {
         for slot in &mut self.documents {
+            if let Some(update) = slot.renderer.poll() {
+                ctx.request_repaint();
+                match update {
+                    crate::canvas_renderer::Update::Full(image) => {
+                        if let Some(texture) = &mut slot.texture {
+                            texture.set(image, egui::TextureOptions::NEAREST);
+                        } else {
+                            slot.texture = Some(ctx.load_texture(
+                                format!("document-{}", slot.id),
+                                image,
+                                egui::TextureOptions::NEAREST,
+                            ));
+                        }
+                    }
+                    crate::canvas_renderer::Update::Partial { position, image } => {
+                        if let Some(texture) = &mut slot.texture {
+                            texture.set_partial(position, image, egui::TextureOptions::NEAREST);
+                        } else {
+                            slot.renderer.invalidate();
+                            slot.renderer.request(&slot.document);
+                        }
+                    }
+                    crate::canvas_renderer::Update::Unchanged => {}
+                }
+            }
             if let Some(recovery) = &mut slot.recovery {
                 let wake = ctx.clone();
                 if let Err(error) = recovery.tick(&slot.document, move || wake.request_repaint()) {
@@ -276,6 +336,23 @@ mod tests {
         editor.activate_document(first);
         assert!(editor.document.pixels().iter().all(|p| *p == [255; 4]));
     }
+    #[test]
+    fn reordering_keeps_document_identity_and_keyboard_cycle_follows_tab_order() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.initial_placeholder = false;
+        editor.install_document(Document::new(4, 4, [10; 4]).unwrap(), None);
+        editor.install_document(Document::new(4, 4, [20; 4]).unwrap(), None);
+        editor.reorder_document(2, 0);
+        assert_eq!(editor.document_order, vec![2, 0, 1]);
+        assert_eq!(editor.active_document_id, 2);
+        editor.cycle_document(1);
+        assert_eq!(editor.active_document_id, 0);
+        editor.cycle_document(-1);
+        assert_eq!(editor.active_document_id, 2);
+        assert!(editor.document.pixels().iter().all(|p| *p == [20; 4]));
+    }
+
     #[test]
     fn each_document_keeps_an_independent_recovery_session() {
         let ctx = egui::Context::default();

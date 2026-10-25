@@ -769,3 +769,7 @@ Ctrl+W closes the active document. Close all and application exit ask about each
 unsaved document; cancelling leaves the remaining documents open. Switching is
 blocked during background operations and unfinished text/effect transactions.
 Closing the last document creates a clean blank workspace.
+
+Document tabs show rendered thumbnails and support drag reordering. Ctrl+Tab and
+Ctrl+Shift+Tab cycle in tab order; middle-click closes a tab with the normal
+unsaved-change guard. Inactive rendering workers finish pending thumbnail updates.

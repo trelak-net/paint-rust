@@ -81,7 +81,7 @@ independent tasks; do not silently reduce the required scope.
 [ ] Track supported, partial, missing and intentionally different behavior.
 1. Multiple documents
 [x] Independent document/history/path/view/recovery state.
-[ ] Thumbnail tabs, switching, reordering, individual close and close all.
+[x] Thumbnail tabs, switching, reordering, individual close and close all.
 [x] Save/discard/cancel flows across multiple dirty documents.
 2. Workspace
 [ ] Movable, hideable panels with layout persistence and reset.

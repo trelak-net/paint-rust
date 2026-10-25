@@ -737,6 +737,10 @@ impl Editor {
             // The window backend consumes Ctrl+V presses when no text is available.
             // Its release event remains available for image clipboard handling.
             } else if i.events.iter().any(|event| matches!(event,egui::Event::Key{key:Key::V,pressed:false,modifiers,..} if modifiers.command)) { Some(13)
+            } else if i.consume_key(egui::Modifiers::COMMAND | egui::Modifiers::SHIFT, Key::Tab) {
+                Some(16)
+            } else if i.consume_key(egui::Modifiers::COMMAND, Key::Tab) {
+                Some(15)
             } else if i.consume_key(egui::Modifiers::COMMAND, Key::W) {
                 Some(14)
             } else if i.consume_key(egui::Modifiers::COMMAND, Key::N) {
@@ -849,6 +853,8 @@ impl Editor {
             Some(12) => self.copy(true, false),
             Some(13) => self.paste(),
             Some(14) => self.request(Action::CloseDocument, ctx),
+            Some(15) => self.cycle_document(1),
+            Some(16) => self.cycle_document(-1),
             _ => {}
         }
     }
