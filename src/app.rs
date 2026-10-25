@@ -102,6 +102,7 @@ pub struct Editor {
     gradient_shape: paint_rust::gradient::GradientShape,
     gradient_mode: paint_rust::gradient::GradientMode,
     brush_size: f32,
+    brush_options: paint_rust::brush::Options,
     shape_filled: bool,
     move_selection_only: bool,
     ellipse_selection: bool,
@@ -212,6 +213,7 @@ impl Editor {
             gradient_shape: paint_rust::gradient::GradientShape::Linear,
             gradient_mode: paint_rust::gradient::GradientMode::Blend,
             brush_size: 12.0,
+            brush_options: Default::default(),
             shape_filled: false,
             move_selection_only: false,
             ellipse_selection: false,
@@ -1461,11 +1463,12 @@ impl Editor {
                         self.texture_dirty = true;
                     }
                     if matches!(self.tool, Tool::Brush | Tool::Eraser) {
-                        self.document.stroke(
+                        self.document.brush_segment(
                             self.last_point.or(self.shape_origin).unwrap_or(point),
                             point,
                             self.brush_size,
                             drawing_color.to_srgba_unmultiplied(),
+                            self.brush_options,
                             self.tool == Tool::Eraser,
                         );
                         self.texture_dirty = true;
@@ -1624,6 +1627,17 @@ impl Editor {
                     .suffix(" px")
                     .text("Brush size"),
             );
+        }
+        if matches!(self.tool, Tool::Brush | Tool::Eraser) {
+            ui.add(egui::Slider::new(&mut self.brush_options.hardness, 0.0..=1.0).text("Hardness"));
+            ui.add(
+                egui::Slider::new(&mut self.brush_options.opacity, 0.0..=1.0)
+                    .text("Stroke opacity"),
+            );
+            ui.checkbox(&mut self.brush_options.antialias, "Antialias");
+            if self.tool == Tool::Brush {
+                ui.checkbox(&mut self.brush_options.blend, "Blend color");
+            }
         }
         if self.tool == Tool::Pencil {
             ui.label("Pencil: 1 px");

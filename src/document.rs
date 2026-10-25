@@ -147,6 +147,7 @@ pub struct Document {
     undo: VecDeque<Entry>,
     redo: Vec<Entry>,
     pending: Option<Snapshot>,
+    brush_coverage: Option<Vec<u8>>,
     history_error: Option<String>,
     deferred_history: bool,
     history_pool: history::Pool,
@@ -213,6 +214,7 @@ impl Document {
             undo: VecDeque::new(),
             redo: Vec::new(),
             pending: None,
+            brush_coverage: None,
             history_error: None,
             deferred_history: false,
             history_pool: history::Pool::default(),
@@ -916,6 +918,7 @@ impl Document {
     }
 
     pub fn commit(&mut self) -> bool {
+        self.brush_coverage = None;
         let Some(before) = self.pending.take() else {
             return false;
         };
@@ -1026,6 +1029,7 @@ impl Document {
     }
 
     pub fn cancel(&mut self) {
+        self.brush_coverage = None;
         if let Some(before) = self.pending.take() {
             self.width = before.width;
             self.height = before.height;
@@ -1141,6 +1145,40 @@ impl Document {
                 erase,
             },
             &std::sync::atomic::AtomicBool::new(false),
+        );
+    }
+
+    pub fn brush_segment(
+        &mut self,
+        from: (f32, f32),
+        to: (f32, f32),
+        diameter: f32,
+        color: Pixel,
+        options: crate::brush::Options,
+        erase: bool,
+    ) {
+        let before = self
+            .pending
+            .as_ref()
+            .expect("Begin a transaction before drawing");
+        let source = &before.layers[self.active].pixels;
+        let coverage = self
+            .brush_coverage
+            .get_or_insert_with(|| vec![0; source.len()]);
+        crate::brush::render(
+            Arc::make_mut(&mut self.layers[self.active].pixels).as_mut_slice(),
+            source,
+            coverage,
+            (self.width, self.height),
+            self.selection.as_ref(),
+            crate::brush::Segment {
+                from,
+                to,
+                diameter,
+                color,
+                erase,
+                options,
+            },
         );
     }
 

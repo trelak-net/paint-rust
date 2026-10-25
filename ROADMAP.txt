@@ -96,7 +96,8 @@ independent tasks; do not silently reduce the required scope.
 [x] Visible-region pixel grid at high zoom.
 [ ] Rulers and measurement units.
 4. Rendering
-[ ] Antialiasing, brush hardness, opacity, blending and replacement modes.
+[x] Brush/eraser antialiasing, hardness, stroke opacity and blend/replacement modes.
+[ ] Shape antialiasing and additional drawing blend modes.
 [ ] Eraser coverage, continuous strokes and tablet pressure.
 [ ] Reference comparisons on opaque and transparent layers.
 5. Selection and transforms

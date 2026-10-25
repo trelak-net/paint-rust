@@ -1,8 +1,8 @@
 Parameter group	Status	Current implementation or gap
-Antialiasing	partial	Text has antialias toggle; drawing/selection controls pending
-Blend Mode	partial	Fourteen layer modes; full drawing blend controls pending
+Antialiasing	partial	Text, brush and eraser toggles; shapes/selection pending
+Blend Mode	partial	Fourteen layer modes; brush source-over/replace; additional drawing modes pending
 Brush Fill	missing	Pattern and fill styles
-Brush Hardness	missing	Soft brush/eraser coverage
+Brush Hardness	supported	Soft brush/eraser coverage with stroke opacity
 Brush Pressure	missing	Tablet pressure mapping
 Brush Size	partial	Diameter control; keyboard increments and exact ranges pending
 Brush Spacing	missing	Dab spacing

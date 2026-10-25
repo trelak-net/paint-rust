@@ -7,8 +7,8 @@ Move pixels	partial	M	M	Move/copy, affine handles and nudges	Complete interpolat
 Move selection	partial	M	M plus selection-only option	Translation of selection boundary	Independent rotation/scale of masks
 Zoom	partial	Z	Z	Anchored clicks, region zoom and Ctrl+wheel	Reference steps, 10000% upper range and full keyboard map
 Pan	partial	H	H	Pan tool, middle button and temporary Space	Full Escape/lost-capture rollback audit
-Brush	partial	B	B	Continuous hard capsule strokes	Hardness, spacing, antialiasing, blend/replace modes and pressure
-Eraser	partial	E	E	Hard continuous strokes	Coverage, hardness, spacing, antialiasing and pressure
+Brush	partial	B	B	Continuous strokes, hardness, opacity, antialiasing and blend/replace	Spacing, pressure and external coverage comparisons
+Eraser	partial	E	E	Continuous alpha coverage, hardness, opacity and antialiasing	Spacing, pressure and external coverage comparisons
 Pencil	partial	P	N	Single-pixel continuous primary/secondary strokes	Reference raster edge cases and blending options
 Color picker	partial	K	I	Single-pixel color sampling	Sampling radius, scope and post-pick behavior
 Fill	partial	F	F	Tolerance, connectivity, sampling and selection barriers	Reference tolerance matching and patterned fill

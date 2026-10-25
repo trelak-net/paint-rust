@@ -111,8 +111,10 @@ src/main.rs: native window startup.
 tests/editor.rs: image operations, history semantics and file round trips.
 
 The document stores up to 32 RGBA layers with configurable blend modes.
-Brush strokes replace RGBA values on the active layer; repeated samples do not
-accumulate opacity. Transparent pixels are displayed over a checkerboard. History
+Brush strokes support replacement or source-over blending, hardness, stroke
+opacity and optional edge antialiasing. The eraser reduces alpha while retaining
+RGB. Coverage accumulates once per gesture, so repeated samples do not accumulate
+opacity. The temporary coverage mask uses one byte per canvas pixel. Transparent pixels are displayed over a checkerboard. History
 shares unchanged layer buffers and keeps up to 128 MiB of unique pixel and
 selection-mask buffers in RAM across undo/redo. Older states spill into private
 temporary files instead of being evicted. Labels and metadata remain in RAM. The
