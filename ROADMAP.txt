@@ -142,7 +142,8 @@ independent tasks; do not silently reduce the required scope.
 [x] Searchable installed-font browser with available styles and collection face indices.
 [x] Underline and strikethrough with multiline alignment, antialiasing and selection clipping.
 [x] OpenType shaping, Unicode bidirectional/script runs and font-specific underline/strikeout metrics.
-[ ] Variable font axes, automatic font fallback and remaining text controls.
+[x] Variable font axis sliders with synchronized shaping/outlines and reset controls.
+[ ] Automatic font fallback and remaining text controls.
 7. Layers and history
 [x] Drag reordering with selected-layer identity and one-step undo.
 [x] Cached layer thumbnails with transparency checkerboard.

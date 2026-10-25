@@ -474,3 +474,38 @@ fn optional_ligatures_are_disabled_when_letter_spacing_is_requested() {
     assert_eq!(spaced.glyphs.len(), 3);
     assert!(spaced.width > joined.width);
 }
+
+#[test]
+fn variation_settings_are_bounded_and_invalid_axes_leave_pixels_unchanged() {
+    use paint_rust::text::{self, TextLayout, variations::Settings};
+    let mut axes = Settings::default();
+    assert!(!axes.set(*b"wght", f32::NAN));
+    for index in 0..16u32 {
+        assert!(axes.set(index.to_be_bytes(), 400.0));
+    }
+    assert!(!axes.set(*b"wght", 400.0));
+    assert!(axes.set(0u32.to_be_bytes(), 600.0));
+    assert_eq!(axes.get(0u32.to_be_bytes()), Some(600.0));
+    let font = font();
+    let mut pixels = vec![[10, 20, 30, 40]; 100 * 50];
+    let before = pixels.clone();
+    assert!(!text::render_cancellable(
+        &mut pixels,
+        100,
+        50,
+        None,
+        TextStyle {
+            font: &font,
+            text: "invalid variation",
+            origin: (0.0, 0.0),
+            size: 32.0,
+            color: [255; 4],
+            layout: TextLayout {
+                font_axes: axes,
+                ..Default::default()
+            }
+        },
+        &std::sync::atomic::AtomicBool::new(false)
+    ));
+    assert_eq!(pixels, before);
+}

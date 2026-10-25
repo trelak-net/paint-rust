@@ -1,4 +1,5 @@
 pub mod shaping;
+pub mod variations;
 use crate::document::{Pixel, Selection, blend};
 use ab_glyph::{Font, FontArc, ScaleFont, point};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -22,6 +23,7 @@ impl Alignment {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TextLayout {
     pub font_index: u32,
+    pub font_axes: variations::Settings,
     pub underline: bool,
     pub strikethrough: bool,
     pub alignment: Alignment,
@@ -33,6 +35,7 @@ impl Default for TextLayout {
     fn default() -> Self {
         Self {
             font_index: 0,
+            font_axes: Default::default(),
             underline: false,
             strikethrough: false,
             alignment: Alignment::Left,
@@ -93,16 +96,26 @@ pub fn render_cancellable(
     {
         return false;
     }
-    let font = style.font.as_scaled(style.size);
-    let Some(face) = rustybuzz::Face::from_slice(style.font.font_data(), style.layout.font_index)
+    let Ok(mut raster_font) = ab_glyph::FontRef::try_from_slice_and_index(
+        style.font.font_data(),
+        style.layout.font_index,
+    ) else {
+        return false;
+    };
+    let Some(mut face) =
+        rustybuzz::Face::from_slice(style.font.font_data(), style.layout.font_index)
     else {
         return false;
     };
+    if !style.layout.font_axes.apply(&mut raster_font, &mut face) {
+        return false;
+    }
+    let font = raster_font.as_scaled(style.size);
     let mut lines = Vec::new();
     for line in style.text.split('\n') {
         let Some(line) = shaping::line(
             &face,
-            style.font,
+            &raster_font,
             line,
             style.size,
             style.layout.letter_spacing,
@@ -169,7 +182,7 @@ pub fn render_cancellable(
         }
     }
     if style.layout.underline || style.layout.strikethrough {
-        let scale = style.size / style.font.height_unscaled();
+        let scale = style.size / raster_font.height_unscaled();
         let underline = face
             .underline_metrics()
             .map(|m| {

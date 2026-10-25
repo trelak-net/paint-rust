@@ -99,3 +99,8 @@ Text supports font ligatures, combining marks and mixed writing directions.
 Choose an installed font containing the characters you need. Underline and
 strikethrough follow that font's metrics; letter spacing adjusts character
 clusters without separating combining marks from their base letters.
+
+Variable fonts
+When the selected font provides variation axes, expand Font variations to adjust
+weight, width or other available properties. Reset font variations restores the
+font defaults. Selecting a different face resets its axis controls.

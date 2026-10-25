@@ -449,6 +449,7 @@ impl Editor {
                 if let Some(dialog) = &mut self.text_dialog {
                     self.text_font = Some((font.clone(), name.clone(), index));
                     dialog.layout.font_index = index;
+                    dialog.layout.font_axes = Default::default();
                     dialog.font = font;
                     dialog.font_name = name;
                     dialog.preview.request_text(crate::preview::TextInput {

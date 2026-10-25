@@ -1581,10 +1581,21 @@ nonzero spacing disables optional Latin ligatures. Collection face indices are
 preserved through font selection, cached reuse, shaping and outline rendering.
 Underline and strikeout use font metrics with a fallback for absent metrics.
 Alignment, selection clipping, antialiasing, cancellation and one-step undo still
-apply. Automatic cross-font fallback and variable-axis controls remain pending;
+apply. Automatic cross-font fallback remains pending;
 choose a font covering the characters required by the document.
 Typography probe with a locally installed font (the font is not bundled):
     cargo run --locked --example text_shaping -- /path/to/font.ttf /tmp/text.png
 Tests cover composed/decomposed accents, bidi override ordering, ligatures,
 spacing, font decoration position and invalid collection indices. Arabic and
 Hebrew system-font renders have also been inspected on the development host.
+
+Variable fonts expose up to sixteen non-hidden axes in the text dialog, using
+localized names supplied by the font, declared ranges and default values.
+Reset restores the face defaults; selecting another face clears old coordinates.
+Coordinates are validated and applied to both OpenType shaping and outline
+rasterization, including variable advances and decoration metrics. Unsupported
+axes and non-finite/out-of-range coordinates reject a preview without publication.
+A reproducible local-font probe compares regular/bold coverage and writes a PNG:
+    cargo run --locked --example font_variations -- /path/to/variable.ttf /tmp/weights.png
+The development host's Noto Sans weight range 400..700 produced distinct regular
+and bold outlines, with ink coverage increasing from 1363775 to 2186539 units.

@@ -2434,6 +2434,40 @@ impl Editor {
                             dialog.focus = false;
                         }
                         let mut changed = response.changed();
+                        let axes = paint_rust::text::variations::axes(
+                            &dialog.font,
+                            dialog.layout.font_index,
+                        );
+                        if !axes.is_empty() {
+                            egui::CollapsingHeader::new("Font variations").show(ui, |ui| {
+                                for axis in axes {
+                                    let mut value = dialog
+                                        .layout
+                                        .font_axes
+                                        .get(axis.tag)
+                                        .unwrap_or(axis.default_value);
+                                    let label = axis.name.unwrap_or_else(|| {
+                                        String::from_utf8_lossy(&axis.tag).into_owned()
+                                    });
+                                    if ui
+                                        .add(
+                                            egui::Slider::new(
+                                                &mut value,
+                                                axis.min_value..=axis.max_value,
+                                            )
+                                            .text(label),
+                                        )
+                                        .changed()
+                                    {
+                                        changed |= dialog.layout.font_axes.set(axis.tag, value);
+                                    }
+                                }
+                                if ui.button("Reset font variations").clicked() {
+                                    dialog.layout.font_axes = Default::default();
+                                    changed = true;
+                                }
+                            });
+                        }
                         changed |= ui
                             .add(egui::Slider::new(&mut dialog.size, 4.0..=256.0).text("Size (px)"))
                             .changed();

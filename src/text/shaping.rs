@@ -1,5 +1,5 @@
 //! Horizontal OpenType shaping, script itemization and Unicode bidirectional order.
-use ab_glyph::{Font, FontArc, Glyph, GlyphId, point};
+use ab_glyph::{Font, Glyph, GlyphId, point};
 use std::{
     ops::Range,
     sync::atomic::{AtomicBool, Ordering},
@@ -13,7 +13,7 @@ pub struct Line {
 
 pub fn line(
     face: &rustybuzz::Face<'_>,
-    font: &FontArc,
+    font: &impl Font,
     text: &str,
     size: f32,
     spacing: f32,
