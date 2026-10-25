@@ -876,3 +876,10 @@ for inversion, producing an explicit empty mask. Ctrl+Shift+I inverts pixel colo
 Hue / Saturation / Lightness rotates hue by up to 180 degrees, scales HSL saturation
 from zero to twice its original value, and adjusts lightness toward black or white.
 It affects selected RGB pixels while retaining alpha, including transparent pixels.
+
+Levels provides input black/white, gamma and output black/white controls for
+master RGB and individual channels. Master mapping is applied before channel
+mapping. Output endpoints may be reversed to invert a channel. Auto levels
+estimates ranges from selected pixels with nonzero alpha and optionally clips
+up to 5% from each histogram tail; constant channels are left unchanged.
+Both adjustments preserve alpha and participate in preview, undo and repeat.

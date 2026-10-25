@@ -133,6 +133,7 @@ pub struct Editor {
     text_font: Option<(ab_glyph::FontArc, String)>,
     effect_dialog: Option<EffectDialog>,
     last_effect: Option<Effect>,
+    levels_channel: usize,
     effect_parameters: std::collections::HashMap<std::mem::Discriminant<Effect>, Effect>,
     gesture_preview: Option<EffectDialog>,
     transform_drag: Option<transform_handles::TransformDrag>,
@@ -240,6 +241,7 @@ impl Editor {
             text_font: None,
             effect_dialog: None,
             last_effect: None,
+            levels_channel: 0,
             effect_parameters: Default::default(),
             gesture_preview: None,
             transform_drag: None,
@@ -2099,6 +2101,26 @@ impl Editor {
                                     .add(egui::Slider::new(contrast, -100..=100).text("Contrast"))
                                     .changed();
                             }
+                            Effect::Levels(parameters) => {
+                                let names=["RGB","Red","Green","Blue"];
+                                egui::ComboBox::from_label("Channel").selected_text(names[self.levels_channel]).show_ui(ui, |ui| {
+                                    for (index,name) in names.iter().enumerate() { ui.selectable_value(&mut self.levels_channel,index,*name); }
+                                });
+                                let channel=&mut parameters.channels[self.levels_channel];
+                                changed |= ui.add(egui::Slider::new(&mut channel.input_black,0..=channel.input_white-1).text("Input black")).changed();
+                                changed |= ui.add(egui::Slider::new(&mut channel.input_white,channel.input_black+1..=255).text("Input white")).changed();
+                                changed |= ui.add(egui::Slider::new(&mut channel.gamma,0.1..=10.0).logarithmic(true).text("Gamma")).changed();
+                                changed |= ui.add(egui::Slider::new(&mut channel.output_black,0..=255).text("Output black")).changed();
+                                changed |= ui.add(egui::Slider::new(&mut channel.output_white,0..=255).text("Output white")).changed();
+                                ui.horizontal(|ui| {
+                                    if ui.button("Reset channel").clicked() { parameters.channels[self.levels_channel]=Default::default(); changed=true; }
+                                    if ui.button("Reset all").clicked() { *parameters=Default::default(); changed=true; }
+                                });
+                            }
+                            Effect::AutoLevels(clip) => {
+                                changed |= ui.add(egui::Slider::new(clip,0.0..=5.0).text("Clip each tail (%)")).changed();
+                                ui.small("Uses selected, nontransparent pixels to estimate each channel's range.");
+                            }
                             Effect::HueSaturation { hue, saturation, lightness } => {
                                 changed |= ui.add(egui::Slider::new(hue,-180..=180).text("Hue (degrees)")).changed();
                                 changed |= ui.add(egui::Slider::new(saturation,0.0..=2.0).text("Saturation")).changed();
@@ -2540,6 +2562,8 @@ impl Editor {
                     (
                         "Adjustments",
                         &[
+                            Effect::Levels(Default::default()),
+                            Effect::AutoLevels(0.5),
                             Effect::BrightnessContrast {
                                 brightness: 0,
                                 contrast: 0,

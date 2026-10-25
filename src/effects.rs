@@ -3,6 +3,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Effect {
+    Levels(crate::levels::Levels),
+    AutoLevels(f32),
     Move(crate::movement::Parameters),
     Shape(crate::shapes::Parameters),
     Gradient(crate::gradient::Gradient),
@@ -33,6 +35,8 @@ impl Effect {
     }
     pub fn name(self) -> &'static str {
         match self {
+            Self::Levels(_) => "Levels",
+            Self::AutoLevels(_) => "Auto levels",
             Self::Move(parameters) => {
                 if parameters.copy {
                     "Copy pixels"
@@ -120,6 +124,13 @@ pub fn render(
     {
         return None;
     }
+    let level_tables = match effect {
+        Effect::Levels(parameters) => Some(parameters.tables()?),
+        Effect::AutoLevels(clip) => Some(
+            crate::levels::automatic(source, width, selection.as_ref(), clip, cancel)?.tables()?,
+        ),
+        _ => None,
+    };
     let mut output = match effect {
         Effect::BoxBlur(radius) if radius > 0 => {
             blur(source, width, height, radius.min(64), cancel)?
@@ -144,6 +155,12 @@ pub fn render(
                 continue;
             }
             let p = source[i];
+            if let Some(tables) = &level_tables {
+                for channel in 0..3 {
+                    output[i][channel] = tables[channel][p[channel] as usize];
+                }
+                continue;
+            }
             if let Effect::HueSaturation {
                 hue,
                 saturation,
@@ -189,7 +206,9 @@ pub fn render(
                         let steps = f64::from(levels.clamp(2, 32) - 1);
                         (f64::from(*channel) * steps / 255.0).round() * 255.0 / steps
                     }
-                    Effect::HueSaturation { .. }
+                    Effect::Levels(_)
+                    | Effect::AutoLevels(_)
+                    | Effect::HueSaturation { .. }
                     | Effect::BoxBlur(_)
                     | Effect::Pixelate(_)
                     | Effect::FreeTransform(_)
