@@ -58,8 +58,8 @@ The installer requires Python 3. Desktop/MIME caches are refreshed when the host
 provides the corresponding tools. Existing default file associations are kept.
 
 This is a native build for the architecture recorded in BUILD_INFO.json. It uses
-host system libraries (including the dav1d runtime for AVIF), an X11 or Wayland
-desktop and working OpenGL drivers.
+host system libraries (including dav1d and libheif >=1.23), an X11 or Wayland
+desktop and working OpenGL drivers. HEIC also requires host HEVC codec plugins.
 File dialogs use the desktop portal. This archive does not bundle a Linux runtime;
 compatibility with older distributions is not guaranteed. BUILD_INFO.json records
 the build system's glibc and directly linked libraries for diagnosis.

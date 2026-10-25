@@ -1,6 +1,6 @@
 {
   "target": "x86_64-unknown-linux-gnu",
-  "cargo_lock_sha256": "282cb43eef14d47e6ff36a933806a8edb467a0f3605702bf914d2312e77f967d",
+  "cargo_lock_sha256": "1f8c15e204e1cec54286067772d7da8cb35367aff2db4bfc818c10300e300147",
   "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1",
   "rust_library_notice_sha256": "5647be074c8edf7339fd863055923a8fc80bc5610a8d4661ec3b767b9d392c27",
   "packages": [
@@ -1602,6 +1602,21 @@
       }
     },
     {
+      "name": "enumn",
+      "version": "0.1.14",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "David Tolnay <dtolnay@gmail.com>"
+      ],
+      "repository": "https://github.com/dtolnay/enumn",
+      "source": "https://crates.io/crates/enumn/0.1.14",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      }
+    },
+    {
       "name": "epaint",
       "version": "0.33.3",
       "license": "MIT OR Apache-2.0",
@@ -1924,6 +1939,21 @@
         "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
         "LICENSE-MIT": "20c7855c364d57ea4c97889a5e8d98470a9952dade37bd9248b9a54431670e5e",
         "SOURCE-COPYRIGHTS.txt": "079f06de4561240c7b4d36a3ca1685d890c76eccff54d99aabaf923405370d2f"
+      }
+    },
+    {
+      "name": "four-cc",
+      "version": "0.4.0",
+      "license": "MIT/Apache-2.0",
+      "authors": [
+        "David Holroyd <dave@badgers-in-foil.co.uk>"
+      ],
+      "repository": "https://github.com/dholroyd/four-cc",
+      "source": "https://crates.io/crates/four-cc/0.4.0",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "LICENSE-MIT": "dea4b0f988296a5d89651e94c7e367a8815960498fb5678de839061702b056e6"
       }
     },
     {
@@ -2803,6 +2833,37 @@
       "files": {
         "LICENSE-APACHE": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
         "LICENSE-MIT": "123a331b5dbf04c30097fa43b8f858bc85df671fe776de498d01f3d6b7c1f69e"
+      }
+    },
+    {
+      "name": "libheif-rs",
+      "version": "3.0.0",
+      "license": "MIT",
+      "authors": [
+        "Kirill Kuzminykh <cykooz@gmail.com>"
+      ],
+      "repository": "https://github.com/Cykooz/libheif-rs",
+      "source": "https://crates.io/crates/libheif-rs/3.0.0",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE": "7884c212eb49acf7c224e594e4c872d448a8703f6f3d3e640336ad5754dc2556",
+        "data/LICENSE-CC-BY-SA-4.0": "23ee78c8bae49cf08ea2f0c84945c66b987ebe4520881fb51b3dad4fb43d07c2"
+      }
+    },
+    {
+      "name": "libheif-sys",
+      "version": "5.3.1+1.23.1",
+      "license": "MIT",
+      "authors": [
+        "Kirill Kuzminykh <cykooz@gmail.com>"
+      ],
+      "repository": "https://github.com/cykooz/libheif-sys",
+      "source": "https://crates.io/crates/libheif-sys/5.3.1+1.23.1",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE": "7884c212eb49acf7c224e594e4c872d448a8703f6f3d3e640336ad5754dc2556",
+        "SOURCE-COPYRIGHTS.txt": "73b87057fc7b834f6551d69f6ec8e9558bfa9f52c27c9081e30003bddcfd9a91",
+        "vendor/libheif/COPYING": "fa81ce652315b013359d6e8e4744335f31a50c7c192907176d3632f78a3b4596"
       }
     },
     {
@@ -4342,6 +4403,22 @@
       ],
       "repository": "https://github.com/gdesmott/system-deps",
       "source": "https://crates.io/crates/system-deps/7.0.8",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      }
+    },
+    {
+      "name": "system-deps",
+      "version": "8.0.0",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "Guillaume Desmottes <guillaume.desmottes@collabora.com>",
+        "Josh Triplett <josh@joshtriplett.org>"
+      ],
+      "repository": "https://github.com/gdesmott/system-deps",
+      "source": "https://crates.io/crates/system-deps/8.0.0",
       "upstream_notices": [],
       "files": {
         "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",

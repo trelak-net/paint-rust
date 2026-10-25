@@ -390,6 +390,7 @@ impl Editor {
                 .add_filter("JPEG image", &["jpg", "jpeg"])
                 .add_filter("JPEG XL image", &["jxl"])
                 .add_filter("AVIF image", &["avif"])
+                .add_filter("HEIC image", &["heic", "heif"])
                 .add_filter("BMP image", &["bmp"])
                 .add_filter("WebP image", &["webp"])
                 .add_filter("TIFF image", &["tif", "tiff"])
@@ -659,7 +660,7 @@ impl Editor {
                         "Projects and images",
                         &[
                             "prust", "pdn", "png", "jpg", "jpeg", "bmp", "webp", "tif", "tiff",
-                            "tga", "gif", "dds", "jxl", "avif",
+                            "tga", "gif", "dds", "jxl", "avif", "heic", "heif",
                         ],
                     )
                     .pick_files()

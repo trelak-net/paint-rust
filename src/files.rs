@@ -20,7 +20,7 @@ pub fn open(path: &Path) -> Result<Document, String> {
 
 pub fn open_cancellable(path: &Path, cancel: &AtomicBool) -> Result<Document, String> {
     check_cancel(cancel)?;
-    let mut header = [0; 8];
+    let mut header = [0; 256];
     let mut file = File::open(path).map_err(|e| e.to_string())?;
     let read = file.read(&mut header).map_err(|e| e.to_string())?;
     if (read >= 3 && &header[..3] == b"PDN")
@@ -60,6 +60,29 @@ pub fn open_cancellable(path: &Path, cancel: &AtomicBool) -> Result<Document, St
             .is_some_and(|e| e.eq_ignore_ascii_case("jxl"))
     {
         return crate::jpeg_xl::decode(
+            CancellableReader {
+                inner: File::open(path).map_err(|e| e.to_string())?,
+                cancel,
+            },
+            cancel,
+        );
+    }
+    let container = crate::heic::sniff(&header[..read]);
+    if container == Some(RasterFormat::Heic)
+        || path
+            .extension()
+            .is_some_and(|e| e.eq_ignore_ascii_case("heic") || e.eq_ignore_ascii_case("heif"))
+    {
+        return crate::heic::decode(
+            CancellableReader {
+                inner: File::open(path).map_err(|e| e.to_string())?,
+                cancel,
+            },
+            cancel,
+        );
+    }
+    if container == Some(RasterFormat::Avif) {
+        return crate::avif::decode(
             CancellableReader {
                 inner: File::open(path).map_err(|e| e.to_string())?,
                 cancel,
@@ -282,6 +305,7 @@ fn write_atomic(
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RasterFormat {
+    Heic,
     Avif,
     JpegXl,
     Dds,
@@ -294,7 +318,8 @@ pub enum RasterFormat {
     WebP,
 }
 impl RasterFormat {
-    pub const ALL: [Self; 10] = [
+    pub const ALL: [Self; 11] = [
+        Self::Heic,
         Self::Avif,
         Self::JpegXl,
         Self::Png,
@@ -318,6 +343,7 @@ impl RasterFormat {
 
     pub fn extension(self) -> &'static str {
         match self {
+            Self::Heic => "heic",
             Self::Avif => "avif",
             Self::JpegXl => "jxl",
             Self::Gif => "gif",
@@ -332,6 +358,7 @@ impl RasterFormat {
     }
     pub fn extensions(self) -> &'static [&'static str] {
         match self {
+            Self::Heic => &["heic", "heif"],
             Self::Avif => &["avif"],
             Self::JpegXl => &["jxl"],
             Self::Gif => &["gif"],
@@ -347,7 +374,7 @@ impl RasterFormat {
     pub fn image_format(self) -> Option<image::ImageFormat> {
         Some(match self {
             Self::Avif => image::ImageFormat::Avif,
-            Self::JpegXl => return None,
+            Self::JpegXl | Self::Heic => return None,
             Self::Gif => image::ImageFormat::Gif,
             Self::Dds => image::ImageFormat::Dds,
             Self::Tiff => image::ImageFormat::Tiff,
@@ -360,6 +387,7 @@ impl RasterFormat {
     }
     pub fn label(self) -> &'static str {
         match self {
+            Self::Heic => "HEIC",
             Self::Avif => "AVIF",
             Self::JpegXl => "JPEG XL (lossless)",
             Self::Gif => "GIF (single frame)",
@@ -422,6 +450,9 @@ pub fn decode_raster_bytes(
     cancel: &AtomicBool,
 ) -> Result<Document, String> {
     check_cancel(cancel)?;
+    if format == RasterFormat::Heic {
+        return crate::heic::decode(Cursor::new(bytes), cancel);
+    }
     if format == RasterFormat::Avif {
         return crate::avif::decode(Cursor::new(bytes), cancel);
     }
@@ -519,6 +550,18 @@ fn encode_raster_options(
             cancel,
         );
     }
+    if options.format == RasterFormat::Heic {
+        return crate::heic::encode(
+            pixels,
+            size,
+            CancellableWriter {
+                inner: writer,
+                cancel,
+            },
+            options.quality,
+            cancel,
+        );
+    }
     let opaque = matches!(options.format, RasterFormat::Jpeg | RasterFormat::Bmp);
     let mut bytes = Vec::with_capacity(pixels.len() * if opaque { 3 } else { 4 });
     for chunk in pixels.chunks(4096) {
@@ -590,7 +633,7 @@ fn encode_raster_options(
                 .map_err(|e| e.to_string())?;
             return check_cancel(cancel);
         }
-        RasterFormat::Dds | RasterFormat::Gif | RasterFormat::JpegXl => {
+        RasterFormat::Dds | RasterFormat::Gif | RasterFormat::JpegXl | RasterFormat::Heic => {
             unreachable!("Encoded above")
         }
         RasterFormat::Tiff => {

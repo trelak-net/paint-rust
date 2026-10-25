@@ -1,0 +1,42 @@
+Original synthetic fixtures, MIT OR Apache-2.0, created 2026-10-25.
+No external artwork is included.
+
+The host tools were libheif 1.23.6, x265 4.1, libde265 1.0.18 and FFmpeg 8.1.3.
+rgba-lossless.heic contains the original 4x3 RGBA grid from
+../jxl/rgba-lossless.jxl, converted to PNG with ImageMagick and encoded with:
+    heif-enc -L -p x265:pools=2 -p x265:frame-threads=1 -o OUTPUT.heic INPUT.png
+The input grid is also listed in tests/heic.rs. All decoded RGBA bytes match.
+The small image uses a crop property to remove the encoder's padding.
+rotated.heic uses the same command with --rotate-cw 90.
+mirrored.heic adds --flip-h. Rotation/reflection is applied exactly once.
+linear-icc.heic uses the PNG from examples/linear_profile_probe.rs as input.
+Its first stored gray is 128 with alpha 37; sRGB conversion yields about 188.
+
+associated-alpha.heic adds --premultiplied-alpha to the lossless command.
+It intentionally declares association without changing the source pixel values;
+this is an unsupported-feature rejection fixture, not a reference rendering.
+hdr-declaration.heic uses --colour_primaries 9 --transfer_characteristic 16
+--enable-two-colr-boxes with normal lossy encoding. It is an HDR-declaration
+rejection fixture; the synthetic input pixels are not HDR reference values.
+
+grid.heic is a 64x48 opaque RGB image, red at x<32, otherwise green at y<24
+and blue elsewhere. The lossless command adds --cut-tiles 16, producing a
+4x3 grid of 16x16 tiles. Every decoded pixel is checked.
+
+rgba-export.heic is the original RGBA grid exported at quality 90 by
+examples/raster_export.rs using the host x265 plugin. rgba-export.rgba contains
+independent decoded pixels from heif-dec -d ffmpeg, converted from PNG to raw
+RGBA8 with ImageMagick. The application uses the separate libde265 decoder;
+comparison permits a one-byte rounding difference per channel.
+The fixed export fixture predates suppression of optional x265 encoder-info SEI.
+
+large-export.heic is the same grid enlarged to 256x192 with ImageMagick -scale,
+then exported at quality 90 by examples/raster_export.rs. The native Windows
+editor 5.1.12 on CASTOR opened it successfully on 2026-10-25. Its WIC path rejected
+4x3 output from both this encoder and heif-enc, with either 4:4:4 or 4:2:0 chroma,
+during pixel copying. Linux libde265 and FFmpeg decoders accepted the small files.
+Tiny-image Windows interoperability remains an open acceptance item.
+
+Native Windows alpha check: copying the opened large export as clipboard PNG
+produced alpha=255 throughout. A source PNG control preserved alpha=0..255.
+The independent decoders preserve alpha; native Windows interoperability is open.

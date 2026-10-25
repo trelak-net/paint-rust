@@ -76,7 +76,7 @@ impl Editor {
             ui.add(egui::Label::new(dialog.path.display().to_string()).truncate()).on_hover_text(dialog.path.display().to_string());
             if dialog.save_document {
                 ui.label("Saving as a raster replaces the current document with the flattened decoded image. You can undo this after saving.");
-                ui.small("Layers and descriptive metadata are not stored in this file. Use PRUST or PDN to keep an editable project. JPEG also loses transparency and image detail.");
+                ui.small("Layers and descriptive metadata are not stored in this file. Use PRUST or PDN to keep an editable project. Lossy formats change image detail; JPEG cannot store transparency.");
                 ui.checkbox(&mut dialog.flatten_confirmed,"Save a flattened raster document");
             }
             ui.small(if dialog.options.format == files::RasterFormat::Avif {
@@ -86,13 +86,13 @@ impl Editor {
             } else if matches!(dialog.options.format,files::RasterFormat::Bmp | files::RasterFormat::Tga | files::RasterFormat::Gif | files::RasterFormat::Dds) {
                 "Colors use sRGB; this format is saved without an embedded profile."
             } else { "Colors use sRGB; an ICC profile is embedded. Source EXIF, location and author tags are omitted." });
-            if matches!(dialog.options.format, files::RasterFormat::Dds | files::RasterFormat::Gif | files::RasterFormat::Tga | files::RasterFormat::Avif) {
+            if matches!(dialog.options.format, files::RasterFormat::Dds | files::RasterFormat::Gif | files::RasterFormat::Tga | files::RasterFormat::Avif | files::RasterFormat::Heic) {
                 ui.small("Physical resolution is not stored in this format; reopening uses 96 DPI.");
             } else {
                 ui.small(format!("Physical resolution: {:.2} × {:.2} DPI.", dialog.options.dpi.x, dialog.options.dpi.y));
             }
             let mut changed=false;
-            if matches!(dialog.options.format, files::RasterFormat::Jpeg | files::RasterFormat::Avif) {
+            if matches!(dialog.options.format, files::RasterFormat::Jpeg | files::RasterFormat::Avif | files::RasterFormat::Heic) {
                 changed |= ui.add(egui::Slider::new(&mut dialog.options.quality,1..=100).text("Quality")).changed();
             }
             if matches!(dialog.options.format,files::RasterFormat::Jpeg | files::RasterFormat::Bmp | files::RasterFormat::Gif) {
@@ -109,6 +109,12 @@ impl Editor {
             }
             if dialog.options.format==files::RasterFormat::Avif {
                 ui.small("Quality affects color and alpha. Even quality 100 is not guaranteed lossless; inspect the decoded preview.");
+            }
+            if dialog.options.format == files::RasterFormat::Heic {
+                ui.small("HEIC uses the installed HEVC encoder. Quality affects compression; inspect the decoded preview for color and alpha changes.");
+            }
+            if dialog.options.format == files::RasterFormat::Heic {
+                ui.small("Some Windows readers discard HEIC transparency or reject very small images. Use PNG for those workflows.");
             }
             if changed {
                 dialog.preview.request(dialog.options);
@@ -168,6 +174,7 @@ mod tests {
                 files::RasterFormat::Jpeg,
                 files::RasterFormat::JpegXl,
                 files::RasterFormat::Avif,
+                files::RasterFormat::Heic,
             ] {
                 let ctx = egui::Context::default();
                 let mut editor = Editor::blank(&ctx);

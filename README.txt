@@ -19,7 +19,9 @@ Open a file at startup:
 The Linux desktop needs an OpenGL driver and either Wayland or X11. Native file
 pickers use the desktop's XDG portal service. A working C linker is required to
 build, together with pkg-config and dav1d development headers (libdav1d-devel on
-Fedora, libdav1d-dev on Debian-family systems). Dependencies and their exact resolved versions are recorded in Cargo.lock.
+Fedora, libdav1d-dev on Debian-family systems), and libheif >=1.23 development
+headers (libheif-devel or libheif-dev). HEIC tests require installed HEVC encoder
+and decoder plugins. Dependencies and their exact resolved versions are recorded in Cargo.lock.
 The GUI uses eframe/egui 0.33.3 with the OpenGL renderer:
 https://docs.rs/eframe/0.33.3/eframe/
 
@@ -1746,7 +1748,8 @@ non-square pixels, conflicting container color matrices/ranges, and unsupported
 non-sRGB color declarations without ICC are rejected explicitly. Property checks
 are conservative and can also reject unsupported properties of unused items.
 Source descriptive metadata is omitted. This first AVIF implementation does not
-retain physical resolution: reopening uses 96 DPI. It does not provide HEIC.
+retain physical resolution: reopening uses 96 DPI. HEIC uses a separate decoder
+and requires the host codec plugins described below.
 
 Encoded input is limited to 128 MiB, ICC profiles to 4 MiB, and images to
 16,777,216 pixels with a maximum side of 16,384 pixels. Each coded item is drained
@@ -1779,3 +1782,55 @@ cause unbounded sampling. Coordinate extrema preserve reversal overshoot. Brush
 coverage still accumulates once per stroke, including the finishing segment.
 Smoothing settings persist and older preference files default to zero. Pencil
 and geometric shapes keep their direct paths. Tablet pressure is still pending.
+
+HEIC primary images
+--------------------
+Open, Import as Layer, Save As and Export accept .heic/.heif files. Compatible
+HEIF brands in the initial file-type box are also recognized without an extension.
+Import selects the primary image and applies container cropping, rotation and
+mirroring once, including supported grid/tile images. Straight alpha and embedded
+RGB/grayscale ICC conversion are supported. Untagged SDR images use sRGB;
+non-sRGB color declarations without ICC, HDR and associated alpha are rejected.
+Burst/sequence editing, physical resolution and broader color variants remain
+pending. Source descriptive metadata is omitted; reopening currently uses 96 DPI.
+
+Export uses a host HEVC encoder, preserves alpha, embeds sRGB ICC and provides
+a quality slider and decoded-output preview. The x265 backend uses 4:4:4 chroma,
+a fast preset, two pool threads and one frame thread. Optional encoder-info SEI
+is disabled for that backend. Quality 100 is not a lossless guarantee. Other host
+encoders may map quality differently. Missing HEVC plugins produce an explicit
+error in the file operation or preview. A private temporary file holds the encoded
+container before it is copied to the normal atomic save path; it is removed on
+success, failure or cancellation. This avoids the wrapper's chunk-replacing
+in-memory writer. Source projects are unchanged when encoding fails.
+
+The implementation requires libheif >=1.23, with development headers for builds
+and HEVC codec plugins at runtime (libde265/FFmpeg for decoding and x265 for encoding
+on the development host). Native libraries and plugins are supplied by the host;
+they are not bundled in the application archive. Package availability varies by
+distribution. The Rust wrapper's pinned MIT notices are included with dependencies.
+Encoded input/output is limited to 128 MiB, ICC to 4 MiB, image area to 16,777,216
+pixels and each side to 16,384 pixels. Codec padding can further restrict usable
+sizes. Context limits are set before parsing, including a 256 MiB tracked-memory
+budget, 128 MiB block limit, 256 tiles and bounded item/property counts. Native
+codec-internal allocations are not a strict part of that process-memory budget.
+Cancellation is checked around codec calls and row/file copies; native codec
+calls themselves are not interruptible.
+
+Fixtures cover external lossless pixels, alpha, crop/rotation/reflection, grids,
+ICC conversion, native padding for single-pixel dimensions, malformed size claims
+and unsupported color declarations. Export is checked with the independent
+FFmpeg HEVC decoder. API documentation:
+https://docs.rs/libheif-rs/3.0.0/libheif_rs/
+
+Native Windows verification accepted the 256x192 HEIC export. It rejected 4x3
+images from both this application and the independent heif-enc tool, including
+4:4:4 and 4:2:0 variants, with an error in WIC pixel copying. Both libde265 and
+FFmpeg decode these files successfully. Tiny-image Windows interoperability
+therefore remains unresolved; no arbitrary size threshold is inferred from
+these two cases. The 256x192 native-open fixture is retained for regression work.
+
+The same native Windows editor opened the 256x192 export as fully opaque,
+while a PNG control retained alpha through the same clipboard-PNG capture.
+Both independent HEVC decoders retain the exported alpha. Windows alpha
+interoperability remains unresolved; use PNG when that workflow needs transparency.
