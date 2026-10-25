@@ -15,9 +15,9 @@ Edit.Redo	Redo	supported	Ctrl+Y	Ctrl+Y; Ctrl+Shift+Z	Available; see workflow cas
 Edit.Cut	Cut	supported	Ctrl+X	Ctrl+X	Available; see workflow cases
 Edit.Copy	Copy	supported	Ctrl+C	Ctrl+C	Available; see workflow cases
 Edit.CopyMerged	Copy Merged	partial	Ctrl+Shift+C	-	Copy merged command in Edit; shortcut parity pending
-Edit.Paste	Paste	supported	Ctrl+V	Ctrl+V	Available; see workflow cases
+Edit.Paste	Paste	partial	Ctrl+V	Ctrl+V	Currently creates a new layer; active-layer paste and oversize prompt pending
 Edit.PasteInToNewLayer	Paste into New Layer	partial	Ctrl+Shift+V	-	Current Paste creates a layer; dedicated shortcut pending
-Edit.PasteInToNewImage	Paste into New Image	missing	Ctrl+Alt+V	-	Not implemented
+Edit.PasteInToNewImage	Paste into New Image	supported	Ctrl+Alt+V	Ctrl+Alt+V	Exact clipboard dimensions and RGBA in a new unsaved tab; existing work preserved, cancellation guarded
 Edit.CopySelection	Copy Selection	missing	Ctrl+Alt+Shift+C	-	Not implemented
 Edit.PasteSelection	Paste Selection	missing	-	-	Not implemented
 Edit.Replace	Replace	partial	Ctrl+Alt+Shift+V	-	Selection tool combination control

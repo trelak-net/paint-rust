@@ -23,6 +23,7 @@ impl Editor {
                         ("Ctrl+Z / Ctrl+Y","Undo / Redo"),
                         ("Ctrl+Shift+Z","Redo"),
                         ("Ctrl+C / Ctrl+X / Ctrl+V","Copy / Cut / Paste as layer"),
+                        ("Ctrl+Alt+V","Paste into new image"),
                         ("Ctrl+A / Ctrl+Shift+A","Select all / Deselect"),
                         ("Ctrl+I / Ctrl+Shift+I","Invert selection / Invert colors"),
                         ("Ctrl+Shift+X / Delete","Crop to selection / Delete pixels"),

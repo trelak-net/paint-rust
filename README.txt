@@ -1400,3 +1400,12 @@ RGBA in the mask (or the entire layer when no selection is active).
 All raster work runs in cancellable background jobs and publishes as one undoable
 edit. Tests cover exact pixel permutations including hidden RGB, inactive layers,
 properties, selection retention, no-op history, cancellation and saved revisions.
+
+Paste into a new image
+----------------------
+Edit > Paste into new image (Ctrl+Alt+V) reads the image clipboard in a background
+job and creates an unsaved document at the exact clipboard dimensions. RGBA,
+including hidden RGB, is preserved. Existing dirty documents remain in their
+own tabs with paths and histories intact. Invalid clipboard buffers and cancelled
+reads never install a tab. Tests exercise the native release-event shortcut,
+partial alpha, tab preservation, interrupted reads and invalid buffers.

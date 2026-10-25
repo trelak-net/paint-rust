@@ -12,6 +12,7 @@ pub(super) enum DocumentEdit {
 }
 
 pub(super) enum Outcome {
+    PastedImage(Box<Document>),
     TextFont(ab_glyph::FontArc, String),
     FontCatalog(Vec<paint_rust::fonts::InstalledFont>),
     Copied(Option<Box<Document>>),
@@ -383,6 +384,10 @@ impl Editor {
                             )
                         }
                     });
+            }
+            Ok(Outcome::PastedImage(document)) => {
+                self.install_document(*document, None);
+                self.status = "Pasted clipboard into a new unsaved image".into();
             }
             Ok(Outcome::Opened(document, path)) => {
                 self.preferences.remember(&path);

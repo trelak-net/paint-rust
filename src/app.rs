@@ -538,6 +538,27 @@ impl Editor {
         );
     }
 
+    fn paste_new_image(&mut self) {
+        self.finish_stroke();
+        let clipboard = self.clipboard.clone();
+        self.start_cancellable_file_job("paste new image", move |cancel| {
+            if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+                return Err(files::CANCELLED.into());
+            }
+            let (width, height, pixels) =
+                crate::clipboard::with_backend(&clipboard, |backend| backend.read())?;
+            if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+                return Err(files::CANCELLED.into());
+            }
+            let mut document = Document::from_pixels(width, height, pixels)?;
+            document.mark_unsaved();
+            if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+                return Err(files::CANCELLED.into());
+            }
+            Ok(Outcome::PastedImage(Box::new(document)))
+        });
+    }
+
     fn paste(&mut self) {
         self.finish_stroke();
         let clipboard = self.clipboard.clone();
@@ -939,6 +960,7 @@ impl Editor {
             } else if i.events.iter().any(|event| matches!(event,egui::Event::Cut)) { Some(12)
             // The window backend consumes Ctrl+V presses when no text is available.
             // Its release event remains available for image clipboard handling.
+            } else if i.events.iter().any(|event| matches!(event,egui::Event::Key{key:Key::V,pressed:false,modifiers,..} if modifiers.command && modifiers.alt)) { Some(27)
             } else if i.events.iter().any(|event| matches!(event,egui::Event::Key{key:Key::V,pressed:false,modifiers,..} if modifiers.command)) { Some(13)
             } else if i.consume_key(egui::Modifiers::COMMAND | egui::Modifiers::SHIFT, Key::Tab) {
                 Some(16)
@@ -1035,6 +1057,7 @@ impl Editor {
             }
         });
         match command {
+            Some(27) => self.paste_new_image(),
             Some(26) => {
                 let layer = &self.document.layers()[self.document.active_layer()];
                 self.layer_properties = Some((layer.name.clone(), layer.opacity, layer.blend_mode));
@@ -3049,6 +3072,7 @@ impl Editor {
                         ui.close();
                     }
                     ui.separator();
+                    if ui.button("Paste into new image    Ctrl+Alt+V").clicked() {self.paste_new_image();ui.close();}
                     if ui.button("Fill selection with primary").clicked() {self.start_document_edit(DocumentEdit::Fill(self.color.to_srgba_unmultiplied()));ui.close();}
                     if ui.button("Fill selection with secondary").clicked() {self.start_document_edit(DocumentEdit::Fill(self.secondary_color.to_srgba_unmultiplied()));ui.close();}
                 });
@@ -4383,6 +4407,117 @@ mod tests {
         fn read(&mut self) -> Result<(u32, u32, Vec<[u8; 4]>), String> {
             self.image.clone().ok_or_else(|| "No image".into())
         }
+    }
+
+    #[test]
+    fn paste_new_image_shortcut_preserves_previous_document_and_marks_new_tab_unsaved() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.document = Document::new(4, 4, [20, 30, 40, 255]).unwrap();
+        editor.document.invert();
+        editor.path = Some("original.prust".into());
+        let old_id = editor.active_document_id;
+        let old_pixels = editor.document.shared_pixels();
+        let pixels = vec![
+            [255, 0, 0, 0],
+            [0, 0, 255, 37],
+            [10, 20, 30, 255],
+            [40, 50, 60, 128],
+            [70, 80, 90, 1],
+            [100, 110, 120, 254],
+        ];
+        *editor.clipboard.lock().unwrap() = Some(Box::new(MemoryClipboard {
+            image: Some((2, 3, pixels.clone())),
+            fail: false,
+        }));
+        frame(
+            &mut editor,
+            &ctx,
+            vec![egui::Event::Key {
+                key: Key::V,
+                physical_key: None,
+                pressed: false,
+                repeat: false,
+                modifiers: egui::Modifiers {
+                    ctrl: true,
+                    command: true,
+                    alt: true,
+                    ..Default::default()
+                },
+            }],
+        );
+        assert!(editor.file_job.is_some());
+        assert_eq!(editor.active_document_id, old_id);
+        wait_for_files(&mut editor, &ctx);
+        assert_ne!(editor.active_document_id, old_id);
+        assert_eq!((editor.document.width, editor.document.height), (2, 3));
+        assert_eq!(editor.document.pixels(), pixels);
+        assert!(editor.document.dirty());
+        assert!(!editor.document.can_undo());
+        assert!(editor.path.is_none());
+        assert_eq!(editor.document.layers().len(), 1);
+        editor.activate_document(old_id);
+        assert_eq!(editor.document.pixels(), old_pixels.as_slice());
+        assert!(editor.document.dirty());
+        assert_eq!(editor.document.history().count(), 1);
+        assert_eq!(editor.path, Some("original.prust".into()));
+    }
+    #[test]
+    fn cancelled_or_invalid_paste_new_image_never_installs_a_tab() {
+        struct GatedRead {
+            entered: std::sync::mpsc::Sender<()>,
+            release: std::sync::mpsc::Receiver<()>,
+        }
+        impl crate::clipboard::Backend for GatedRead {
+            fn write(&mut self, _: u32, _: u32, _: &[[u8; 4]]) -> Result<(), String> {
+                unreachable!()
+            }
+            fn read(&mut self) -> Result<(u32, u32, Vec<[u8; 4]>), String> {
+                self.entered.send(()).unwrap();
+                self.release.recv().unwrap();
+                Ok((2, 2, vec![[10, 20, 30, 255]; 4]))
+            }
+        }
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.document = Document::new(4, 4, [20, 30, 40, 255]).unwrap();
+        editor.document.invert();
+        let old = editor.document.shared_pixels();
+        let id = editor.active_document_id;
+        let (entered, waiting) = std::sync::mpsc::channel();
+        let (release, receiver) = std::sync::mpsc::channel();
+        *editor.clipboard.lock().unwrap() = Some(Box::new(GatedRead {
+            entered,
+            release: receiver,
+        }));
+        editor.paste_new_image();
+        waiting
+            .recv_timeout(std::time::Duration::from_secs(5))
+            .unwrap();
+        editor
+            .file_job
+            .as_ref()
+            .unwrap()
+            .cancel
+            .as_ref()
+            .unwrap()
+            .store(true, std::sync::atomic::Ordering::Relaxed);
+        release.send(()).unwrap();
+        wait_for_files(&mut editor, &ctx);
+        assert_eq!(editor.active_document_id, id);
+        assert_eq!(editor.document.pixels(), old.as_slice());
+        assert!(editor.documents.is_empty());
+        assert_eq!(editor.status, "Cancelled: paste new image");
+        *editor.clipboard.lock().unwrap() = Some(Box::new(MemoryClipboard {
+            image: Some((2, 2, vec![[1; 4]])),
+            fail: false,
+        }));
+        editor.paste_new_image();
+        wait_for_files(&mut editor, &ctx);
+        assert_eq!(editor.active_document_id, id);
+        assert!(editor.documents.is_empty());
+        assert_eq!(editor.document.pixels(), old.as_slice());
+        assert!(editor.status.contains("Pixel buffer"));
     }
 
     #[test]
