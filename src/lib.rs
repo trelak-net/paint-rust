@@ -31,3 +31,5 @@ pub mod resolution;
 pub mod raster_density;
 
 mod gif_export;
+
+mod jpeg_xl;

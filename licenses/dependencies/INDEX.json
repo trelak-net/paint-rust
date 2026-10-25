@@ -1,6 +1,6 @@
 {
   "target": "x86_64-unknown-linux-gnu",
-  "cargo_lock_sha256": "3208ff2e3402b26190b32c1d8ae31b0479cc9cf6e229f05f39dbdaaac289fc8a",
+  "cargo_lock_sha256": "c5f9f9f04d35e955d733bceaa2b1219f84532268ba25a84725f2c9a8f43b742d",
   "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1",
   "rust_library_notice_sha256": "5647be074c8edf7339fd863055923a8fc80bc5610a8d4661ec3b767b9d392c27",
   "packages": [
@@ -228,6 +228,40 @@
       "files": {
         "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
         "LICENSE-MIT": "0444c6991eead6822f7b9102e654448d51624431119546492e8b231db42c48bb"
+      }
+    },
+    {
+      "name": "alloc-no-stdlib",
+      "version": "2.0.4",
+      "license": "BSD-3-Clause",
+      "authors": [
+        "Daniel Reiter Horn <danielrh@dropbox.com>"
+      ],
+      "repository": "https://github.com/dropbox/rust-alloc-no-stdlib",
+      "source": "https://crates.io/crates/alloc-no-stdlib/2.0.4",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE": "c0c56f26d9c051cac4d200c34c84e7ae9aaa853e01a982a1df08b09931e518ae"
+      }
+    },
+    {
+      "name": "alloc-stdlib",
+      "version": "0.2.4",
+      "license": "BSD-3-Clause",
+      "authors": [
+        "Daniel Reiter Horn <danielrh@dropbox.com>"
+      ],
+      "repository": "https://github.com/dropbox/rust-alloc-no-stdlib",
+      "source": "https://crates.io/crates/alloc-stdlib/0.2.4",
+      "upstream_notices": [
+        {
+          "path": "upstream/alloc-stdlib-0.2.4/LICENSE",
+          "source": "https://raw.githubusercontent.com/dropbox/rust-alloc-no-stdlib/ae42d22078b98549e987d2f03d12df7b984fde47/LICENSE",
+          "sha256": "c0c56f26d9c051cac4d200c34c84e7ae9aaa853e01a982a1df08b09931e518ae"
+        }
+      ],
+      "files": {
+        "upstream/LICENSE": "c0c56f26d9c051cac4d200c34c84e7ae9aaa853e01a982a1df08b09931e518ae"
       }
     },
     {
@@ -644,6 +678,22 @@
       "files": {
         "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
         "LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      }
+    },
+    {
+      "name": "brotli-decompressor",
+      "version": "5.0.3",
+      "license": "BSD-3-Clause/MIT",
+      "authors": [
+        "Daniel Reiter Horn <danielrh@dropbox.com>",
+        "The Brotli Authors"
+      ],
+      "repository": "https://github.com/dropbox/rust-brotli-decompressor",
+      "source": "https://crates.io/crates/brotli-decompressor/5.0.3",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE": "c0c56f26d9c051cac4d200c34c84e7ae9aaa853e01a982a1df08b09931e518ae",
+        "SOURCE-COPYRIGHTS.txt": "1a9c63f31001e9b2f69c96f0e77c452046d08d8654ef3f6e3b4f4d585895a52d"
       }
     },
     {
@@ -2073,6 +2123,201 @@
       "files": {
         "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
         "LICENSE-MIT": "378f5840b258e2779c39418f3f2d7b2ba96f1c7917dd6be0713f88305dbda397"
+      }
+    },
+    {
+      "name": "jxl-bitstream",
+      "version": "1.1.0",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "Wonwoo Choi <chwo9843@gmail.com>"
+      ],
+      "repository": "https://github.com/tirr-c/jxl-oxide.git",
+      "source": "https://crates.io/crates/jxl-bitstream/1.1.0",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      }
+    },
+    {
+      "name": "jxl-coding",
+      "version": "1.0.1",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "Wonwoo Choi <chwo9843@gmail.com>"
+      ],
+      "repository": "https://github.com/tirr-c/jxl-oxide.git",
+      "source": "https://crates.io/crates/jxl-coding/1.0.1",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      }
+    },
+    {
+      "name": "jxl-color",
+      "version": "0.11.0",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "Wonwoo Choi <chwo9843@gmail.com>"
+      ],
+      "repository": "https://github.com/tirr-c/jxl-oxide.git",
+      "source": "https://crates.io/crates/jxl-color/0.11.0",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      }
+    },
+    {
+      "name": "jxl-frame",
+      "version": "0.13.3",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "Wonwoo Choi <chwo9843@gmail.com>"
+      ],
+      "repository": "https://github.com/tirr-c/jxl-oxide.git",
+      "source": "https://crates.io/crates/jxl-frame/0.13.3",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      }
+    },
+    {
+      "name": "jxl-grid",
+      "version": "0.6.2",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "Wonwoo Choi <chwo9843@gmail.com>"
+      ],
+      "repository": "https://github.com/tirr-c/jxl-oxide.git",
+      "source": "https://crates.io/crates/jxl-grid/0.6.2",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      }
+    },
+    {
+      "name": "jxl-image",
+      "version": "0.13.0",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "Wonwoo Choi <chwo9843@gmail.com>"
+      ],
+      "repository": "https://github.com/tirr-c/jxl-oxide.git",
+      "source": "https://crates.io/crates/jxl-image/0.13.0",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      }
+    },
+    {
+      "name": "jxl-jbr",
+      "version": "0.2.1",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "Wonwoo Choi <chwo9843@gmail.com>"
+      ],
+      "repository": "https://github.com/tirr-c/jxl-oxide.git",
+      "source": "https://crates.io/crates/jxl-jbr/0.2.1",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      }
+    },
+    {
+      "name": "jxl-modular",
+      "version": "0.11.3",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "Wonwoo Choi <chwo9843@gmail.com>"
+      ],
+      "repository": "https://github.com/tirr-c/jxl-oxide.git",
+      "source": "https://crates.io/crates/jxl-modular/0.11.3",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      }
+    },
+    {
+      "name": "jxl-oxide",
+      "version": "0.12.6",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "Wonwoo Choi <chwo9843@gmail.com>"
+      ],
+      "repository": "https://github.com/tirr-c/jxl-oxide.git",
+      "source": "https://crates.io/crates/jxl-oxide/0.12.6",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      }
+    },
+    {
+      "name": "jxl-oxide-common",
+      "version": "1.0.0",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "Wonwoo Choi <chwo9843@gmail.com>"
+      ],
+      "repository": "https://github.com/tirr-c/jxl-oxide.git",
+      "source": "https://crates.io/crates/jxl-oxide-common/1.0.0",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      }
+    },
+    {
+      "name": "jxl-render",
+      "version": "0.12.4",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "Wonwoo Choi <chwo9843@gmail.com>"
+      ],
+      "repository": "https://github.com/tirr-c/jxl-oxide.git",
+      "source": "https://crates.io/crates/jxl-render/0.12.4",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      }
+    },
+    {
+      "name": "jxl-threadpool",
+      "version": "1.0.0",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "Wonwoo Choi <chwo9843@gmail.com>"
+      ],
+      "repository": "https://github.com/tirr-c/jxl-oxide.git",
+      "source": "https://crates.io/crates/jxl-threadpool/1.0.0",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      }
+    },
+    {
+      "name": "jxl-vardct",
+      "version": "0.11.1",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "Wonwoo Choi <chwo9843@gmail.com>"
+      ],
+      "repository": "https://github.com/tirr-c/jxl-oxide.git",
+      "source": "https://crates.io/crates/jxl-vardct/0.11.1",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
       }
     },
     {

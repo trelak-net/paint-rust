@@ -1688,3 +1688,24 @@ Import still opens the top surface. Compressed export and arrays/cube maps remai
 pending. Header flags/layout follow the published DDS specification:
 https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dds-header
 https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dds-file-layout-for-textures
+
+JPEG XL import
+--------------
+Open and Import as Layer accept .jxl files, raw JPEG XL codestreams and JPEG XL
+containers. The first displayed frame is decoded in Rust using jxl-oxide, with
+Little CMS for ICC conversion to sRGB. Codestream orientation is applied once.
+RGB, grayscale and straight alpha are converted to the editor's RGBA8 workspace;
+16-bit SDR inputs are quantized after color conversion. Source descriptive
+metadata is omitted and physical resolution currently defaults to 96 DPI.
+
+Limits: 16,384 pixels per side, the document pixel limit, 256 MiB of compressed
+input consumed for the first frame and a 256 MiB decoder grid allocation budget.
+The allocation tracker does not cap all metadata or process memory. Cancellation
+is checked during input and output conversion, and before/after frame rendering;
+the decoder's internal render call is not interruptible. HDR tone mapping and
+associated-alpha input remain unsupported and produce explicit errors.
+
+JPEG XL export remains pending. Saving an imported JPEG XL opens Save As so that
+a supported project or raster destination can be chosen without overwriting the
+source. The Linux desktop entry includes image/jxl. Decoder documentation:
+https://docs.rs/jxl-oxide/0.12.6/jxl_oxide/

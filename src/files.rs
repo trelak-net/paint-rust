@@ -53,6 +53,20 @@ pub fn open_cancellable(path: &Path, cancel: &AtomicBool) -> Result<Document, St
             cancel,
         );
     }
+    if header[..read].starts_with(&[0xff, 0x0a])
+        || header[..read].starts_with(&[0, 0, 0, 12, b'J', b'X', b'L', b' '])
+        || path
+            .extension()
+            .is_some_and(|e| e.eq_ignore_ascii_case("jxl"))
+    {
+        return crate::jpeg_xl::decode(
+            CancellableReader {
+                inner: File::open(path).map_err(|e| e.to_string())?,
+                cancel,
+            },
+            cancel,
+        );
+    }
     let dimensions = raster_reader(path, cancel)?
         .into_dimensions()
         .map_err(|e| e.to_string())?;
@@ -338,6 +352,14 @@ impl RasterFormat {
             Self::WebP => "WebP (lossless)",
         }
     }
+}
+
+/// Whether a filename can be written without choosing a different export format.
+pub fn writable_path(path: &Path) -> bool {
+    RasterFormat::from_path(path).is_some()
+        || path.extension().is_some_and(|extension| {
+            extension.eq_ignore_ascii_case("pdn") || extension.eq_ignore_ascii_case("prust")
+        })
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

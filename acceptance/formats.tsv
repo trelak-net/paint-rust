@@ -7,7 +7,7 @@ BMP	partial	Read/write; opaque RGB with selectable matte and decoded preview	Add
 WebP	partial	Read; lossless export; decoded export preview	Lossy encode options and metadata options; ICC conversion/tagging supported
 GIF	partial	First-frame import; single-frame palette export with binary alpha, matte, optional Floyd-Steinberg dithering and decoded preview	Palette size controls and animation editing
 TIFF	partial	First-page import; RGBA8 export and decoded preview	Compression controls, high-bit-depth editing, metadata and multipage UI; ICC conversion/tagging supported
-JPEG XL	missing	None	Codec, options, licensing and validation
+JPEG XL	partial	First displayed frame import; raw/container detection; sRGB conversion, orientation and 8/16-bit SDR fixtures	Export, HDR tone mapping, associated alpha, animation editing and physical-resolution metadata
 AVIF	missing	None	Codec, options, licensing and validation
 HEIC	missing	None	Codec/platform availability, licensing and validation
 DDS	partial	RGB16/24/32 and BC1/2/3/4/5 UNORM top-surface import; legacy/DX10 formats; RGBA8 export with optional full mip chain and preview	Compressed encoding, signed BC4/5 and BC6/7, mip-level import selection, arrays/cubes, advanced options and broader external fixtures

@@ -61,6 +61,7 @@ def press_key(window, keysym, modifiers=0):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=Path("/tmp/paint-rust-layout-smoke"))
+    parser.add_argument("--images", nargs="+", default=["tests/fixtures/pdn/Untitled2.pdn", "tests/fixtures/pdn/FlattenBlendTest.pdn"], help="Input images for the isolated editor sessions")
     parser.add_argument("--theme", choices=("system", "light", "dark"), default="system")
     parser.add_argument("--scale", type=float)
     parser.add_argument("--rulers", action="store_true")
@@ -123,7 +124,7 @@ def main():
         with (args.output / "editor.log").open("w") as log:
             for attempt in range(2):
                 app = subprocess.Popen(
-                    [str(binary), "tests/fixtures/pdn/Untitled2.pdn", "tests/fixtures/pdn/FlattenBlendTest.pdn"],
+                    [str(binary), *args.images],
                     cwd=root, env=env, stdout=log, stderr=log,
                 )
                 try:

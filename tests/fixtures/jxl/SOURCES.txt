@@ -1,0 +1,20 @@
+All fixtures contain original synthetic pixels and use MIT OR Apache-2.0.
+They were generated on 2026-10-25 using ImageMagick and libjxl 0.11.2.
+No external artwork is included.
+
+rgba-lossless.jxl: a 4x3 RGBA8 grid listed in tests/jpeg_xl.rs, encoded with
+ImageMagick from raw RGBA at quality 100. Independently decoding with ImageMagick
+reproduces all 48 source bytes, including partial alpha.
+oriented-lossless.jxl: the same input encoded with -orient RightTop. The
+codestream orientation must rotate it clockwise once into a 3x4 document.
+rgba-container.jxl: the same lossless codestream inside JPEG XL signature,
+ftyp and jxlc boxes; ImageMagick independently opens the container.
+gray16-lossless.jxl: a 5x3 16-bit grayscale black-to-white gradient encoded at
+quality 100. Independent 8-bit decoding gives rows 0, 128 and 255.
+linear-icc.jxl: examples/linear_profile_probe.rs produces a two-pixel PNG with
+a linear RGB ICC profile, converted to JPEG XL at quality 100. The gray pixel
+has stored RGB 128 and alpha 37; sRGB conversion produces approximately 188.
+animation.jxl: two 2x2 frames, red then blue, each with a delay of 10 centiseconds,
+encoded at quality 100. Both frames have nonzero duration. Import selects the
+first displayed frame; animation editing is not provided.
+oversized-width.jxl: a 17000x1 black image used to verify the import dimension limit.

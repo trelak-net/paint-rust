@@ -379,7 +379,7 @@ impl Editor {
 
     fn save(&mut self, save_as: bool) -> bool {
         self.finish_stroke();
-        let existing = self.path.as_ref();
+        let existing = self.path.as_ref().filter(|path| files::writable_path(path));
         let path = if !save_as && existing.is_some() {
             existing.cloned()
         } else {
@@ -453,7 +453,7 @@ impl Editor {
             .add_filter(
                 "Images and projects",
                 &[
-                    "png", "jpg", "jpeg", "bmp", "webp", "tif", "tiff", "tga", "gif", "dds",
+                    "png", "jpg", "jpeg", "bmp", "webp", "tif", "tiff", "tga", "gif", "dds", "jxl",
                     "prust", "pdn",
                 ],
             )
@@ -657,7 +657,7 @@ impl Editor {
                         "Projects and images",
                         &[
                             "prust", "pdn", "png", "jpg", "jpeg", "bmp", "webp", "tif", "tiff",
-                            "tga", "gif", "dds",
+                            "tga", "gif", "dds", "jxl",
                         ],
                     )
                     .pick_files()

@@ -30,6 +30,7 @@ tempfile = "3"
 rustybuzz = "0.20.1"
 unicode-bidi = "0.3"
 unicode-script = "0.5"
+jxl-oxide = { version = "0.12.6", default-features = false, features = ["lcms2"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 winit = { version = "0.30", default-features = false, features = ["wayland-csd-adwaita"] }

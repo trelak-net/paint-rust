@@ -113,5 +113,10 @@
     "path": "upstream/atspi-proxies-0.9.0/LICENSE-MIT.txt",
     "source": "https://raw.githubusercontent.com/odilia-app/atspi/ef2b4d1b41a9d53a9bb5b484661d712e0d1964e7/LICENSE-MIT.txt",
     "sha256": "a94bf521d21b7db984c8b141b6f9341bbedbe24e617c1a55d952f8ef613ef1cd"
+  },
+  {
+    "path": "upstream/alloc-stdlib-0.2.4/LICENSE",
+    "source": "https://raw.githubusercontent.com/dropbox/rust-alloc-no-stdlib/ae42d22078b98549e987d2f03d12df7b984fde47/LICENSE",
+    "sha256": "c0c56f26d9c051cac4d200c34c84e7ae9aaa853e01a982a1df08b09931e518ae"
   }
 ]
