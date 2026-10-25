@@ -96,7 +96,9 @@ independent tasks; do not silently reduce the required scope.
 [ ] Expanded color-wheel presentation and full interactive color-picker audit.
 [x] Zoom/Pan tools, temporary spacebar navigation and zoom-to-region.
 [x] Visible-region pixel grid at high zoom.
-[ ] Rulers and measurement units.
+[x] Pixel rulers with zoom/scroll-aware ticks, pointer markers and saved visibility.
+[x] Fit image and fit selection commands with keyboard shortcuts.
+[ ] Physical measurement units and document-resolution handling.
 4. Rendering
 [x] Brush/eraser antialiasing, hardness, stroke opacity and blend/replacement modes.
 [ ] Shape antialiasing and additional drawing blend modes.

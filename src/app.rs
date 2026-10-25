@@ -7,6 +7,7 @@ mod histogram;
 mod lasso;
 mod panels;
 mod preferences;
+mod rulers;
 mod thumbnails;
 mod transform_handles;
 mod workspace;
@@ -907,6 +908,10 @@ impl Editor {
                 Some(0)
             } else if i.consume_key(egui::Modifiers::COMMAND, Key::O) {
                 Some(1)
+            } else if i.consume_key(egui::Modifiers::COMMAND | egui::Modifiers::SHIFT, Key::B) {
+                Some(24)
+            } else if i.consume_key(egui::Modifiers::COMMAND, Key::B) {
+                Some(23)
             } else if i.consume_key(egui::Modifiers::COMMAND | egui::Modifiers::ALT, Key::S) {
                 Some(22)
             } else if i.consume_key(egui::Modifiers::COMMAND | egui::Modifiers::SHIFT, Key::S) {
@@ -973,6 +978,8 @@ impl Editor {
             }
         });
         match command {
+            Some(23) => self.fit_canvas = true,
+            Some(24) => self.zoom_to_selection(),
             Some(22) => self.request(Action::SaveAll, ctx),
             Some(20) => self.invert_selection(),
             Some(21) => self.start_document_edit(DocumentEdit::Invert),
@@ -1043,7 +1050,7 @@ impl Editor {
         }
     }
 
-    fn canvas(&mut self, ui: &mut egui::Ui) {
+    fn canvas_content(&mut self, ui: &mut egui::Ui) {
         if let Some(update) = self.canvas_renderer.poll() {
             match update {
                 crate::canvas_renderer::Update::Full(image) => {
@@ -2939,6 +2946,21 @@ impl Editor {
                 }
                 ui.menu_button("View", |ui| {
                     self.preferences_menu(ui);
+                    ui.checkbox(&mut self.preferences.rulers, "Pixel rulers");
+                    if ui.button("Fit image    Ctrl+B").clicked() {
+                        self.fit_canvas = true;
+                        ui.close();
+                    }
+                    if ui
+                        .add_enabled(
+                            self.document.selection().is_some(),
+                            egui::Button::new("Fit selection    Ctrl+Shift+B"),
+                        )
+                        .clicked()
+                    {
+                        self.zoom_to_selection();
+                        ui.close();
+                    }
                     ui.checkbox(&mut self.panel_layout.floating, "Floating panels");
                     ui.checkbox(&mut self.pixel_grid, "Pixel grid (at 800% and above)");
                     for (index, name) in panels::NAMES.iter().enumerate() {
@@ -3267,6 +3289,42 @@ mod tests {
         assert!(editor.file_job.is_none());
         assert!(editor.document.dirty());
         assert!(!raster.exists() && !project.exists());
+    }
+
+    #[test]
+    fn rulers_reserve_nonpainting_space_and_selection_fit_changes_only_view() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        frame(&mut editor, &ctx, vec![]);
+        frame(&mut editor, &ctx, vec![]);
+        let origin = editor.canvas_viewport.min;
+        editor.preferences.rulers = true;
+        frame(&mut editor, &ctx, vec![]);
+        frame(&mut editor, &ctx, vec![]);
+        assert!(editor.canvas_viewport.left() >= origin.x + 40.0);
+        assert!(editor.canvas_viewport.top() >= origin.y + 20.0);
+        let point = Pos2::new(
+            editor.canvas_viewport.left() + 50.0,
+            editor.canvas_viewport.top() - 10.0,
+        );
+        for pressed in [true, false] {
+            frame(
+                &mut editor,
+                &ctx,
+                vec![egui::Event::PointerMoved(point), pointer(point, pressed)],
+            );
+        }
+        assert!(!editor.document.dirty());
+        editor
+            .document
+            .set_selection(Some(Selection::elliptical(100, 80, 20, 10)));
+        let pixels = editor.document.shared_pixels();
+        editor.zoom_to_selection();
+        frame(&mut editor, &ctx, vec![]);
+        assert!(20.0 * editor.zoom <= editor.canvas_viewport.width() + 1.0);
+        assert!(10.0 * editor.zoom <= editor.canvas_viewport.height() + 1.0);
+        assert_eq!(editor.document.pixels(), pixels.as_slice());
+        assert!(!editor.document.dirty());
     }
 
     fn wait_for_files(editor: &mut Editor, ctx: &egui::Context) {

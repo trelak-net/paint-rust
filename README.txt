@@ -1025,3 +1025,13 @@ use the same flattening confirmation and preview as Save. Cancellation or failur
 stops the sequence and leaves remaining documents unsaved. Tests cover multiple
 project writes, a write failure and cancellation at a raster confirmation.
 The File menu also groups basic open/save/close commands and recent files.
+
+Pixel rulers and selection navigation
+------------------------------------
+View > Pixel rulers reserves separate nonpainting horizontal and vertical bands.
+Ticks adapt to zoom and scroll, with major labels, minor divisions and pointer
+markers. Visibility persists across restarts. Physical units and document print
+resolution are not implemented yet. View > Fit image (Ctrl+B) fits the full canvas;
+Fit selection (Ctrl+Shift+B) fits and centers selection bounds without editing
+pixels. Tests verify tick spacing, nonpainting bands and selection fitting. Two
+native launches with --rulers verified stable layout and preference persistence.

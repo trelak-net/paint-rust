@@ -14,6 +14,7 @@ def main():
     parser.add_argument("--output", type=Path, default=Path("/tmp/paint-rust-layout-smoke"))
     parser.add_argument("--theme", choices=("system", "light", "dark"), default="system")
     parser.add_argument("--scale", type=float)
+    parser.add_argument("--rulers", action="store_true")
     args = parser.parse_args()
     if args.scale is not None and not 0.5 <= args.scale <= 3:
         parser.error("Scale must be between 0.5 and 3")
@@ -39,7 +40,7 @@ def main():
         settings.parent.mkdir()
         settings.write_text("workspace-v1\n1\n1\n1\n1\n1\n")
         preferences = settings.with_name("preferences.txt")
-        preferences.write_text(f"preferences-v1\n{args.theme} 1 12 1 1 0 0\n")
+        preferences.write_text(f"preferences-v1\n{args.theme} 1 12 1 1 0 0 {int(args.rulers)}\n")
         saved = []
         saved_preferences = []
         with (args.output / "editor.log").open("w") as log:

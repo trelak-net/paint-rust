@@ -12,6 +12,7 @@ pub(super) enum Theme {
 pub(super) struct Preferences {
     pub theme: Theme,
     pub pixel_grid: bool,
+    pub rulers: bool,
     pub brush_size: f32,
     pub brush: paint_rust::brush::Options,
     pub recent: Vec<PathBuf>,
@@ -20,7 +21,8 @@ impl Default for Preferences {
     fn default() -> Self {
         Self {
             theme: Theme::System,
-            pixel_grid: true,
+            pixel_grid: false,
+            rulers: false,
             brush_size: 12.0,
             brush: Default::default(),
             recent: Vec::new(),
@@ -33,7 +35,7 @@ impl Preferences {
     }
     fn encode(&self) -> String {
         let mut text = format!(
-            "preferences-v1\n{} {} {} {} {} {} {}\n",
+            "preferences-v1\n{} {} {} {} {} {} {} {}\n",
             match self.theme {
                 Theme::System => "system",
                 Theme::Light => "light",
@@ -44,7 +46,8 @@ impl Preferences {
             self.brush.hardness,
             self.brush.opacity,
             u8::from(self.brush.antialias),
-            u8::from(self.brush.blend)
+            u8::from(self.brush.blend),
+            u8::from(self.rulers)
         );
         for path in self.recent.iter().take(16) {
             if let Some(path) = path.to_str()
@@ -72,7 +75,7 @@ impl Preferences {
             .ok_or_else(invalid)?
             .split_whitespace()
             .collect();
-        if fields.len() != 7 {
+        if fields.len() != 7 && fields.len() != 8 {
             return Err(invalid());
         }
         let boolean = |v: &str| match v {
@@ -96,6 +99,11 @@ impl Preferences {
                 _ => return Err(invalid()),
             },
             pixel_grid: boolean(fields[1])?,
+            rulers: if fields.len() == 8 {
+                boolean(fields[7])?
+            } else {
+                false
+            },
             brush_size: number(fields[2], 1.0, 128.0)?,
             brush: paint_rust::brush::Options {
                 hardness: number(fields[3], 0.0, 1.0)?,

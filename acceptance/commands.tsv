@@ -32,11 +32,11 @@ Edit.SelectAll	Select All	supported	Ctrl+A	Ctrl+A	Available; see workflow cases
 Edit.Deselect	Deselect	partial	Ctrl+D	Ctrl+Shift+A	Available as Ctrl+Shift+A; shortcut alignment pending
 View.ZoomIn	Zoom In	partial	Ctrl+Add	-	Zoom tool and Ctrl+wheel; ratio sequence/shortcuts pending
 View.ZoomOut	Zoom Out	partial	Ctrl+Subtract	-	Zoom tool and Ctrl+wheel; ratio sequence/shortcuts pending
-View.ZoomToWindow	Zoom to Window	partial	Ctrl+B	-	Fit button; shortcut pending
-View.ZoomToSelection	Zoom to Selection	missing	Ctrl+Shift+B	-	Not implemented
+View.ZoomToWindow	Zoom to Window	supported	Ctrl+B	Ctrl+B	Fit image in the available canvas viewport
+View.ZoomToSelection	Zoom to Selection	supported	Ctrl+Shift+B	Ctrl+Shift+B	Fit and center the selection bounds without editing pixels
 View.ActualSize	Actual Size	partial	Ctrl+D0	-	100% button; shortcut pending
 View.Grid	Pixel grid	partial	-	-	Visible-region pixel grid; persistence pending
-View.Rulers	Rulers	missing	-	-	Not implemented
+View.Rulers	Rulers	partial	-	-	Pixel rulers, pointer markers and persistence; physical units pending
 View.Pixels	Pixels	missing	-	-	Not implemented
 View.Inches	Inches	missing	-	-	Not implemented
 View.Centimeters	Centimeters	missing	-	-	Not implemented
