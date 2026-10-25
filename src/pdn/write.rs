@@ -10,6 +10,8 @@ enum Field {
     Ref(i32),
 }
 enum Node {
+    #[cfg(test)]
+    Bytes(Vec<u8>),
     Object(&'static str, i32, Vec<(&'static str, Field)>),
     Text(String),
     Array(Vec<i32>),
@@ -192,6 +194,14 @@ impl Graph {
         for (index, node) in self.nodes.iter().enumerate() {
             let id = index as i32 + 3;
             match node {
+                #[cfg(test)]
+                Node::Bytes(bytes) => {
+                    w.write_all(&[15])?;
+                    i32write(w, id)?;
+                    i32write(w, bytes.len() as i32)?;
+                    w.write_all(&[2])?;
+                    w.write_all(bytes)?;
+                }
                 Node::Object(name, library, fields) => object(w, id, name, *library, fields)?,
                 Node::Text(text) => {
                     w.write_all(&[6])?;
@@ -354,4 +364,151 @@ pub fn write(data: &Interchange, output: impl Write, cancel: &AtomicBool) -> Res
         output.flush()
     };
     encode(&mut output).map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+mod legacy_tests {
+    use super::*;
+    fn fixture(kind: u8, header: bool) -> (Interchange, Vec<u8>) {
+        let document = crate::document::Document::from_pixels(
+            3,
+            2,
+            vec![
+                [10, 20, 30, 0],
+                [40, 50, 60, 100],
+                [70, 80, 90, 255],
+                [100, 110, 120, 1],
+                [130, 140, 150, 128],
+                [160, 170, 180, 254],
+            ],
+        )
+        .unwrap();
+        let data = Interchange {
+            document,
+            metadata: Metadata::new(),
+            layer_metadata: vec![Metadata::new()],
+            backgrounds: vec![false],
+        };
+        let mut graph = Graph::build(&data).unwrap();
+        let index = graph
+            .nodes
+            .iter()
+            .position(|n| matches!(n, Node::Object("PaintDotNet.MemoryBlock", _, _)))
+            .unwrap();
+        let raw: Vec<_> = data
+            .document
+            .pixels()
+            .iter()
+            .flat_map(|p| [p[2], p[1], p[0], p[3]])
+            .collect();
+        let fields = if kind == 1 {
+            let a = graph.add(Node::Bytes(raw[..12].to_vec()));
+            let b = graph.add(Node::Bytes(raw[12..].to_vec()));
+            vec![
+                ("length", int(24)),
+                ("hasParent", flag(false)),
+                ("chunkCount", Field::Int(2, 8)),
+                ("chunkFormat", int(0)),
+                ("chunk0", Field::Ref(a)),
+                ("chunk1", Field::Ref(b)),
+            ]
+        } else if kind >= 2 {
+            let mut parent = vec![99; 8];
+            parent.extend(&raw);
+            parent.extend([99; 8]);
+            let bytes = graph.add(Node::Bytes(parent));
+            let parent = graph.object(
+                "PaintDotNet.MemoryBlock",
+                2,
+                vec![
+                    ("length64", Field::Int(40, 9)),
+                    ("hasParent", flag(false)),
+                    ("pointerData", Field::Ref(bytes)),
+                ],
+            );
+            if kind == 4
+                && let Field::Ref(id) = &parent
+            {
+                graph.nodes[*id as usize - 3] = Node::Object(
+                    "PaintDotNet.MemoryBlock",
+                    2,
+                    vec![
+                        ("length64", Field::Int(40, 9)),
+                        ("hasParent", flag(true)),
+                        ("parentBlock", Field::Ref(index as i32 + 3)),
+                        ("parentOffset64", Field::Int(0, 9)),
+                    ],
+                );
+            }
+            vec![
+                ("length64", Field::Int(24, 9)),
+                ("hasParent", flag(true)),
+                ("parentBlock", parent),
+                (
+                    "parentOffset64",
+                    Field::Int(if kind == 3 { 20 } else { 8 }, 9),
+                ),
+            ]
+        } else {
+            let bytes = graph.add(Node::Bytes(raw));
+            vec![
+                ("length", int(24)),
+                ("hasParent", flag(false)),
+                ("pointerData", Field::Ref(bytes)),
+            ]
+        };
+        graph.nodes[index] = Node::Object("PaintDotNet.MemoryBlock", 2, fields);
+        let mut gzip = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+        graph.write(&mut gzip).unwrap();
+        let compressed = gzip.finish().unwrap();
+        let mut bytes = Vec::new();
+        if header {
+            let xml = b"<pdnImage width=\"3\" height=\"2\" layers=\"1\"><custom /></pdnImage>";
+            bytes.extend(b"PDN3");
+            bytes.extend(&(xml.len() as u32).to_le_bytes()[..3]);
+            bytes.extend(xml);
+        }
+        bytes.extend(compressed);
+        (data, bytes)
+    }
+    #[test]
+    fn compressed_inline_and_parent_backed_graphs_roundtrip() {
+        for kind in 0..3 {
+            for header in [true, false] {
+                let (data, bytes) = fixture(kind, header);
+                let loaded = super::super::read(bytes.as_slice(), &AtomicBool::new(false)).unwrap();
+                assert!(loaded.document.layers() == data.document.layers());
+                if let Some(root) = std::env::var_os("PAINT_RUST_LEGACY_FIXTURES") {
+                    std::fs::create_dir_all(&root).unwrap();
+                    std::fs::write(
+                        std::path::Path::new(&root).join(format!("legacy-{kind}-{header}.pdn")),
+                        &bytes,
+                    )
+                    .unwrap();
+                }
+                let mut corrupt = bytes.clone();
+                let index = corrupt.len() - 8;
+                corrupt[index] ^= 1;
+                assert!(super::super::read(corrupt.as_slice(), &AtomicBool::new(false)).is_err());
+                assert!(
+                    super::super::read(&bytes[..bytes.len() - 1], &AtomicBool::new(false)).is_err()
+                );
+                assert!(super::super::read(bytes.as_slice(), &AtomicBool::new(true)).is_err());
+            }
+        }
+        let (_, cycle) = fixture(4, true);
+        assert!(
+            super::super::read(cycle.as_slice(), &AtomicBool::new(false))
+                .err()
+                .unwrap()
+                .contains("Cyclic")
+        );
+        let (_, bytes) = fixture(3, true);
+        assert!(
+            super::super::read(bytes.as_slice(), &AtomicBool::new(false))
+                .err()
+                .unwrap()
+                .contains("parent buffer")
+        );
+    }
 }

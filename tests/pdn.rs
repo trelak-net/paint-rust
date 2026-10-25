@@ -209,3 +209,19 @@ fn external_layer_rename_preserves_other_properties_and_metadata() {
     assert!(edited.layers() == reopened.layers());
     assert_eq!(edited.metadata, reopened.metadata);
 }
+
+#[test]
+fn legacy_inline_and_whole_gzip_files_survive_native_resave() {
+    for (input, output) in [
+        ("LegacyInlineInput.pdn", "LegacyInlineNativeResaved.pdn"),
+        ("LegacyChunksGzipInput.pdn", "LegacyChunksNativeResaved.pdn"),
+    ] {
+        let load = |name: &str| {
+            paint_rust::files::open(&std::path::Path::new("tests/fixtures/pdn").join(name)).unwrap()
+        };
+        let before = load(input);
+        let after = load(output);
+        assert_eq!((before.width, before.height), (after.width, after.height));
+        assert!(before.layers() == after.layers(), "{input}");
+    }
+}

@@ -9,6 +9,7 @@ pub(super) enum Value {
     Ref(i32),
     Object(String, HashMap<String, Value>),
     Array(Vec<Value>),
+    Bytes(std::sync::Arc<Vec<u8>>),
 }
 #[derive(Clone)]
 struct Schema {
@@ -89,6 +90,7 @@ impl Value {
 struct Parser<R> {
     input: R,
     remaining: usize,
+    pixel_bytes_left: usize,
     values_left: usize,
     nodes: HashMap<i32, Value>,
     schemas: HashMap<i32, Schema>,
@@ -307,14 +309,30 @@ impl<R: Read> Parser<R> {
                         if shape > 1 || self.int()? != 1 {
                             return Err("Unsupported array shape".into());
                         }
-                        let count = self.size()?;
+                        let count =
+                            usize::try_from(self.int()?).map_err(|_| "Invalid array length")?;
                         let element = self.byte()?;
                         let primitive = self.additional_type(element)?;
                         (count, if element == 0 { primitive } else { None })
                     } else {
-                        let count = self.size()?;
+                        let count =
+                            usize::try_from(self.int()?).map_err(|_| "Invalid array length")?;
                         (count, if kind == 15 { Some(self.byte()?) } else { None })
                     };
+                    if primitive == Some(2) {
+                        self.pixel_bytes_left = self
+                            .pixel_bytes_left
+                            .checked_sub(count)
+                            .ok_or("Embedded pixel bytes exceed limit")?;
+                        let mut bytes = vec![0u8; count];
+                        self.input
+                            .read_exact(&mut bytes)
+                            .map_err(|e| e.to_string())?;
+                        return self.insert(id, Value::Bytes(std::sync::Arc::new(bytes)));
+                    }
+                    if count > 65536 {
+                        return Err("Invalid object collection size".into());
+                    }
                     self.values_left = self
                         .values_left
                         .checked_sub(count + 1)
@@ -340,6 +358,7 @@ pub(super) fn read(input: impl Read) -> Result<Graph, String> {
     let mut p = Parser {
         input,
         remaining: 16 * 1024 * 1024,
+        pixel_bytes_left: 256 * 1024 * 1024,
         values_left: 131072,
         nodes: HashMap::new(),
         schemas: HashMap::new(),
@@ -363,6 +382,7 @@ pub(super) fn read(input: impl Read) -> Result<Graph, String> {
         let mut child = Parser {
             input: &mut prefix,
             remaining: p.remaining + 1,
+            pixel_bytes_left: p.pixel_bytes_left,
             values_left: p.values_left,
             nodes: std::mem::take(&mut p.nodes),
             schemas: std::mem::take(&mut p.schemas),
@@ -373,6 +393,7 @@ pub(super) fn read(input: impl Read) -> Result<Graph, String> {
             return Err("Null run outside array".into());
         }
         p.remaining = child.remaining;
+        p.pixel_bytes_left = child.pixel_bytes_left;
         p.values_left = child.values_left;
         p.nodes = child.nodes;
         p.schemas = child.schemas;
@@ -381,4 +402,36 @@ pub(super) fn read(input: impl Read) -> Result<Graph, String> {
         root,
         nodes: p.nodes,
     })
+}
+
+#[cfg(test)]
+mod byte_array_tests {
+    use super::*;
+    fn prefix(count: i32) -> Vec<u8> {
+        let mut data = vec![0];
+        for n in [1i32, -1, 1, 0] {
+            data.extend(n.to_le_bytes());
+        }
+        data.push(15);
+        data.extend(1i32.to_le_bytes());
+        data.extend(count.to_le_bytes());
+        data.push(2);
+        data
+    }
+    #[test]
+    fn embedded_bytes_use_a_separate_bound_and_compact_storage() {
+        let mut data = prefix(262144);
+        data.extend(vec![57; 262144]);
+        data.push(11);
+        let graph = read(data.as_slice()).unwrap();
+        let Value::Bytes(bytes) = graph.root().unwrap() else {
+            panic!("Expected byte array");
+        };
+        assert_eq!(bytes.len(), 262144);
+        assert!(bytes.iter().all(|b| *b == 57));
+        for length in [-1, 256 * 1024 * 1024 + 1] {
+            assert!(read(prefix(length).as_slice()).is_err());
+        }
+        assert!(read(prefix(262144).as_slice()).is_err());
+    }
 }

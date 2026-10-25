@@ -1,4 +1,5 @@
 //! Bounded PDN3 interchange. Object records are interpreted as data only.
+mod memory;
 mod nrbf;
 mod write;
 use crate::document::{BlendMode, Document, Layer};
@@ -173,7 +174,11 @@ pub fn read(input: impl Read, cancel: &AtomicBool) -> Result<Interchange, String
         inner: input,
         cancel,
     };
-    if bytes::<4>(&mut r)? != *b"PDN3" {
+    let signature = bytes::<4>(&mut r)?;
+    if signature[..2] == [31, 139] {
+        return read_gzip(std::io::Cursor::new(signature).chain(r), cancel);
+    }
+    if signature != *b"PDN3" {
         return Err("Unsupported PDN signature".into());
     }
     let h = bytes::<3>(&mut r)?;
@@ -183,9 +188,32 @@ pub fn read(input: impl Read, cancel: &AtomicBool) -> Result<Interchange, String
     }
     let skipped = std::io::copy(&mut r.by_ref().take(header as u64), &mut std::io::sink())
         .map_err(|e| e.to_string())?;
-    if skipped != header as u64 || bytes::<2>(&mut r)? != [0, 1] {
-        return Err("Unsupported PDN container variant".into());
+    if skipped != header as u64 {
+        return Err("Truncated PDN header".into());
     }
+    let marker = bytes::<2>(&mut r)?;
+    match marker {
+        [0, 1] => read_graph(r, cancel, true),
+        [31, 139] => read_gzip(std::io::Cursor::new(marker).chain(r), cancel),
+        _ => Err("Unsupported PDN container variant".into()),
+    }
+}
+fn read_gzip(input: impl Read, cancel: &AtomicBool) -> Result<Interchange, String> {
+    let mut gzip = Checked {
+        inner: flate2::read::GzDecoder::new(input).take((MAX_BYTES + 16 * 1024 * 1024 + 1) as u64),
+        cancel,
+    };
+    let data = read_graph(&mut gzip, cancel, false)?;
+    if gzip.read(&mut [0]).map_err(|e| e.to_string())? != 0 {
+        return Err("Trailing compressed graph data".into());
+    }
+    Ok(data)
+}
+fn read_graph(
+    mut r: impl Read,
+    cancel: &AtomicBool,
+    allow_deferred: bool,
+) -> Result<Interchange, String> {
     let g = nrbf::read(&mut r)?;
     let root = g.root()?;
     g.require_type(root, "PaintDotNet.Document")?;
@@ -207,6 +235,7 @@ pub fn read(input: impl Read, cancel: &AtomicBool) -> Result<Interchange, String
     let mut layer_metadata = Vec::new();
     let mut backgrounds = Vec::new();
     let mut total = 0usize;
+    let mut memories = memory::Reader::new(&g, &mut r, cancel, allow_deferred);
     for record in &records[..count as usize] {
         g.require_type(record, "PaintDotNet.BitmapLayer")?;
         let surface = g.field(record, "surface")?;
@@ -228,19 +257,10 @@ pub fn read(input: impl Read, cancel: &AtomicBool) -> Result<Interchange, String
             return Err("Pixel data exceeds limit".into());
         }
         let memory = g.field(surface, "scan0")?;
-        g.require_type(memory, "PaintDotNet.MemoryBlock")?;
-        let stored = g
-            .optional(memory, "length64")?
-            .or(g.optional(memory, "length")?)
-            .ok_or("Missing buffer length")?
-            .number()?;
-        if stored != length as i64
-            || boolean(&g, memory, "hasParent")?
-            || !boolean(&g, memory, "deferred")?
-        {
-            return Err("Unsupported pixel memory layout".into());
+        let raw = memories.read(memory)?;
+        if raw.len() != length {
+            return Err("Pixel buffer length differs from surface".into());
         }
-        let raw = pixels(&mut r, length, cancel)?;
         let mut rgba = Vec::with_capacity(width as usize * height as usize);
         for row in raw.chunks_exact(stride) {
             if cancel.load(Ordering::Relaxed) {

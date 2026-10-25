@@ -42,3 +42,10 @@ examples/resolution_probe.rs at 300 DPI (MIT OR Apache-2.0).
 ResolutionNativeResaved.pdn: same fixture opened and re-saved in the native Windows
 editor 5.1.12 on CASTOR on 2026-10-25. Its resize dialog reported 300 DPI and a
 1 x 0.5 inch print size before re-save. No external artwork is included.
+
+LegacyInlineInput.pdn and LegacyChunksGzipInput.pdn: original six-pixel fixtures
+from src/pdn/write.rs legacy_tests, covering PDN3 plus gzip/inline pointerData and
+headerless gzip/chunk arrays respectively. LegacyInlineNativeResaved.pdn and
+LegacyChunksNativeResaved.pdn: corresponding native Windows 5.1.12 GUI re-saves
+on CASTOR, 2026-10-25. Every layer pixel and property is unchanged. Project
+license: MIT OR Apache-2.0. No third-party artwork is included.

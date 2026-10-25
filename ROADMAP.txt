@@ -218,7 +218,10 @@ independent tasks; do not silently reduce the required scope.
 
 Blockers
 --------
-No new program blocker recorded yet. The isolated desktop portal limitation in
+Native verification of the synthetic legacy parent-buffer fixture remains pending:
+the Windows editor rejects that generated input. Inline/chunked legacy fixtures
+pass native re-save; parent-view reader tests remain synthetic. This does not
+block other implementation work. The isolated desktop portal limitation in
 first-release accessibility validation remains documented above.
 
 PDN progress (2026-10-25)
@@ -231,4 +234,6 @@ Resolved: the interactive session is available again; native re-save preserves a
 layer pixels and properties. A five-layer Unicode/metadata/alpha-edge fixture
 also survives an external re-save and native layer rename. Further pixel-editing
 scenarios and historical variants remain required.
-[ ] Expand PDN compatibility beyond the documented deferred-BGRA8 PDN3 subset.
+[x] Whole-graph gzip and embedded byte/chunk pixel buffers, with native re-save fixtures.
+[x] Bounded parent-buffer reader with cycle/offset validation and synthetic tests.
+[ ] Validate parent-backed layouts externally and extend remaining historical PDN variants.

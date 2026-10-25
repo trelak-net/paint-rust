@@ -762,7 +762,7 @@ and trailing-data rejection. A Windows serializer constructor probe accepts the
 Rust writer's metadata arrays. The native Windows GUI opened and re-saved Rust-produced two-layer and fourteen-layer documents;
 every layer pixel and property, including all fourteen blend modes, survived the return trip. This is not a claim of
 complete PDN version compatibility.
-Whole-graph gzip, parent-backed buffers, non-bitmap layers and future signatures
+Non-bitmap layers and future signatures
 are not supported yet. PDN-specific ICC interpretation and metadata updates
 after geometry changes remain separate work. Reproduce a codec round trip with:
 
@@ -1617,3 +1617,18 @@ stroke do not accumulate alpha. Flood fill finds its region using active/merged
 sampling, tolerance and selection first, then blends only the matching active-layer
 pixels. Turning Blend color off retains exact replacement. Tests compare all
 fourteen modes to layer compositing and verify cancellation/undo and selection.
+
+Legacy compressed PDN input
+---------------------------
+The reader also accepts whole-graph gzip, with or without a PDN3 XML header.
+Inline pointerData byte arrays and chunkCount/chunkFormat pixel arrays are read
+without constructing serialized objects. Byte arrays have compact storage and a
+separate 256 MiB aggregate limit; metadata retains its 16 MiB parser limit.
+Gzip checksums, complete buffer lengths, cancellation and collection limits are
+validated. Parent-buffer views share bounded backing storage and reject cycles,
+excessive nesting and out-of-range offsets. Those views have synthetic reader
+tests only: the native Windows editor rejected the generated parent fixture,
+so external parent-layout interoperability remains unverified.
+Native Windows 5.1.12 opened and re-saved the inline and chunked legacy fixtures
+on 2026-10-25 with exact layer pixels/properties, including hidden RGB and alpha.
+Normal Save continues to emit the modern deferred-block PDN3 container.
