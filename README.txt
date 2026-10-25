@@ -1131,3 +1131,12 @@ Display-monitor profiles, selectable rendering intents, high-bit-depth conversio
 CMYK import and PDN-specific profile metadata interpretation remain pending.
 The color engine is statically linked; no additional runtime library is needed.
 Binding API: https://docs.rs/lcms2/6.1.1/lcms2/
+
+Text decorations
+----------------
+Text preview includes independent Underline and Strikethrough controls. Lines
+follow each text line's advance width, alignment and spacing, including spaces.
+They share the text color, antialias setting and selection clipping. Decoration
+thickness and baseline offsets scale with font size; font-specific decoration
+metrics remain pending. Tests cover multiple lines, alignment, clipping, partial
+coverage and combined decorations. Apply and Cancel use the existing text transaction.

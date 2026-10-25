@@ -20,6 +20,8 @@ impl Alignment {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TextLayout {
+    pub underline: bool,
+    pub strikethrough: bool,
     pub alignment: Alignment,
     pub letter_spacing: f32,
     pub line_spacing: f32,
@@ -28,6 +30,8 @@ pub struct TextLayout {
 impl Default for TextLayout {
     fn default() -> Self {
         Self {
+            underline: false,
+            strikethrough: false,
             alignment: Alignment::Left,
             letter_spacing: 0.0,
             line_spacing: 1.0,
@@ -183,6 +187,60 @@ pub fn render_cancellable(
         }
         caret.x += font.h_advance(id);
         previous = Some(id);
+    }
+    if style.layout.underline || style.layout.strikethrough {
+        let thickness = (style.size / 16.0).max(1.0);
+        for (line, advance) in widths.into_iter().enumerate() {
+            if cancel.load(Ordering::Relaxed) {
+                return false;
+            }
+            if advance <= 0.0 {
+                continue;
+            }
+            let left = style.origin.0 - advance * factor;
+            let right = left + advance;
+            let baseline = style.origin.1 + font.ascent() + line as f32 * line_height;
+            for (enabled, center) in [
+                (style.layout.underline, baseline + style.size * 0.08),
+                (style.layout.strikethrough, baseline - style.size * 0.3),
+            ] {
+                if !enabled {
+                    continue;
+                }
+                let top = center - thickness * 0.5;
+                let bottom = center + thickness * 0.5;
+                for y in (top.floor().max(0.0) as u32).min(height)
+                    ..(bottom.ceil().max(0.0) as u32).min(height)
+                {
+                    if cancel.load(Ordering::Relaxed) {
+                        return false;
+                    }
+                    let vertical = (bottom.min(y as f32 + 1.0) - top.max(y as f32)).clamp(0.0, 1.0);
+                    for x in (left.floor().max(0.0) as u32).min(width)
+                        ..(right.ceil().max(0.0) as u32).min(width)
+                    {
+                        if selection
+                            .as_ref()
+                            .is_some_and(|s| !s.contains(x as usize, y as usize))
+                        {
+                            continue;
+                        }
+                        let horizontal =
+                            (right.min(x as f32 + 1.0) - left.max(x as f32)).clamp(0.0, 1.0);
+                        let coverage = horizontal * vertical;
+                        let opacity = if style.layout.antialias {
+                            (coverage * 255.0).round() as u8
+                        } else if coverage >= 0.5 {
+                            255
+                        } else {
+                            0
+                        };
+                        let index = (y * width + x) as usize;
+                        pixels[index] = blend(pixels[index], style.color, opacity);
+                    }
+                }
+            }
+        }
     }
     !cancel.load(Ordering::Relaxed)
 }

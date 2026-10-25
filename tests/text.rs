@@ -270,3 +270,105 @@ fn font_loader_accepts_valid_files_and_rejects_invalid_oversized_or_cancelled_re
             .contains("16 MiB")
     );
 }
+
+#[test]
+fn decorations_cover_spaces_follow_alignment_and_preserve_selection() {
+    use paint_rust::text::{self, Alignment, TextLayout};
+    let font = font();
+    let draw = |alignment, origin, selection, underline, strikethrough, antialias| {
+        let mut pixels = vec![[0; 4]; 200 * 100];
+        text::render(
+            &mut pixels,
+            200,
+            100,
+            selection,
+            TextStyle {
+                font: &font,
+                text: "    \n  ",
+                origin,
+                size: 32.0,
+                color: [80, 120, 220, 255],
+                layout: TextLayout {
+                    alignment,
+                    underline,
+                    strikethrough,
+                    antialias,
+                    ..Default::default()
+                },
+            },
+        );
+        pixels
+    };
+    let underline = draw(Alignment::Left, (20.3, 10.3), None, true, false, true);
+    let strike = draw(Alignment::Left, (20.3, 10.3), None, false, true, true);
+    let both = draw(Alignment::Left, (20.3, 10.3), None, true, true, true);
+    assert!(underline.iter().any(|p| p[3] > 0 && p[3] < 255));
+    assert!(strike.iter().any(|p| p[3] > 0));
+    assert!(
+        underline
+            .iter()
+            .zip(&strike)
+            .all(|(a, b)| a[3] == 0 || b[3] == 0)
+    );
+    for i in 0..both.len() {
+        assert_eq!(
+            both[i],
+            if underline[i][3] > 0 {
+                underline[i]
+            } else {
+                strike[i]
+            }
+        );
+    }
+    let selection = Selection {
+        x: 25,
+        y: 0,
+        width: 10,
+        height: 100,
+        mask: None,
+        ellipse: None,
+    };
+    let clipped = draw(
+        Alignment::Left,
+        (20.3, 10.3),
+        Some(selection),
+        true,
+        true,
+        true,
+    );
+    for (i, pixel) in clipped.iter().enumerate() {
+        assert_eq!(
+            *pixel,
+            if (25..35).contains(&(i % 200)) {
+                both[i]
+            } else {
+                [0; 4]
+            }
+        );
+    }
+    let hard = draw(Alignment::Left, (20.3, 10.3), None, true, true, false);
+    assert!(hard.iter().all(|p| p[3] == 0 || p[3] == 255));
+    let right = draw(Alignment::Right, (180.0, 10.3), None, true, true, true);
+    let center = draw(Alignment::Center, (100.0, 10.3), None, true, true, true);
+    assert!(
+        right
+            .iter()
+            .enumerate()
+            .filter(|(_, p)| p[3] > 0)
+            .all(|(i, _)| i % 200 < 180)
+    );
+    assert!(
+        center
+            .iter()
+            .enumerate()
+            .filter(|(_, p)| p[3] > 0)
+            .any(|(i, _)| i % 200 < 100)
+    );
+    assert!(
+        center
+            .iter()
+            .enumerate()
+            .filter(|(_, p)| p[3] > 0)
+            .any(|(i, _)| i % 200 >= 100)
+    );
+}

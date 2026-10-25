@@ -2273,6 +2273,12 @@ impl Editor {
                         changed |= ui
                             .checkbox(&mut dialog.layout.antialias, "Antialias text")
                             .changed();
+                        changed |= ui
+                            .checkbox(&mut dialog.layout.underline, "Underline")
+                            .changed();
+                        changed |= ui
+                            .checkbox(&mut dialog.layout.strikethrough, "Strikethrough")
+                            .changed();
                         let label = ui.label("Text color");
                         changed |= dialog.color.edit(ui).labelled_by(label.id).changed();
                         if changed {

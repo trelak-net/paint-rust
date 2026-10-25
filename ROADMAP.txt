@@ -122,7 +122,8 @@ independent tasks; do not silently reduce the required scope.
 [x] Text alignment, letter/line spacing and antialias controls.
 [x] Background loading of local TTF/OTF/TTC fonts with session reuse.
 [x] Searchable installed-font browser with available styles and collection face indices.
-[ ] Variable font axes, shaping, decorations and remaining text controls.
+[x] Underline and strikethrough with multiline alignment, antialiasing and selection clipping.
+[ ] Variable font axes, shaping, font-specific decoration metrics and remaining text controls.
 7. Layers and history
 [x] Drag reordering with selected-layer identity and one-step undo.
 [x] Cached layer thumbnails with transparency checkerboard.
