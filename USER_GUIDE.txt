@@ -80,3 +80,9 @@ adds a layer, Ctrl+Shift+D duplicates it, and Ctrl+Shift+Delete deletes it. Ctrl
 toggles visibility. Alt+PageUp/PageDown selects adjacent layers; add Ctrl to select
 the top or bottom layer. Ctrl+Alt+F opens the last effect settings; Ctrl+F repeats
 the last effect directly.
+
+Image resize quality
+Ctrl+R offers several resampling filters. Bicubic is the default; nearest neighbor
+keeps hard pixel edges, while Lanczos offers sharper filtering. Area averaging is
+useful for reducing images. Enable Gamma correction to average light in linear
+sRGB. Transparency is handled independently of color. Escape cancels the dialog.

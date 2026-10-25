@@ -18,7 +18,7 @@ impl Editor {
             canvas,
             lock_ratio: !canvas,
             ratio: f64::from(self.document.width) / f64::from(self.document.height),
-            smooth: true,
+            resampling: Default::default(),
             anchor: 4,
         });
     }

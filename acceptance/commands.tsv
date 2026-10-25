@@ -41,7 +41,7 @@ View.Pixels	Pixels	missing	-	-	Not implemented
 View.Inches	Inches	missing	-	-	Not implemented
 View.Centimeters	Centimeters	missing	-	-	Not implemented
 Image.Crop	Crop to Selection	supported	Ctrl+Shift+X	Ctrl+Shift+X	Available; see workflow cases
-Image.Resize	Resize...	partial	Ctrl+R	Ctrl+R	Nearest/bilinear sampling; physical resolution controls pending
+Image.Resize	Resize...	partial	Ctrl+R	Ctrl+R	Eight resampling filters with gamma correction, bounded cache and cancellation; physical resolution controls and exact external kernel comparison pending
 Image.CanvasSize	Canvas Size...	partial	Ctrl+Shift+R	Ctrl+Shift+R	Anchor-based canvas resize; full option audit pending
 Image.FlipHorizontal	Flip Horizontal	supported	-	-	Available; see workflow cases
 Image.FlipVertical	Flip Vertical	supported	-	-	Available; see workflow cases

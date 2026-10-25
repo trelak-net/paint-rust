@@ -124,7 +124,8 @@ independent tasks; do not silently reduce the required scope.
 [x] Numeric selection-boundary rotation, scaling, flips and offsets with cancellable coalesced previews.
 [x] On-canvas selection-boundary move, centered corner scaling and rotation handles with constraints.
 [ ] Complete remaining pixel/selection transform options and external handle behavior audit.
-[ ] Interpolation, constraints and edge-case validation.
+[x] Eight image resize filters, linear-light gamma option, bounded row cache and cancellation benchmark.
+[ ] Remaining transform interpolation, constraints and external edge-case validation.
 6. Tools
 [x] Active-layer clone stamp and tolerance-based recolor with brush controls.
 [x] Independent clone source-layer identity across reorder/undo and frozen merged sampling.

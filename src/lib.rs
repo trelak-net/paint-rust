@@ -23,3 +23,5 @@ pub mod fonts;
 pub mod color_management;
 
 pub mod dds;
+
+pub mod resample;

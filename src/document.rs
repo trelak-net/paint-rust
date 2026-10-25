@@ -517,6 +517,25 @@ impl Document {
             crate::transform::resize_cancellable(pixels, old, (width, height), smooth, cancel)
         })
     }
+    pub fn resize_image_with_options_cancellable(
+        &mut self,
+        width: u32,
+        height: u32,
+        options: crate::resample::Options,
+        cancel: &std::sync::atomic::AtomicBool,
+    ) -> Result<bool, String> {
+        if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+            return Err(crate::files::CANCELLED.into());
+        }
+        if (width, height) == (self.width, self.height) {
+            return Ok(false);
+        }
+        let old = (self.width, self.height);
+        self.transform_layers("Resize image", width, height, cancel, |pixels| {
+            crate::resample::resize(pixels, old, (width, height), options, cancel).ok()
+        })
+    }
+
     pub fn resize_canvas(
         &mut self,
         width: u32,

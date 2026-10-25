@@ -73,7 +73,7 @@ struct ResizeDialog {
     canvas: bool,
     lock_ratio: bool,
     ratio: f64,
-    smooth: bool,
+    resampling: paint_rust::resample::Options,
     anchor: usize,
 }
 
@@ -2211,7 +2211,7 @@ impl Editor {
             }
         }
         if let Some(mut dialog) = self.resize_dialog.take() {
-            let mut keep = true;
+            let mut keep = !ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::Escape));
             egui::Window::new(if dialog.canvas {
                 "Canvas size"
             } else {
@@ -2277,23 +2277,29 @@ impl Editor {
                         });
                     ui.label("New canvas area is transparent on every layer.");
                 } else {
-                    ui.checkbox(&mut dialog.smooth, "Smooth resampling");
-                    ui.small("Area averaging when reducing; bilinear when enlarging.");
+                    egui::ComboBox::from_label("Resampling")
+                        .selected_text(dialog.resampling.filter.name())
+                        .show_ui(ui, |ui| { for filter in paint_rust::resample::Filter::ALL {
+                            ui.selectable_value(&mut dialog.resampling.filter, filter, filter.name());
+                        }});
+                    ui.add_enabled(dialog.resampling.filter != paint_rust::resample::Filter::Nearest,
+                        egui::Checkbox::new(&mut dialog.resampling.gamma_correct,"Gamma correction"));
+                    ui.small("Gamma correction filters light in linear sRGB. Nearest neighbor copies exact pixels.");
                 }
                 ui.horizontal(|ui| {
                     if ui.button("Apply").clicked() {
-                        let (width, height, canvas, anchor, smooth) = (
+                        let (width, height, canvas, anchor, resampling) = (
                             dialog.width,
                             dialog.height,
                             dialog.canvas,
                             dialog.anchor,
-                            dialog.smooth,
+                            dialog.resampling,
                         );
                         if self.transform_in_background("resize image", move |document, cancel| {
                             if canvas {
                                 document.resize_canvas_cancellable(width, height, anchor, cancel)
                             } else {
-                                document.resize_image_cancellable(width, height, smooth, cancel)
+                                document.resize_image_with_options_cancellable(width, height, resampling, cancel)
                             }
                         }) {
                             keep = false;

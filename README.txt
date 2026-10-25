@@ -206,12 +206,11 @@ Escape restores the previous selection. Brush, eraser, fill, shapes, invert and
 delete respect rectangular bounds. Crop affects every layer and restores geometry
 and the selection on undo. Selections are session-local, not project data.
 
-Geometry validation: 34 tests pass. Image resizing offers nearest-neighbor sampling,
-premultiplied-alpha area reduction and bilinear enlargement. Canvas expansion is transparent; anchor
+Image resizing offers eight sampling choices with optional linear-light gamma
+correction and premultiplied-alpha filtering. Canvas expansion is transparent; anchor
 selection controls cropping/placement. Rotation and mirroring preserve exact pixel
 values. Geometry changes affect every layer and clear the selection; undo restores
-its previous bounds. Resampling currently interpolates encoded RGB values rather
-than linear-light colors, and mixed-axis resizing (one dimension growing, one shrinking) uses bilinear sampling.
+its previous bounds. Mixed-axis resizing filters each dimension independently.
 
 Clipboard validation: 39 tests pass, including injected clipboard failures, native
 cut/paste input events, selected-region copying and one-step paste undo. Cut only
@@ -1513,3 +1512,21 @@ image revision are unchanged. Escape restores the original boundary.
 Masked cropping preserves layer properties and original selected RGBA while
 clearing excluded pixels to transparent black. Full-canvas ellipses still remove
 their outside corners. Undo restores all layer pixels, dimensions and selection.
+
+High-quality image resampling
+-----------------------------
+Resize image defaults to Catmull-Rom bicubic. Other choices are nearest neighbor,
+low-quality bilinear, scale-aware bilinear, smooth cubic B-spline, Lanczos 3,
+area reduction with bilinear enlargement, and adaptive Lanczos reduction/bicubic
+enlargement. Gamma correction uses the sRGB transfer curve; filtering always
+premultiplies alpha. Nearest and identity operations preserve exact channel bytes.
+Two separable passes share a bounded 32 MiB filtered-row cache and select axis
+order to reduce intermediate work. Cancellation is checked during row generation
+and accumulation. Every layer participates in one undoable geometry change.
+Exact external kernel and edge-policy equivalence remains an acceptance task.
+
+Reproducible benchmark:
+    cargo run --locked --release --example resample_performance -- 2048
+On the current Linux host, 2048-square to 1024-square gamma-corrected resizing took
+about 120 ms with bicubic and 144 ms with Lanczos. These are CPU kernel timings,
+not UI latency guarantees. The example also measures cancellation after 20 ms.
