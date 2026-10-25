@@ -116,6 +116,7 @@ independent tasks; do not silently reduce the required scope.
 [x] Color-based selection with tolerance, connected/global modes and active/merged sampling.
 [x] Freehand lasso with closing preview, selection combination and Escape cancellation.
 [x] Replace/add/subtract/intersect/exclusive-or selection combination and inversion.
+[x] Crop irregular selections with transparent excluded pixels on every layer and one-step undo.
 [x] Cut/Delete deselection with atomic pixel-and-selection undo and clipboard failure guards.
 [x] Explicit primary/secondary selected-area fill with cancellable background publication.
 [x] Polygon-list JSON selection clipboard with five combination modes and native round-trip/inversion fixtures.

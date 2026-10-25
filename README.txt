@@ -359,7 +359,7 @@ An empty result remains explicitly empty, so drawing, fill, delete and move cann
 affect the whole image accidentally. Combined selections use a translucent blue
 overlay that is not exported. Mask buffers are shared and cropped to their bounds;
 retained history masks count toward the 128 MiB budget. Undo/cancel, clipboard and
-clipped movement preserve mask geometry. Crop still uses rectangular bounds.
+clipped movement preserve mask geometry. Crop uses rectangular bounds and erases pixels outside the selection mask.
 
 Polygon selection validation: 108 Rust tests pass. Polygon input accepts 3–4096
 vertices, supports concave and self-crossing paths with an even-odd fill rule, and
@@ -599,7 +599,8 @@ Cropping now runs in the cancellable geometry worker. It copies the current
 selection into the worker snapshot, checks cancellation between rows and layers,
 and publishes one undoable edit only after every layer is complete. Undo restores
 the original dimensions and selection. Existing crop semantics are unchanged:
-masked selections crop to their rectangular bounds.
+masked selections crop to their rectangular bounds and erase excluded pixels on
+every layer, including hidden layers.
 Validation: 150 Rust tests and strict Clippy pass, including selected-region
 publication, undo restoration and preservation of pre-cancelled documents.
 
@@ -1508,3 +1509,7 @@ locks corner scaling; Shift constrains movement to one axis and snaps rotation t
 15-degree steps. Numeric controls and handles share coalesced cancellable mask
 previews. Apply records one selection-only undo step; image pixels and the saved
 image revision are unchanged. Escape restores the original boundary.
+
+Masked cropping preserves layer properties and original selected RGBA while
+clearing excluded pixels to transparent black. Full-canvas ellipses still remove
+their outside corners. Undo restores all layer pixels, dimensions and selection.

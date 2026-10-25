@@ -398,7 +398,9 @@ impl Document {
             || (rect.x == 0
                 && rect.y == 0
                 && rect.width == self.width
-                && rect.height == self.height)
+                && rect.height == self.height
+                && rect.mask.is_none()
+                && rect.ellipse.is_none())
         {
             return Ok(false);
         }
@@ -415,7 +417,17 @@ impl Document {
                         return None;
                     }
                     let start = y as usize * width + rect.x as usize;
-                    pixels.extend_from_slice(&source[start..start + rect.width as usize]);
+                    if rect.mask.is_none() && rect.ellipse.is_none() {
+                        pixels.extend_from_slice(&source[start..start + rect.width as usize]);
+                    } else {
+                        pixels.extend((0..rect.width as usize).map(|x| {
+                            if rect.contains(rect.x as usize + x, y as usize) {
+                                source[start + x]
+                            } else {
+                                [0; 4]
+                            }
+                        }));
+                    }
                 }
                 Some(pixels)
             },

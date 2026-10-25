@@ -194,3 +194,35 @@ fn cancelled_pixel_deletion_preserves_selection_and_pixels() {
     assert!(!doc.can_undo());
     assert!(!doc.dirty());
 }
+
+#[test]
+fn elliptical_crop_erases_pixels_outside_mask_on_every_layer() {
+    for full_canvas in [false, true] {
+        let mut doc = Document::new(7, 7, [12, 34, 56, 255]).unwrap();
+        doc.add_layer(true);
+        doc.set_visibility(1, false);
+        let selection = if full_canvas {
+            Selection::elliptical(0, 0, 7, 7)
+        } else {
+            Selection::elliptical(1, 1, 5, 5)
+        };
+        doc.set_selection(Some(selection.clone()));
+        let before = doc.layers().to_vec();
+        let expected = doc.copy_pixels(false).2;
+        let count = doc.history().count();
+        assert!(doc.crop_to_selection());
+        assert_eq!((doc.width, doc.height), (selection.width, selection.height));
+        assert_eq!(doc.history().count(), count + 1);
+        for layer in doc.layers() {
+            assert_eq!(layer.pixels(), expected);
+            assert_eq!(layer.pixels()[0], [0; 4]);
+            assert_eq!(layer.pixels()[expected.len() / 2], [12, 34, 56, 255]);
+        }
+        assert!(!doc.layers()[1].visible);
+        assert!(doc.selection().is_none());
+        assert!(doc.undo());
+        assert_eq!((doc.width, doc.height), (7, 7));
+        assert!(doc.layers() == before);
+        assert_eq!(doc.selection(), Some(selection));
+    }
+}
