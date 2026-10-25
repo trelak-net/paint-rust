@@ -1466,3 +1466,12 @@ RGBA before replacing them with transparent white. Both deselect on successful
 publication. Undo restores the pixels and boundary together, including a
 selection-only history entry when the pixels already match the cleared value.
 Clipboard failures and cancellation preserve the original document.
+
+Batch session recovery
+----------------------
+Recovery can open all discovered snapshots sequentially as separate unsaved tabs.
+It preserves existing documents and adopts each successful recovery copy until a
+replacement snapshot or explicit save is safe. Corrupt copies remain on disk and
+in the recovery list while other candidates continue. Cancellation stops the
+queue; summary status reports restored and failed counts. Original tab ordering,
+file destinations and viewport metadata remain outside the snapshot format.

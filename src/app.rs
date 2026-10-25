@@ -10,6 +10,7 @@ mod lasso;
 mod panels;
 mod paste;
 mod preferences;
+mod recovery_batch;
 mod render_controls;
 mod rulers;
 mod selection_transform;
@@ -185,6 +186,7 @@ pub struct Editor {
     recovery: Option<paint_rust::recovery::Recovery>,
     recoverable: Vec<paint_rust::recovery::Candidate>,
     recovery_prompt: bool,
+    recovery_batch: Option<recovery_batch::Batch>,
 }
 
 impl Editor {
@@ -337,6 +339,7 @@ impl Editor {
             recovery: None,
             recoverable: Vec::new(),
             recovery_prompt: false,
+            recovery_batch: None,
         }
     }
 
@@ -2817,12 +2820,22 @@ impl Editor {
         }
         if self.recovery_prompt {
             let mut chosen = None;
+            let mut recover_all = false;
             egui::Window::new("Recover unsaved work")
                 .collapsible(false)
                 .resizable(false)
                 .anchor(egui::Align2::CENTER_CENTER, Vec2::ZERO)
                 .show(ctx, |ui| {
+                    if self.file_job.is_some() {
+                        ui.disable();
+                    }
                     ui.label("An earlier session left unsaved image data.");
+                    recover_all = ui
+                        .add_enabled(
+                            !self.recoverable.is_empty(),
+                            egui::Button::new("Recover all into separate tabs"),
+                        )
+                        .clicked();
                     egui::ScrollArea::vertical()
                         .max_height(300.0)
                         .show(ui, |ui| {
@@ -2847,15 +2860,12 @@ impl Editor {
                         self.recovery_prompt = false;
                     }
                 });
+            if recover_all {
+                self.start_recovery_batch();
+            }
             if let Some((index, recover)) = chosen {
                 if recover {
-                    let path = self.recoverable[index].path.clone();
-                    self.start_cancellable_file_job("recover project", move |cancel| {
-                        Ok(Outcome::Recovered(
-                            Box::new(files::open_cancellable(&path, cancel)?),
-                            index,
-                        ))
-                    });
+                    self.recover_candidate(index);
                 } else {
                     let candidate = self.recoverable.remove(index);
                     if let Err(error) = candidate.discard() {
@@ -3637,6 +3647,51 @@ impl eframe::App for Editor {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn recover_all_keeps_existing_work_and_skips_corrupt_snapshots() {
+        use paint_rust::recovery::Recovery;
+        let ctx = egui::Context::default();
+        let root = tempfile::tempdir().unwrap();
+        for color in [[10, 20, 30, 255], [40, 50, 60, 128], [70, 80, 90, 0]] {
+            let mut recovery = Recovery::new(root.path()).unwrap();
+            let mut document = Document::new(3, 2, color).unwrap();
+            document.mark_unsaved();
+            recovery.schedule(&document, || {}).unwrap();
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+            while recovery.busy() {
+                recovery.poll().unwrap();
+                assert!(std::time::Instant::now() < deadline);
+                std::thread::sleep(std::time::Duration::from_millis(2));
+            }
+        }
+        let mut editor = Editor::blank(&ctx);
+        editor.document = Document::new(2, 2, [255; 4]).unwrap();
+        editor.document.mark_unsaved();
+        let existing = editor.active_document_id;
+        editor.recovery = Some(Recovery::new(root.path()).unwrap());
+        editor.recoverable = Recovery::discover(root.path()).unwrap();
+        assert_eq!(editor.recoverable.len(), 3);
+        let broken = editor.recoverable[1].path.clone();
+        std::fs::write(&broken, b"invalid recovery snapshot").unwrap();
+        editor.start_recovery_batch();
+        wait_for_files(&mut editor, &ctx);
+        assert!(editor.recovery_batch.is_none());
+        assert_eq!(editor.documents.len(), 2);
+        assert_eq!(editor.recoverable.len(), 1);
+        assert_eq!(editor.recoverable[0].path, broken);
+        assert!(broken.exists());
+        assert!(editor.recovery_prompt);
+        assert!(editor.status.contains("Recovered 2 document(s); 1 failed"));
+        assert!(editor.document.dirty());
+        assert!(editor.path.is_none());
+        editor.activate_document(existing);
+        assert_eq!(editor.active_document_id, existing);
+        assert_eq!(editor.document.pixels(), &[[255; 4]; 4]);
+        for _ in 0..3 {
+            assert!(editor.document.dirty());
+            editor.cycle_document(1);
+        }
+    }
     #[test]
     fn zoom_commands_preserve_view_center_and_never_edit_document() {
         let ctx = egui::Context::default();

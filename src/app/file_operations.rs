@@ -401,6 +401,18 @@ impl Editor {
         };
         let operation = job.operation;
         self.file_job = None;
+        if operation == "recover project"
+            && let Some(batch) = &mut self.recovery_batch
+        {
+            match &result {
+                Ok(_) => batch.restored += 1,
+                Err(error) if error == files::CANCELLED => {
+                    batch.pending.clear();
+                    batch.cancelled = true;
+                }
+                Err(error) => batch.errors.push(error.clone()),
+            }
+        }
         match result {
             Ok(Outcome::ClipboardImage(image)) => self.receive_paste_image(image),
             Ok(Outcome::SelectionCopied) => {
@@ -602,6 +614,9 @@ impl Editor {
                     self.pending = Some(action);
                 }
             }
+        }
+        if operation == "recover project" {
+            self.advance_recovery_batch();
         }
     }
 
