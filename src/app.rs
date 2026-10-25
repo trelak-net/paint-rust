@@ -305,16 +305,19 @@ impl Editor {
 
     fn save(&mut self, save_as: bool) -> bool {
         self.finish_stroke();
-        let existing = self.path.as_ref().filter(|p| {
-            p.extension()
-                .is_some_and(|e| e.eq_ignore_ascii_case("prust") || e.eq_ignore_ascii_case("pdn"))
-        });
+        let existing = self.path.as_ref();
         let path = if !save_as && existing.is_some() {
             existing.cloned()
         } else {
             rfd::FileDialog::new()
                 .add_filter("Paint Rust project", &["prust"])
                 .add_filter("PDN layered image", &["pdn"])
+                .add_filter("PNG image", &["png"])
+                .add_filter("JPEG image", &["jpg", "jpeg"])
+                .add_filter("BMP image", &["bmp"])
+                .add_filter("WebP image", &["webp"])
+                .add_filter("TIFF image", &["tif", "tiff"])
+                .add_filter("TGA image", &["tga"])
                 .set_file_name(
                     self.path
                         .as_ref()
@@ -335,14 +338,6 @@ impl Editor {
         let Some(path) = path else {
             return false;
         };
-        if !path
-            .extension()
-            .is_some_and(|e| e.eq_ignore_ascii_case("prust") || e.eq_ignore_ascii_case("pdn"))
-        {
-            self.status =
-                "Could not save project: choose a filename ending in .prust or .pdn".into();
-            return false;
-        }
         self.save_to_path(path)
     }
 
@@ -3054,6 +3049,96 @@ mod tests {
         assert!(editor.document.pixels().contains(&[255, 0, 0, 255]));
         assert!(editor.document.undo());
         assert!(editor.document.pixels().iter().all(|p| *p == [255; 4]));
+    }
+
+    #[test]
+    fn raster_save_matches_decoded_file_and_keeps_layered_undo() {
+        let ctx = egui::Context::default();
+        let directory = tempfile::tempdir().unwrap();
+        for format in files::RasterFormat::ALL {
+            let mut editor = Editor::blank(&ctx);
+            editor.document = Document::new(4, 3, [100, 150, 200, 128]).unwrap();
+            editor.document.add_layer(true);
+            editor
+                .document
+                .set_layer_style("Upper".into(), 180, BlendMode::Screen);
+            let before = editor.document.layers().to_vec();
+            let path = directory
+                .path()
+                .join(format!("saved.{}", format.extension()));
+            let bytes = files::encode_raster_bytes(
+                &editor.document.composite(),
+                (4, 3),
+                files::RasterOptions::new(format),
+                &std::sync::atomic::AtomicBool::new(false),
+            )
+            .unwrap();
+            assert!(editor.save_raster_encoded(path.clone(), format, std::sync::Arc::new(bytes)));
+            wait_for_files(&mut editor, &ctx);
+            assert_eq!(editor.path, Some(path.clone()));
+            assert_eq!(editor.document.layers().len(), 1);
+            assert_eq!(
+                editor.document.pixels(),
+                files::open(&path).unwrap().pixels()
+            );
+            assert!(!editor.document.dirty());
+            assert!(editor.document.undo());
+            assert!(editor.document.layers() == before);
+            assert!(editor.document.dirty());
+            assert!(editor.document.redo());
+            assert!(!editor.document.dirty());
+        }
+    }
+
+    #[test]
+    fn raster_save_cancel_or_failure_preserves_document_and_pending_close() {
+        let ctx = egui::Context::default();
+        let directory = tempfile::tempdir().unwrap();
+        let mut editor = Editor::blank(&ctx);
+        editor.document = Document::new(4, 3, [255; 4]).unwrap();
+        editor.document.invert();
+        let path = directory.path().join("image.png");
+        editor.path = Some(path.clone());
+        let before = editor.document.layers().to_vec();
+        assert!(editor.save(false));
+        assert!(editor.export_dialog.is_some());
+        editor.after_save = Some(Action::Close);
+        frame(
+            &mut editor,
+            &ctx,
+            vec![egui::Event::Key {
+                key: Key::Escape,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers::NONE,
+            }],
+        );
+        assert!(editor.export_dialog.is_none());
+        assert!(matches!(editor.pending, Some(Action::Close)));
+        assert!(!editor.allow_close);
+        assert!(!path.exists());
+        assert!(editor.document.layers() == before);
+        let bytes = files::encode_raster_bytes(
+            &editor.document.composite(),
+            (4, 3),
+            files::RasterOptions::new(files::RasterFormat::Png),
+            &std::sync::atomic::AtomicBool::new(false),
+        )
+        .unwrap();
+        editor.pending = None;
+        editor.after_save = Some(Action::Close);
+        assert!(editor.save_raster_encoded(
+            directory.path().join("missing/image.png"),
+            files::RasterFormat::Png,
+            std::sync::Arc::new(bytes)
+        ));
+        wait_for_files(&mut editor, &ctx);
+        assert!(editor.document.dirty());
+        assert!(editor.document.layers() == before);
+        assert_eq!(editor.path, Some(path));
+        assert!(matches!(editor.pending, Some(Action::Close)));
+        assert!(!editor.allow_close);
     }
 
     fn wait_for_files(editor: &mut Editor, ctx: &egui::Context) {

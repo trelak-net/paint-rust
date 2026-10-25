@@ -112,8 +112,9 @@ UI-03: Full keyboard and native screen-reader workflow. Status: final-stage task
 
 FILE-01: Reopen each exported format and verify dimensions, alpha and metadata
 policy. Compare the decoded preview with the actual saved bytes. Status: partial;
-PNG/JPEG/BMP/lossless WebP tests and decoded previews exist; further formats/options
-and unified Save routing remain pending.
+PNG/JPEG/BMP/lossless WebP/TIFF/TGA tests and decoded previews exist. Unified
+Save routing, undoable flattening and cancelled/failed-save close guards are
+tested. Further codecs/options and comprehensive native dialog checks remain.
 FILE-02: Verify EXIF orientation and ICC conversion exactly once, including
 round-trips through project/recovery/PDN. Status: partial; all eight JPEG EXIF
 orientations, invalid tags, cancellation and PRUST/PNG round-trips are tested.

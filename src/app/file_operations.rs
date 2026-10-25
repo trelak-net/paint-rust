@@ -17,6 +17,7 @@ pub(super) enum Outcome {
     Recovered(Box<Document>, usize),
     Imported(Vec<[u8; 4]>, u32, u32, PathBuf),
     Saved(PathBuf),
+    RasterSaved(PathBuf, Box<Document>),
     Exported(PathBuf),
     Transformed(Box<Document>, String),
     Selection(Selection),
@@ -440,15 +441,24 @@ impl Editor {
                     "Selection updated".into()
                 };
             }
-            Ok(Outcome::Saved(path)) => {
-                self.document.mark_saved();
-                self.status = format!("Saved {}", path.display());
-                self.path = Some(path);
-                self.clear_recovery();
-                if let Some(action) = self.after_save.take() {
-                    self.perform(action, ctx);
+            Ok(Outcome::RasterSaved(path, document)) => {
+                match self
+                    .document
+                    .apply_transformed(*document, "Save flattened raster")
+                {
+                    Ok(_) => {
+                        self.texture_dirty = true;
+                        self.complete_save(path, ctx);
+                    }
+                    Err(error) => {
+                        self.status = format!(
+                            "Image was written, but the document could not be updated: {error}"
+                        );
+                        self.pending = self.after_save.take();
+                    }
                 }
             }
+            Ok(Outcome::Saved(path)) => self.complete_save(path, ctx),
             Ok(Outcome::Exported(path)) => {
                 self.status = format!(
                     "Exported {} — save the project to preserve editable layers",
@@ -498,7 +508,44 @@ impl Editor {
         })
     }
 
+    fn complete_save(&mut self, path: PathBuf, ctx: &egui::Context) {
+        self.document.mark_saved();
+        self.status = format!("Saved {}", path.display());
+        self.path = Some(path);
+        self.clear_recovery();
+        if let Some(action) = self.after_save.take() {
+            self.perform(action, ctx);
+        }
+    }
+    pub(super) fn save_raster_encoded(
+        &mut self,
+        path: PathBuf,
+        format: files::RasterFormat,
+        bytes: std::sync::Arc<Vec<u8>>,
+    ) -> bool {
+        self.start_cancellable_file_job("save raster image", move |cancel| {
+            let document = files::decode_raster_bytes(&bytes, format, cancel)?;
+            files::save_encoded_raster(&bytes, &path, cancel)?;
+            Ok(Outcome::RasterSaved(path, Box::new(document)))
+        })
+    }
+
     pub(super) fn save_to_path(&mut self, path: PathBuf) -> bool {
+        if self.file_job.is_some() || self.export_dialog.is_some() {
+            return false;
+        }
+        if let Some(format) = files::RasterFormat::from_path(&path) {
+            self.begin_raster_save(path, format);
+            return true;
+        }
+        if !path
+            .extension()
+            .is_some_and(|e| e.eq_ignore_ascii_case("prust") || e.eq_ignore_ascii_case("pdn"))
+        {
+            self.status =
+                "Could not save: choose PRUST, PDN or a supported raster extension.".into();
+            return false;
+        }
         let snapshot = self.document.snapshot();
         self.start_cancellable_file_job("save project", move |cancel| {
             files::save_project_cancellable(&snapshot, &path, cancel)?;

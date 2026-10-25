@@ -1,6 +1,8 @@
 use super::*;
 
 pub(super) struct ExportDialog {
+    save_document: bool,
+    flatten_confirmed: bool,
     path: PathBuf,
     options: files::RasterOptions,
     preview: crate::raster_preview::RasterPreview,
@@ -10,6 +12,13 @@ pub(super) struct ExportDialog {
     dimensions: (u32, u32),
 }
 impl Editor {
+    pub(super) fn begin_raster_save(&mut self, path: PathBuf, format: files::RasterFormat) {
+        self.begin_export(path, format);
+        if let Some(dialog) = &mut self.export_dialog {
+            dialog.save_document = true;
+        }
+    }
+
     pub(super) fn begin_export(&mut self, path: PathBuf, format: files::RasterFormat) {
         self.finish_stroke();
         let options = files::RasterOptions {
@@ -22,6 +31,8 @@ impl Editor {
             options,
         );
         self.export_dialog = Some(ExportDialog {
+            save_document: false,
+            flatten_confirmed: false,
             path,
             options,
             preview,
@@ -59,8 +70,13 @@ impl Editor {
         let mut keep = true;
         let mut save = None;
         let mut open = true;
-        egui::Window::new(format!("Export {}",dialog.options.format.label())).collapsible(false).resizable(true).vscroll(true).max_height((ctx.content_rect().height()-80.0).max(180.0)).default_width(540.0).open(&mut open).show(ctx,|ui| {
+        egui::Window::new(format!("{} {}",if dialog.save_document {"Save"} else {"Export"},dialog.options.format.label())).collapsible(false).resizable(true).vscroll(true).max_height((ctx.content_rect().height()-80.0).max(180.0)).default_width(540.0).open(&mut open).show(ctx,|ui| {
             ui.add(egui::Label::new(dialog.path.display().to_string()).truncate()).on_hover_text(dialog.path.display().to_string());
+            if dialog.save_document {
+                ui.label("Saving as a raster replaces the current document with the flattened decoded image. You can undo this after saving.");
+                ui.small("Layers and metadata are not stored in this file. Use PRUST or PDN to keep an editable project. JPEG also loses transparency and image detail.");
+                ui.checkbox(&mut dialog.flatten_confirmed,"Save a flattened raster document");
+            }
             let mut changed=false;
             if dialog.options.format==files::RasterFormat::Jpeg {
                 changed |= ui.add(egui::Slider::new(&mut dialog.options.quality,1..=100).text("Quality")).changed();
@@ -83,7 +99,7 @@ impl Editor {
             } else if let Some(error)=&dialog.error { ui.colored_label(ui.visuals().error_fg_color,error); }
             else { ui.label("Encoding preview…"); ui.ctx().request_repaint_after(std::time::Duration::from_millis(100)); }
             ui.horizontal(|ui| {
-                if ui.add_enabled(dialog.preview.ready && dialog.encoded.is_some(),egui::Button::new("Save export")).clicked() {
+                if ui.add_enabled(dialog.preview.ready && dialog.encoded.is_some() && (!dialog.save_document || dialog.flatten_confirmed),egui::Button::new(if dialog.save_document {"Save image"} else {"Save export"})).clicked() {
                     save=dialog.encoded.take(); keep=false;
                 }
                 if ui.button("Cancel").clicked() { keep=false; }
@@ -95,12 +111,18 @@ impl Editor {
         if let Some(bytes) = save {
             self.export_options = dialog.options;
             let path = dialog.path.clone();
-            self.start_cancellable_file_job("export image", move |cancel| {
-                files::save_encoded_raster(&bytes, &path, cancel)?;
-                Ok(Outcome::Exported(path))
-            });
+            if dialog.save_document {
+                self.save_raster_encoded(path, dialog.options.format, bytes);
+            } else {
+                self.start_cancellable_file_job("export image", move |cancel| {
+                    files::save_encoded_raster(&bytes, &path, cancel)?;
+                    Ok(Outcome::Exported(path))
+                });
+            }
         } else if keep && open {
             self.export_dialog = Some(dialog);
+        } else if dialog.save_document {
+            self.pending = self.after_save.take();
         }
     }
 }

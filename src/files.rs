@@ -206,6 +206,24 @@ pub enum RasterFormat {
     WebP,
 }
 impl RasterFormat {
+    pub const ALL: [Self; 6] = [
+        Self::Png,
+        Self::Jpeg,
+        Self::Bmp,
+        Self::WebP,
+        Self::Tiff,
+        Self::Tga,
+    ];
+    pub fn from_path(path: &Path) -> Option<Self> {
+        let extension = path.extension()?;
+        Self::ALL.into_iter().find(|format| {
+            format
+                .extensions()
+                .iter()
+                .any(|candidate| extension.eq_ignore_ascii_case(candidate))
+        })
+    }
+
     pub fn extension(self) -> &'static str {
         match self {
             Self::Tiff => "tif",
@@ -274,6 +292,29 @@ pub fn encode_raster_bytes(
     encode_raster_options(pixels, size, &mut bytes, cancel, options)?;
     check_cancel(cancel)?;
     Ok(bytes)
+}
+
+pub fn decode_raster_bytes(
+    bytes: &[u8],
+    format: RasterFormat,
+    cancel: &AtomicBool,
+) -> Result<Document, String> {
+    check_cancel(cancel)?;
+    let mut reader = ImageReader::with_format(Cursor::new(bytes), format.image_format());
+    let mut limits = image::Limits::default();
+    limits.max_alloc = Some(256 * 1024 * 1024);
+    limits.max_image_width = Some(16384);
+    limits.max_image_height = Some(16384);
+    reader.limits(limits);
+    let decoder = reader.into_decoder().map_err(|e| e.to_string())?;
+    let (width, height) = decoder.dimensions();
+    Document::validate_size(width, height)?;
+    let image = image::DynamicImage::from_decoder(decoder)
+        .map_err(|e| e.to_string())?
+        .to_rgba8();
+    let pixels = collect_pixels(&image, cancel)?;
+    check_cancel(cancel)?;
+    Document::from_pixels(width, height, pixels)
 }
 
 pub fn save_encoded_raster(bytes: &[u8], path: &Path, cancel: &AtomicBool) -> Result<(), String> {

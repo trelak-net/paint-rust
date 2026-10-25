@@ -4,8 +4,8 @@ File.Open	Open...	supported	Ctrl+O	Ctrl+O	Available; see workflow cases
 File.OpenRecent	Open Recent	missing	-	-	Not implemented
 File.Acquire	Acquire	missing	-	-	Not implemented
 File.FromScannerOrCamera	FromScannerOrCamera	missing	-	-	Not implemented
-File.Save	Save	partial	Ctrl+S	Ctrl+S	Layered project save; raster formats currently use Export instead of unified Save routing
-File.SaveAs	Save As...	partial	Ctrl+Shift+S	Ctrl+Shift+S	Layered project save; raster formats currently use Export instead of unified Save routing
+File.Save	Save	partial	Ctrl+S	Ctrl+S	Project/raster save routing, decoded preview and confirmed undoable flattening; remaining codecs pending
+File.SaveAs	Save As...	partial	Ctrl+Shift+S	Ctrl+Shift+S	Project/raster save routing, decoded preview and confirmed undoable flattening; remaining codecs pending
 File.SaveAll	Save All	missing	Ctrl+Alt+S	-	Not implemented
 File.Print	Print...	missing	Ctrl+P	-	Not implemented
 File.Close	Close	supported	Ctrl+W	Ctrl+W	Available; see workflow cases

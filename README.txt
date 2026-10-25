@@ -989,3 +989,16 @@ explicitly; named variable-font instances, bitmap fonts and Type 1 fonts are
 excluded. Manual font-file selection remains available when Fontconfig is absent.
 A native catalog probe found 321 outline faces and loaded the first twenty. Run
 that environment-dependent check with cargo test --test system_fonts -- --ignored.
+
+Unified Save and Save As
+-----------------------
+Save preserves the current filename for both layered projects and supported
+raster formats. Save As offers PRUST, PDN, PNG, JPEG, BMP, WebP, TIFF and TGA.
+Raster saves show the encoded preview and require confirmation of flattening.
+After successful atomic output, the active document becomes the decoded raster
+and is marked saved. One undo restores the previous layer stack and marks it
+unsaved again. Export still writes a copy without replacing the document.
+Cancel or failure preserves the document and its previous path; a pending close
+does not proceed. Tests cover all six raster formats, decoded pixel identity,
+undo/redo, cancellation and failed writes. Raster files omit document metadata;
+retain a layered project separately when that information is required.
