@@ -509,3 +509,54 @@ fn variation_settings_are_bounded_and_invalid_axes_leave_pixels_unchanged() {
     ));
     assert_eq!(pixels, before);
 }
+
+#[test]
+fn outline_fallback_renders_missing_glyphs_and_can_be_disabled() {
+    use paint_rust::text::{TextLayout, fallback::FontFace, render_with_fallback_cancellable};
+    use std::sync::atomic::AtomicBool;
+    let definitions = eframe::egui::FontDefinitions::default();
+    let primary = font();
+    let emoji =
+        ab_glyph::FontArc::try_from_vec(definitions.font_data["NotoEmoji-Regular"].font.to_vec())
+            .unwrap();
+    let fallbacks = [FontFace {
+        font: emoji,
+        index: 0,
+    }];
+    let cancel = AtomicBool::new(false);
+    let render = |fallbacks: &[FontFace], automatic_fallback| {
+        let mut pixels = vec![[0; 4]; 128 * 64];
+        assert!(render_with_fallback_cancellable(
+            &mut pixels,
+            128,
+            64,
+            None,
+            TextStyle {
+                layout: TextLayout {
+                    automatic_fallback,
+                    ..Default::default()
+                },
+                font: &primary,
+                text: "A😀B",
+                origin: (4.0, 4.0),
+                size: 32.0,
+                color: [40, 80, 120, 255],
+            },
+            fallbacks,
+            &cancel
+        ));
+        pixels
+    };
+    let missing = render(&[], true);
+    let fallback = render(&fallbacks, true);
+    assert_ne!(missing, fallback);
+    assert!(fallback.iter().any(|p| p[3] > 0));
+    assert_eq!(render(&fallbacks, false), missing);
+    // The supported leading character keeps its original face and position.
+    for y in 0..64 {
+        assert_eq!(
+            &missing[y * 128..y * 128 + 20],
+            &fallback[y * 128..y * 128 + 20]
+        );
+    }
+}

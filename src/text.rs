@@ -1,3 +1,4 @@
+pub mod fallback;
 pub mod shaping;
 pub mod variations;
 use crate::document::{Pixel, Selection, blend_layer};
@@ -22,6 +23,7 @@ impl Alignment {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TextLayout {
+    pub automatic_fallback: bool,
     pub blend_mode: crate::document::BlendMode,
     pub font_index: u32,
     pub font_axes: variations::Settings,
@@ -35,6 +37,7 @@ pub struct TextLayout {
 impl Default for TextLayout {
     fn default() -> Self {
         Self {
+            automatic_fallback: true,
             blend_mode: Default::default(),
             font_index: 0,
             font_axes: Default::default(),
@@ -82,6 +85,18 @@ pub fn render_cancellable(
     style: TextStyle<'_>,
     cancel: &AtomicBool,
 ) -> bool {
+    render_with_fallback_cancellable(pixels, width, height, selection, style, &[], cancel)
+}
+
+pub fn render_with_fallback_cancellable(
+    pixels: &mut [Pixel],
+    width: u32,
+    height: u32,
+    selection: Option<Selection>,
+    style: TextStyle<'_>,
+    fallbacks: &[fallback::FontFace],
+    cancel: &AtomicBool,
+) -> bool {
     if cancel.load(Ordering::Relaxed)
         || !style.size.is_finite()
         || !(1.0..=512.0).contains(&style.size)
@@ -112,15 +127,34 @@ pub fn render_cancellable(
     if !style.layout.font_axes.apply(&mut raster_font, &mut face) {
         return false;
     }
+    let prepared: Vec<_> = fallbacks
+        .iter()
+        .take(if style.layout.automatic_fallback {
+            32
+        } else {
+            0
+        })
+        .filter_map(|font| {
+            Some(fallback::PreparedFont {
+                face: rustybuzz::Face::from_slice(font.font.font_data(), font.index)?,
+                raster: ab_glyph::FontRef::try_from_slice_and_index(
+                    font.font.font_data(),
+                    font.index,
+                )
+                .ok()?,
+            })
+        })
+        .collect();
     let font = raster_font.as_scaled(style.size);
     let mut lines = Vec::new();
     for line in style.text.split('\n') {
-        let Some(line) = shaping::line(
+        let Some(line) = shaping::line_with_fallback(
             &face,
             &raster_font,
             line,
             style.size,
             style.layout.letter_spacing,
+            &prepared,
             cancel,
         ) else {
             return false;
@@ -138,13 +172,19 @@ pub fn render_cancellable(
             style.origin.0 - line.width * factor,
             style.origin.1 + font.ascent() + line_index as f32 * line_height,
         );
-        for shaped in &line.glyphs {
+        for (shaped, &font_index) in line.glyphs.iter().zip(&line.font_indices) {
             if cancel.load(Ordering::Relaxed) {
                 return false;
             }
             let caret = point(origin.x + shaped.position.x, origin.y + shaped.position.y);
             let id = shaped.id;
-            if let Some(glyph) = font.outline_glyph(id.with_scale_and_position(style.size, caret)) {
+            let glyph = id.with_scale_and_position(shaped.scale, caret);
+            let outline = if font_index == 0 {
+                font.outline_glyph(glyph)
+            } else {
+                prepared[font_index - 1].raster.outline_glyph(glyph)
+            };
+            if let Some(glyph) = outline {
                 let bounds = glyph.px_bounds();
                 if bounds.max.x > 0.0
                     && bounds.max.y > 0.0

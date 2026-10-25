@@ -1,6 +1,6 @@
 {
   "target": "x86_64-unknown-linux-gnu",
-  "cargo_lock_sha256": "020b5df570366476eb6d1b617dc9ab0559a96833513306ba4780984a0c6a4adc",
+  "cargo_lock_sha256": "282cb43eef14d47e6ff36a933806a8edb467a0f3605702bf914d2312e77f967d",
   "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1",
   "rust_library_notice_sha256": "5647be074c8edf7339fd863055923a8fc80bc5610a8d4661ec3b767b9d392c27",
   "packages": [

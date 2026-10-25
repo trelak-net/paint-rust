@@ -2492,6 +2492,8 @@ impl Editor {
                                             .pick_file();
                                     }
                                 });
+                                let fallback_changed = ui.checkbox(&mut dialog.layout.automatic_fallback, "Use fallback fonts for missing characters").changed();
+                                ui.small("Fallback uses installed outline fonts. Color emoji are not supported.");
                                 egui::CollapsingHeader::new("Installed fonts").show(ui, |ui| {
                                     discover_fonts = ui
                                         .add_enabled(
@@ -2541,7 +2543,7 @@ impl Editor {
                                         ));
                                     }
                                 });
-                                ui.small("Choose a font containing all characters in your text.");
+                                ui.small("If a character is still missing, install an outline font for its language.");
                                 let label = ui.label("Text content");
                                 let response = ui
                                     .add(
@@ -2554,7 +2556,7 @@ impl Editor {
                                     response.request_focus();
                                     dialog.focus = false;
                                 }
-                                let mut changed = response.changed();
+                                let mut changed = response.changed() || fallback_changed;
                                 let axes = paint_rust::text::variations::axes(
                                     &dialog.font,
                                     dialog.layout.font_index,

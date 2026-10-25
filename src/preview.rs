@@ -70,6 +70,7 @@ impl EffectPreview {
         let (requests, receive) = mpsc::channel::<Request>();
         let (send, results) = mpsc::channel();
         std::thread::spawn(move || {
+            let mut fallback = paint_rust::text::fallback::Resolver::default();
             while let Ok(mut request) = receive.recv() {
                 while let Ok(newest) = receive.try_recv() {
                     request = newest;
@@ -87,8 +88,18 @@ impl EffectPreview {
                         if request.cancel.load(Ordering::Relaxed) {
                             continue;
                         }
+                        if text.layout.automatic_fallback
+                            && !fallback.prepare(
+                                &text.font,
+                                text.layout.font_index,
+                                &text.content,
+                                &request.cancel,
+                            )
+                        {
+                            continue;
+                        }
                         let mut pixels = source.as_ref().clone();
-                        paint_rust::text::render_cancellable(
+                        paint_rust::text::render_with_fallback_cancellable(
                             &mut pixels,
                             width,
                             height,
@@ -101,6 +112,7 @@ impl EffectPreview {
                                 size: text.size,
                                 color: text.color,
                             },
+                            fallback.fonts(),
                             &request.cancel,
                         )
                         .then_some(pixels)

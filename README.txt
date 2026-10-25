@@ -1583,8 +1583,23 @@ nonzero spacing disables optional Latin ligatures. Collection face indices are
 preserved through font selection, cached reuse, shaping and outline rendering.
 Underline and strikeout use font metrics with a fallback for absent metrics.
 Alignment, selection clipping, antialiasing, cancellation and one-step undo still
-apply. Automatic cross-font fallback remains pending;
-choose a font covering the characters required by the document.
+apply. Automatic outline-font fallback is enabled by default and can be disabled
+in the text dialog. The preview worker queries Fontconfig only when the selected
+font cannot shape a required grapheme. It prefers a single face per script run,
+otherwise keeps extended grapheme clusters intact and coalesces adjacent ranges.
+Combining sequences are checked after shaping, so composed glyphs do not require
+a separate cmap entry for every mark. Supported primary-font text is retained.
+The per-preview cache holds at most 32 faces and 64 MiB of font data, checks at
+most 128 ordered candidates and reads at most 128 MiB of candidates per request.
+The existing 16 MiB per-font limit still applies. Missing Fontconfig or unavailable
+outline fonts leave missing glyphs in the selected font. Install the necessary
+language fonts when this occurs. Color-font painting, automatic style/axis matching
+for fallback faces, and fallback-driven line-height expansion remain pending.
+Fallback fonts use their default axes and share the primary font baseline and
+em scale, avoiding script-dependent size changes from different ascent metrics.
+Unicode format controls and whitespace never paint missing-glyph boxes.
+Multilingual fallback probe:
+    cargo run --locked --example text_fallback -- /tmp/fallback.png
 Typography probe with a locally installed font (the font is not bundled):
     cargo run --locked --example text_shaping -- /path/to/font.ttf /tmp/text.png
 Tests cover composed/decomposed accents, bidi override ordering, ligatures,

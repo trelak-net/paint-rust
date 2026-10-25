@@ -2840,6 +2840,7 @@ dependencies = [
  "tiff",
  "unicode-bidi",
  "unicode-script",
+ "unicode-segmentation",
  "winit",
  "zune-core",
  "zune-jpegxl",

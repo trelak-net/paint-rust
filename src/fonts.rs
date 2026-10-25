@@ -16,7 +16,7 @@ impl InstalledFont {
         format!("{} — {}", self.family, self.style)
     }
 }
-fn parse_catalog(text: &str) -> Result<Vec<InstalledFont>, String> {
+fn parse_catalog_ordered(text: &str) -> Result<Vec<InstalledFont>, String> {
     if text.len() > 4 * 1024 * 1024 {
         return Err("System font catalog exceeds 4 MiB.".into());
     }
@@ -53,14 +53,41 @@ fn parse_catalog(text: &str) -> Result<Vec<InstalledFont>, String> {
             return Err("System font catalog exceeds 16384 faces.".into());
         }
     }
+    let mut seen = std::collections::HashSet::new();
+    fonts.retain(|font| seen.insert((font.path.clone(), font.index)));
+    Ok(fonts)
+}
+
+fn parse_catalog(text: &str) -> Result<Vec<InstalledFont>, String> {
+    let mut fonts = parse_catalog_ordered(text)?;
     fonts.sort_by(|a, b| {
         (&a.family, &a.style, &a.path, a.index).cmp(&(&b.family, &b.style, &b.path, b.index))
     });
-    fonts.dedup();
     Ok(fonts)
 }
 
 pub fn installed_cancellable(cancel: &AtomicBool) -> Result<Vec<InstalledFont>, String> {
+    parse_catalog(&query("fc-list", &[], cancel)?)
+}
+
+pub(crate) fn fallback_candidates(
+    family: &str,
+    cancel: &AtomicBool,
+) -> Result<Vec<InstalledFont>, String> {
+    let mut pattern = String::new();
+    for ch in family.chars().filter(|ch| !ch.is_control()).take(512) {
+        if matches!(ch, '\\' | ':' | ',' | '=') {
+            pattern.push('\\');
+        }
+        pattern.push(ch);
+    }
+    if pattern.is_empty() {
+        pattern.push_str("sans-serif");
+    }
+    parse_catalog_ordered(&query("fc-match", &["-s", &pattern], cancel)?)
+}
+
+fn query(program: &str, arguments: &[&str], cancel: &AtomicBool) -> Result<String, String> {
     use std::{
         io::Read,
         process::{Command, Stdio},
@@ -69,7 +96,8 @@ pub fn installed_cancellable(cancel: &AtomicBool) -> Result<Vec<InstalledFont>, 
     if cancel.load(Ordering::Relaxed) {
         return Err(crate::files::CANCELLED.into());
     }
-    let mut child = Command::new("fc-list")
+    let mut child = Command::new(program)
+        .args(arguments)
         .args(["--format", "%{family[0]}\t%{style[0]}\t%{file}\t%{index}\n"])
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
@@ -116,7 +144,7 @@ pub fn installed_cancellable(cancel: &AtomicBool) -> Result<Vec<InstalledFont>, 
     if cancel.load(Ordering::Relaxed) {
         return Err(crate::files::CANCELLED.into());
     }
-    parse_catalog(std::str::from_utf8(&bytes).map_err(|_| "Font catalog is not valid UTF-8")?)
+    String::from_utf8(bytes).map_err(|_| "Font catalog is not valid UTF-8".into())
 }
 
 #[cfg(test)]

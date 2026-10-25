@@ -35,6 +35,7 @@ zune-jpegxl = { version = "0.5.2", default-features = false, features = ["std"] 
 zune-core = "0.5.1"
 dav1d = "0.11"
 mp4parse = "0.17"
+unicode-segmentation = "1"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 winit = { version = "0.30", default-features = false, features = ["wayland-csd-adwaita"] }
