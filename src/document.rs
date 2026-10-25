@@ -119,6 +119,9 @@ impl Layer {
     pub fn pixels(&self) -> &[Pixel] {
         &self.pixels
     }
+    pub fn shared_pixels(&self) -> Arc<Vec<Pixel>> {
+        self.pixels.clone()
+    }
 }
 
 #[derive(Clone)]

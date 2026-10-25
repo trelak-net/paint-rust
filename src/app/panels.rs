@@ -208,6 +208,7 @@ impl Editor {
             self.start_document_edit(DocumentEdit::Flatten);
         }
         ui.separator();
+        self.layer_thumbnails.update(ui.ctx(), &self.document);
         let mut reorder = None;
         egui::ScrollArea::vertical()
             .id_salt("layer-list")
@@ -235,9 +236,15 @@ impl Editor {
                         let response = ui
                             .push_id(index, |ui| {
                                 ui.add(
-                                    egui::Button::new(name)
-                                        .selected(index == self.document.active_layer())
-                                        .sense(Sense::click_and_drag()),
+                                    egui::Button::image_and_text(
+                                        egui::Image::new((
+                                            self.layer_thumbnails.texture(index),
+                                            egui::vec2(40.0, 40.0),
+                                        )),
+                                        name,
+                                    )
+                                    .selected(index == self.document.active_layer())
+                                    .sense(Sense::click_and_drag()),
                                 )
                                 .on_hover_text(
                                     "Drag onto another layer to change the stacking order",

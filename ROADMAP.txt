@@ -108,7 +108,8 @@ independent tasks; do not silently reduce the required scope.
 [ ] Font selection, text alignment and complete text controls.
 7. Layers and history
 [x] Drag reordering with selected-layer identity and one-step undo.
-[ ] Layer thumbnails and merge down.
+[x] Cached layer thumbnails with transparency checkerboard.
+[ ] Merge down.
 [ ] Complete blend modes and layer transformations.
 [ ] History action grouping and full state restoration audit.
 8. Adjustments and effects

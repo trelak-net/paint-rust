@@ -811,3 +811,6 @@ Malformed or oversized palette files are rejected before replacing existing colo
 
 Drag a layer name onto another layer to move it to that position in the stack.
 The selected layer stays selected, and Undo restores the previous order.
+
+Layer thumbnails show the raw layer content over a transparency checkerboard.
+They retain image proportions and remain visible for hidden layers.

@@ -1,6 +1,7 @@
 mod colors;
 mod file_operations;
 mod panels;
+mod thumbnails;
 mod transform_handles;
 mod workspace;
 use crate::icons::Icon;
@@ -72,6 +73,7 @@ struct EffectDialog {
 pub struct Editor {
     panel_layout: panels::Layout,
     color_panel: colors::ColorPanel,
+    layer_thumbnails: thumbnails::LayerThumbnails,
     panel_epoch: u64,
     documents: Vec<workspace::DocumentSlot>,
     open_queue: std::collections::VecDeque<PathBuf>,
@@ -170,6 +172,7 @@ impl Editor {
         Self {
             panel_layout: Default::default(),
             color_panel: Default::default(),
+            layer_thumbnails: Default::default(),
             panel_epoch: 0,
             documents: Vec::new(),
             open_queue: Default::default(),
