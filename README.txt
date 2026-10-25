@@ -821,3 +821,11 @@ and blend mode. This includes hidden source layers and ignores the selection;
 merging can change the overall appearance when lower-layer properties differ
 from normal, fully opaque blending. The background operation supports Cancel
 and records a single undo step.
+
+Select color (W) selects connected pixels or all matching pixels in the image.
+Tolerance ranges from exact matching (0) to all colors (255), measured as the
+largest difference between premultiplied RGB and alpha channels. Fully transparent
+pixels match regardless of hidden RGB. Sample merged image uses the visible
+composite; otherwise sampling uses raw pixels of the active layer. Replace, Add,
+Subtract and Intersect combine the result with the existing selection. Processing
+runs in the background and can be cancelled without replacing the old selection.

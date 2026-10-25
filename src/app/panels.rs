@@ -17,6 +17,7 @@ impl Editor {
             let choices = [
                 (Tool::Select, Icon::Select, "Select area", "S"),
                 (Tool::Polygon, Icon::Polygon, "Polygon select", "P"),
+                (Tool::ColorSelect, Icon::ColorSelect, "Select color", "W"),
                 (Tool::Move, Icon::Move, "Move", "M"),
                 (Tool::Zoom, Icon::Zoom, "Zoom", "Z"),
                 (Tool::Pan, Icon::Pan, "Pan", "H"),

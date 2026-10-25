@@ -2,6 +2,7 @@ use eframe::egui::{self, Button, Image, ImageSource};
 
 #[derive(Clone, Copy)]
 pub enum Icon {
+    ColorSelect,
     Zoom,
     Pan,
     Polygon,
@@ -35,6 +36,7 @@ pub enum Icon {
 impl Icon {
     fn source(self) -> ImageSource<'static> {
         match self {
+            Self::ColorSelect => egui::include_image!("../assets/icons/color-select.svg"),
             Self::Zoom => egui::include_image!("../assets/icons/zoom.svg"),
             Self::Pan => egui::include_image!("../assets/icons/pan.svg"),
             Self::Polygon => egui::include_image!("../assets/icons/polygon.svg"),

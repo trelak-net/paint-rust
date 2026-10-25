@@ -256,3 +256,90 @@ pub fn polygon_cancellable(
     }
     raster_selection(width, pixels, (left, top, right, bottom), cancel)
 }
+
+/// Select colors by maximum premultiplied RGBA channel difference (0–255).
+/// Connected mode follows four-neighbor connectivity; global mode samples all pixels.
+pub fn color_cancellable(
+    width: u32,
+    height: u32,
+    pixels: &[crate::document::Pixel],
+    seed: (u32, u32),
+    tolerance: u8,
+    contiguous: bool,
+    cancel: &AtomicBool,
+) -> Result<Selection, String> {
+    check_cancel(cancel)?;
+    crate::document::Document::validate_size(width, height)?;
+    if pixels.len() != width as usize * height as usize || seed.0 >= width || seed.1 >= height {
+        return Err("Invalid color-selection image or seed.".into());
+    }
+    let premultiply = |p: crate::document::Pixel| -> [u8; 4] {
+        [
+            ((u16::from(p[0]) * u16::from(p[3]) + 127) / 255) as u8,
+            ((u16::from(p[1]) * u16::from(p[3]) + 127) / 255) as u8,
+            ((u16::from(p[2]) * u16::from(p[3]) + 127) / 255) as u8,
+            p[3],
+        ]
+    };
+    let start = seed.1 as usize * width as usize + seed.0 as usize;
+    let reference = premultiply(pixels[start]);
+    let matches = |index: usize| {
+        premultiply(pixels[index])
+            .iter()
+            .zip(reference)
+            .all(|(a, b)| a.abs_diff(b) <= tolerance)
+    };
+    let mut mask = vec![0_u8; pixels.len()];
+    if contiguous {
+        let mut queue = std::collections::VecDeque::new();
+        queue.push_back(start as u32);
+        mask[start] = 1;
+        let mut steps = 0;
+        while let Some(index) = queue.pop_front() {
+            if steps % 4096 == 0 {
+                check_cancel(cancel)?;
+            }
+            steps += 1;
+            let index = index as usize;
+            let x = index % width as usize;
+            let neighbors = [
+                (x > 0).then(|| index - 1),
+                (x + 1 < width as usize).then_some(index + 1),
+                (index >= width as usize).then(|| index - width as usize),
+                (index + (width as usize) < pixels.len()).then_some(index + width as usize),
+            ];
+            for next in neighbors.into_iter().flatten() {
+                if mask[next] == 0 {
+                    mask[next] = if matches(next) { 1 } else { 2 };
+                    if mask[next] == 1 {
+                        queue.push_back(next as u32);
+                    }
+                }
+            }
+        }
+    } else {
+        for (index, value) in mask.iter_mut().enumerate() {
+            if index % 4096 == 0 {
+                check_cancel(cancel)?;
+            }
+            *value = u8::from(matches(index));
+        }
+    }
+    let (mut left, mut top, mut right, mut bottom) = (width, height, 0, 0);
+    for (index, value) in mask.iter_mut().enumerate() {
+        if index % 4096 == 0 {
+            check_cancel(cancel)?;
+        }
+        if *value == 1 {
+            let x = (index % width as usize) as u32;
+            let y = (index / width as usize) as u32;
+            left = left.min(x);
+            top = top.min(y);
+            right = right.max(x + 1);
+            bottom = bottom.max(y + 1);
+        } else {
+            *value = 0;
+        }
+    }
+    raster_selection(width, mask, (left, top, right, bottom), cancel)
+}

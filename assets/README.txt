@@ -25,3 +25,6 @@ license, modifications and required notices before adding it to the interface.
 The Pencil icon is original project artwork, added in version 1 (2026-10-24).
 The Zoom and Pan icons are original project artwork added on 2026-10-25 under
 the same MIT OR Apache-2.0 terms.
+
+icons/color-select.svg: original color-selection icon, authored for this project;
+MIT OR Apache-2.0, version 1. No external source artwork.

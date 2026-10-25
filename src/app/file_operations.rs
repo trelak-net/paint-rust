@@ -100,6 +100,48 @@ impl Editor {
         });
     }
 
+    pub(super) fn start_color_selection(&mut self, x: u32, y: u32) {
+        if x >= self.document.width || y >= self.document.height {
+            return;
+        }
+        let document = self.document.snapshot();
+        let previous = self.document.selection();
+        let mode = self.selection_mode;
+        let tolerance = self.color_tolerance;
+        let contiguous = self.color_contiguous;
+        let merged = self.color_sample_merged;
+        self.start_cancellable_file_job("select color", move |cancel| {
+            let composite = if merged {
+                Some(
+                    document
+                        .composite_cancellable(cancel)
+                        .ok_or(files::CANCELLED)?,
+                )
+            } else {
+                None
+            };
+            let pixels = composite.as_deref().unwrap_or_else(|| document.pixels());
+            let candidate = paint_rust::selection::color_cancellable(
+                document.width,
+                document.height,
+                pixels,
+                (x, y),
+                tolerance,
+                contiguous,
+                cancel,
+            )?;
+            paint_rust::selection::combine_cancellable(
+                document.width,
+                document.height,
+                previous.as_ref(),
+                &candidate,
+                mode,
+                cancel,
+            )
+            .map(Outcome::Selection)
+        });
+    }
+
     pub(super) fn start_fill(&mut self, x: i32, y: i32, color: [u8; 4]) {
         let mut document = self.document.snapshot();
         document.set_selection(self.document.selection());

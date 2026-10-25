@@ -98,7 +98,8 @@ independent tasks; do not silently reduce the required scope.
 [ ] Eraser coverage, continuous strokes and tablet pressure.
 [ ] Reference comparisons on opaque and transparent layers.
 5. Selection and transforms
-[ ] Lasso and color-based selection with tolerance and sampling scope.
+[x] Color-based selection with tolerance, connected/global modes and active/merged sampling.
+[ ] Freehand lasso.
 [ ] Complete selection combination and pixel/selection transform options.
 [ ] Interpolation, constraints and edge-case validation.
 6. Tools

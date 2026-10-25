@@ -18,6 +18,7 @@ use std::path::PathBuf;
 
 #[derive(Clone, Copy, PartialEq)]
 enum Tool {
+    ColorSelect,
     Polygon,
     Zoom,
     Pan,
@@ -99,6 +100,9 @@ pub struct Editor {
     move_selection_only: bool,
     ellipse_selection: bool,
     selection_mode: CombineMode,
+    color_tolerance: u8,
+    color_contiguous: bool,
+    color_sample_merged: bool,
     polygon_points: Vec<(f64, f64)>,
     polygon_size: (u32, u32),
     selection_texture: Option<(std::sync::Arc<Vec<u8>>, TextureHandle)>,
@@ -198,6 +202,9 @@ impl Editor {
             move_selection_only: false,
             ellipse_selection: false,
             selection_mode: CombineMode::Replace,
+            color_tolerance: 0,
+            color_contiguous: true,
+            color_sample_merged: false,
             polygon_points: Vec::new(),
             polygon_size: (0, 0),
             selection_texture: None,
@@ -817,6 +824,7 @@ impl Editor {
                 Some(6)
             } else if !i.modifiers.command && !self.document.editing() && self.last_point.is_none()
             {
+                if i.key_pressed(Key::W) { self.tool = Tool::ColorSelect; }
                 if i.key_pressed(Key::P) { self.tool = Tool::Polygon; }
                 if i.key_pressed(Key::Z) { self.tool = Tool::Zoom; }
                 if i.key_pressed(Key::H) { self.tool = Tool::Pan; }
@@ -1353,6 +1361,12 @@ impl Editor {
                                     }
                                 }
                             }
+                            Tool::ColorSelect => {
+                                self.start_color_selection(
+                                    local.x.floor() as u32,
+                                    local.y.floor() as u32,
+                                );
+                            }
                             Tool::Fill => {
                                 self.start_fill(
                                     local.x.floor() as i32,
@@ -1547,9 +1561,13 @@ impl Editor {
             ui.checkbox(&mut self.radial_gradient, "Radial gradient");
             ui.small("Right drag reverses colors");
         }
-        if matches!(self.tool, Tool::Select | Tool::Polygon) {
+        if matches!(self.tool, Tool::Select | Tool::Polygon | Tool::ColorSelect) {
             if self.tool == Tool::Select {
                 ui.checkbox(&mut self.ellipse_selection, "Elliptical selection");
+            } else if self.tool == Tool::ColorSelect {
+                ui.add(egui::Slider::new(&mut self.color_tolerance, 0..=255).text("Tolerance"));
+                ui.checkbox(&mut self.color_contiguous, "Contiguous");
+                ui.checkbox(&mut self.color_sample_merged, "Sample merged image");
             } else {
                 ui.small("Click points. Enter or double-click finishes. Backspace removes a point; Escape cancels.");
             }
@@ -4281,5 +4299,36 @@ mod tests {
                 .iter()
                 .all(|pixel| *pixel == [255; 4])
         );
+    }
+    #[test]
+    fn color_selection_samples_requested_scope_and_combines_without_editing_pixels() {
+        use paint_rust::document::Layer;
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        let bottom = Layer::new("Bottom".into(), vec![[255; 4]; 3]);
+        let top = Layer::new("Top".into(), vec![[255; 4], [0; 4], [0, 0, 0, 255]]);
+        editor.document = Document::from_layers(3, 1, vec![bottom, top], 1).unwrap();
+        let original = editor.document.layers().to_vec();
+        editor.start_color_selection(0, 0);
+        wait_for_files(&mut editor, &ctx);
+        assert_eq!(editor.document.selection().unwrap().width, 1);
+        editor.color_sample_merged = true;
+        editor.start_color_selection(0, 0);
+        wait_for_files(&mut editor, &ctx);
+        assert_eq!(editor.document.selection().unwrap().width, 2);
+        editor.selection_mode = CombineMode::Add;
+        editor.start_color_selection(2, 0);
+        wait_for_files(&mut editor, &ctx);
+        assert_eq!(editor.document.selection().unwrap().width, 3);
+        editor.selection_mode = CombineMode::Subtract;
+        editor.start_color_selection(0, 0);
+        wait_for_files(&mut editor, &ctx);
+        let selection = editor.document.selection().unwrap();
+        assert_eq!((selection.x, selection.width), (2, 1));
+        editor.start_color_selection(3, 0);
+        assert!(editor.file_job.is_none());
+        assert!(editor.document.layers() == original);
+        assert!(!editor.document.dirty());
+        assert!(!editor.document.can_undo());
     }
 }
