@@ -1675,3 +1675,16 @@ directions and two bounded error rows, preserves the binary transparency mask,
 and leaves exact palette colors unchanged. The transparency threshold remains
 128; retained translucent pixels are composited onto the chosen matte. Output
 is still a single frame with at most 256 colors.
+
+DDS mipmaps
+-----------
+DDS export can include every mip level down to 1x1. The base level preserves
+all RGBA bytes exactly; subsequent levels use area filtering in linear light
+with premultiplied-alpha averaging. Odd dimensions shrink by floor division,
+with each dimension clamped to one. Levels are generated sequentially, retaining
+only the current source and next level, and generation observes cancellation.
+The decoded preview shows the base level; its byte count includes all mipmaps.
+Import still opens the top surface. Compressed export and arrays/cube maps remain
+pending. Header flags/layout follow the published DDS specification:
+https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dds-header
+https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dds-file-layout-for-textures

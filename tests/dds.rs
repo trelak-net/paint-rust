@@ -268,3 +268,101 @@ fn bc5_partial_blocks_clip_edges_without_swapping_channels() {
         );
     }
 }
+
+#[test]
+fn mipmap_chain_has_complete_headers_dimensions_and_exact_base_pixels() {
+    for size in [(7, 3), (1, 8), (8, 1), (1, 1)] {
+        let pixels = vec![[10, 20, 30, 128]; (size.0 * size.1) as usize];
+        let options = RasterOptions {
+            dds_mipmaps: true,
+            ..RasterOptions::new(RasterFormat::Dds)
+        };
+        let bytes = files::encode_raster_bytes(&pixels, size, options, &cancel()).unwrap();
+        let word = |offset| u32::from_le_bytes(bytes[offset..offset + 4].try_into().unwrap());
+        let levels = size.0.max(size.1).ilog2() + 1;
+        assert_eq!(word(28), levels);
+        assert_eq!(word(8) & 0x20000 != 0, levels > 1);
+        assert_eq!(word(108) & 0x400008 != 0, levels > 1);
+        let (mut width, mut height, mut offset) = (size.0, size.1, 128);
+        for _ in 0..levels {
+            let end = offset + (width * height * 4) as usize;
+            assert!(
+                bytes[offset..end]
+                    .as_chunks::<4>()
+                    .0
+                    .iter()
+                    .all(|p| *p == [10, 20, 30, 128])
+            );
+            offset = end;
+            width = (width / 2).max(1);
+            height = (height / 2).max(1);
+        }
+        assert_eq!(offset, bytes.len());
+        assert_eq!(
+            files::decode_raster_bytes(&bytes, RasterFormat::Dds, &cancel())
+                .unwrap()
+                .pixels(),
+            pixels
+        );
+    }
+}
+
+#[test]
+fn mipmaps_average_linear_light_and_do_not_leak_transparent_rgb() {
+    let options = RasterOptions {
+        dds_mipmaps: true,
+        ..RasterOptions::new(RasterFormat::Dds)
+    };
+    for (pixels, expected) in [
+        ([[0, 0, 0, 255], [255; 4]], [188, 188, 188, 255]),
+        ([[255, 0, 0, 0], [0, 0, 255, 255]], [0, 0, 255, 128]),
+    ] {
+        let bytes = files::encode_raster_bytes(&pixels, (2, 1), options, &cancel()).unwrap();
+        assert_eq!(&bytes[136..], expected);
+        assert_eq!(&bytes[128..136], pixels.as_flattened());
+    }
+}
+
+#[test]
+fn mipmap_generation_checks_cancellation_between_levels() {
+    struct CancelWriter<'a>(&'a AtomicBool, usize);
+    impl std::io::Write for CancelWriter<'_> {
+        fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+            self.1 += bytes.len();
+            if self.1 >= 128 + 8 {
+                self.0.store(true, std::sync::atomic::Ordering::Relaxed);
+            }
+            Ok(bytes.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+    let flag = cancel();
+    let mut writer = CancelWriter(&flag, 0);
+    assert_eq!(
+        dds::encode_with_mipmaps(&[[255; 4]; 2], (2, 1), &mut writer, true, &flag).unwrap_err(),
+        files::CANCELLED
+    );
+    assert_eq!(writer.1, 136);
+}
+
+#[test]
+fn externally_opened_mipmap_fixture_retains_its_base_surface() {
+    let bytes = include_bytes!("fixtures/dds/rgba-mip-chain.dds");
+    let document = dds::decode(Cursor::new(bytes), &cancel()).unwrap();
+    assert_eq!((document.width, document.height), (32, 16));
+    for (i, pixel) in document.pixels().iter().enumerate() {
+        assert_eq!(
+            *pixel,
+            [
+                (i % 32 * 8) as u8,
+                (i / 32 * 16) as u8,
+                80,
+                if i % 32 < 8 { 64 } else { 255 }
+            ]
+        );
+    }
+    assert_eq!(u32::from_le_bytes(bytes[28..32].try_into().unwrap()), 6);
+    assert_eq!(bytes.len(), 2860);
+}

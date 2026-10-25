@@ -342,6 +342,7 @@ impl RasterFormat {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct RasterOptions {
+    pub dds_mipmaps: bool,
     pub gif_dither: bool,
     pub dpi: crate::resolution::Dpi,
     pub format: RasterFormat,
@@ -355,6 +356,7 @@ impl RasterOptions {
             dpi: Default::default(),
             quality: 90,
             gif_dither: false,
+            dds_mipmaps: false,
             matte: [255; 3],
         }
     }
@@ -455,13 +457,14 @@ fn encode_raster_options(
         return Err("Invalid raster export pixels or quality.".into());
     }
     if options.format == RasterFormat::Dds {
-        return crate::dds::encode(
+        return crate::dds::encode_with_mipmaps(
             pixels,
             size,
             CancellableWriter {
                 inner: writer,
                 cancel,
             },
+            options.dds_mipmaps,
             cancel,
         );
     }

@@ -202,7 +202,8 @@ independent tasks; do not silently reduce the required scope.
 [x] Unified project/raster Save and Save As with confirmed flattening and undo.
 [x] DDS top-surface RGB/RGBA and BC1/2/3 import, lossless RGBA8 export and independent fixtures.
 [x] DDS BC4/BC5 UNORM import through legacy and DX10 headers with partial-block clipping.
-[ ] Remaining raster codecs, DDS mipmaps/additional block formats and advanced export options.
+[x] Full RGBA8 DDS mipmap-chain export with alpha-aware linear-light area filtering and decoded base-level preview.
+[ ] Remaining raster codecs, DDS mip-level import selection/additional block formats and advanced export options.
 [x] Apply all eight EXIF orientations once on raster import.
 [x] Convert embedded raster RGB/grayscale ICC to sRGB and tag supported exports.
 [x] Explicit raster metadata policy: apply orientation, omit source descriptive tags.

@@ -96,7 +96,8 @@ impl Editor {
                 ui.small("Transparency is composited onto this color before encoding.");
             }
             if dialog.options.format==files::RasterFormat::Dds {
-                ui.small("DDS saves one uncompressed RGBA8 surface. Mipmaps, texture arrays and cube maps are not written.");
+                changed |= ui.checkbox(&mut dialog.options.dds_mipmaps, "Generate mipmaps down to 1 × 1").changed();
+                ui.small("DDS saves uncompressed RGBA8. Mipmaps use alpha-aware, linear-light area filtering. The preview shows the full-size image. Texture arrays and cube maps are not written.");
             }
             if dialog.options.format==files::RasterFormat::Gif {
                 changed |= ui.checkbox(&mut dialog.options.gif_dither, "Dither colors (Floyd–Steinberg)").changed();

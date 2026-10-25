@@ -12,6 +12,7 @@ fn single_frame_export_has_binary_alpha_and_selected_matte() {
         format: RasterFormat::Gif,
         quality: 90,
         gif_dither: false,
+        dds_mipmaps: false,
         dpi: Default::default(),
         matte: [20, 60, 100],
     };

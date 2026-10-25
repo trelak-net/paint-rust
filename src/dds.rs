@@ -1,4 +1,4 @@
-//! Bounded single-surface DDS import and lossless RGBA8 export.
+//! Bounded top-surface DDS import and RGBA8 export with optional mipmaps.
 use crate::{document::Document, files::CANCELLED};
 use std::io::{Read, Seek, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -157,7 +157,17 @@ pub fn decode(mut reader: impl Read + Seek, cancel: &AtomicBool) -> Result<Docum
 pub fn encode(
     pixels: &[[u8; 4]],
     size: (u32, u32),
+    writer: impl Write,
+    cancel: &AtomicBool,
+) -> Result<(), String> {
+    encode_with_mipmaps(pixels, size, writer, false, cancel)
+}
+
+pub fn encode_with_mipmaps(
+    pixels: &[[u8; 4]],
+    size: (u32, u32),
     mut writer: impl Write,
+    mipmaps: bool,
     cancel: &AtomicBool,
 ) -> Result<(), String> {
     check(cancel)?;
@@ -165,14 +175,20 @@ pub fn encode(
     if pixels.len() != size.0 as usize * size.1 as usize {
         return Err("Invalid DDS pixel count".into());
     }
+    let levels = if mipmaps {
+        size.0.max(size.1).ilog2() + 1
+    } else {
+        1
+    };
     let mut header = [0u8; 128];
     header[..4].copy_from_slice(b"DDS ");
     for (offset, value) in [
         (4, 124u32),
-        (8, 0x100f),
+        (8, 0x100f | if levels > 1 { 0x20000 } else { 0 }),
         (12, size.1),
         (16, size.0),
         (20, size.0 * 4),
+        (28, if mipmaps { levels } else { 0 }),
         (76, 32),
         (80, 0x41),
         (88, 32),
@@ -180,15 +196,34 @@ pub fn encode(
         (96, 0xff00),
         (100, 0xff0000),
         (104, 0xff000000),
-        (108, 0x1000),
+        (108, 0x1000 | if levels > 1 { 0x400008 } else { 0 }),
     ] {
         header[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
     }
     writer.write_all(&header).map_err(|e| e.to_string())?;
-    for row in pixels.chunks(size.0 as usize) {
-        check(cancel)?;
-        let bytes: Vec<_> = row.iter().flatten().copied().collect();
-        writer.write_all(&bytes).map_err(|e| e.to_string())?;
+    let mut dimensions = size;
+    let mut level_pixels = std::borrow::Cow::Borrowed(pixels);
+    for level in 0..levels {
+        for row in level_pixels.chunks(dimensions.0 as usize) {
+            check(cancel)?;
+            let bytes: Vec<_> = row.iter().flatten().copied().collect();
+            writer.write_all(&bytes).map_err(|e| e.to_string())?;
+        }
+        if level + 1 < levels {
+            let next_size = ((dimensions.0 / 2).max(1), (dimensions.1 / 2).max(1));
+            let next = crate::resample::resize(
+                &level_pixels,
+                dimensions,
+                next_size,
+                crate::resample::Options {
+                    filter: crate::resample::Filter::Area,
+                    gamma_correct: true,
+                },
+                cancel,
+            )?;
+            level_pixels = std::borrow::Cow::Owned(next);
+            dimensions = next_size;
+        }
     }
     check(cancel)
 }
