@@ -18,3 +18,9 @@ Use the Zoom or Pan tools, or hold Space to pan temporarily. Ctrl+B fits the ima
 
 Previews and recovery
 Adjustments, effects and text show a preview. Apply commits the change; Cancel or Escape returns to the previous image. Undo/Redo navigates edits. Unsaved recovery copies can be restored when offered at startup. Saving a project remains the way to keep a deliberate copy of your work.
+
+Transform a selection boundary
+Choose Selection > Transform selection boundary, or press Ctrl+Alt+M, to rotate,
+scale, flip or move only the selected area boundary. The preview keeps image
+pixels unchanged. Apply or Enter accepts it; Cancel or Escape restores the
+original selection. Use Free transform pixels when the image content should move.

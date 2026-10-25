@@ -216,6 +216,7 @@ impl Editor {
             || self.text_dialog.is_some()
             || self.export_dialog.is_some()
             || self.effect_dialog.is_some()
+            || self.selection_transform.is_some()
         {
             return;
         }

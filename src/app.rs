@@ -11,6 +11,7 @@ mod panels;
 mod preferences;
 mod render_controls;
 mod rulers;
+mod selection_transform;
 mod thumbnails;
 mod toolbar;
 mod transform_handles;
@@ -163,6 +164,7 @@ pub struct Editor {
     font_search: String,
     text_font: Option<(ab_glyph::FontArc, String)>,
     effect_dialog: Option<EffectDialog>,
+    selection_transform: Option<selection_transform::Dialog>,
     last_effect: Option<Effect>,
     levels_channel: usize,
     effect_parameters: std::collections::HashMap<std::mem::Discriminant<Effect>, Effect>,
@@ -309,6 +311,7 @@ impl Editor {
             font_search: String::new(),
             text_font: None,
             effect_dialog: None,
+            selection_transform: None,
             last_effect: None,
             levels_channel: 0,
             effect_parameters: Default::default(),
@@ -646,7 +649,10 @@ impl Editor {
     }
 
     fn finish_stroke(&mut self) {
-        if self.text_dialog.is_some() || self.effect_dialog.is_some() {
+        if self.text_dialog.is_some()
+            || self.effect_dialog.is_some()
+            || self.selection_transform.is_some()
+        {
             return;
         }
         if let Some(gesture) = self.gesture_preview.take()
@@ -716,7 +722,11 @@ impl Editor {
     }
 
     fn navigate_history(&mut self, steps: usize, redo: bool) {
-        if self.file_job.is_some() || self.text_dialog.is_some() || self.effect_dialog.is_some() {
+        if self.file_job.is_some()
+            || self.text_dialog.is_some()
+            || self.effect_dialog.is_some()
+            || self.selection_transform.is_some()
+        {
             return;
         }
         self.finish_stroke();
@@ -942,6 +952,8 @@ impl Editor {
                 Some(19)
             } else if i.consume_key(egui::Modifiers::COMMAND, Key::F) {
                 Some(18)
+            } else if i.consume_key(egui::Modifiers::COMMAND | egui::Modifiers::ALT, Key::M) {
+                Some(25)
             } else if i.consume_key(egui::Modifiers::COMMAND, Key::M) {
                 Some(17)
             } else if i.consume_key(egui::Modifiers::COMMAND, Key::W) {
@@ -1021,6 +1033,7 @@ impl Editor {
             }
         });
         match command {
+            Some(25) => self.begin_selection_transform(ctx),
             Some(23) => self.fit_canvas = true,
             Some(24) => self.zoom_to_selection(),
             Some(22) => self.request(Action::SaveAll, ctx),
@@ -1916,6 +1929,17 @@ impl Editor {
         }
         if self.tool == Tool::Move {
             ui.checkbox(&mut self.move_selection_only, "Move selection only");
+            if self.move_selection_only
+                && ui
+                    .add_enabled(
+                        self.document.selection().is_some(),
+                        egui::Button::new("Transform boundary…"),
+                    )
+                    .clicked()
+            {
+                self.begin_selection_transform(&ui.ctx().clone());
+            }
+
             ui.small("Drag: Shift constrains direction; Ctrl copies pixels.");
             ui.small("Arrows: move 1 px. Shift+arrows: move 10 px.");
         }
@@ -2833,6 +2857,7 @@ impl Editor {
             && self.export_dialog.is_none()
             && self.text_dialog.is_none()
             && self.effect_dialog.is_none()
+            && self.selection_transform.is_none()
             && self.resize_dialog.is_none()
             && self.layer_properties.is_none()
             && !self.document.editing()
@@ -2847,6 +2872,9 @@ impl Editor {
         }
         if self.file_job.is_some() && ctx.input(|i| i.viewport().close_requested()) {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+        }
+        if ctx.input(|i| i.viewport().close_requested()) {
+            self.cancel_selection_transform();
         }
         if ctx.input(|i| i.viewport().close_requested()) && self.effect_dialog.is_some() {
             self.effect_dialog = None;
@@ -2892,6 +2920,7 @@ impl Editor {
             && self.export_dialog.is_none()
             && self.text_dialog.is_none()
             && self.effect_dialog.is_none()
+            && self.selection_transform.is_none()
             && !self.recovery_prompt;
 
         if enabled {
@@ -2905,6 +2934,7 @@ impl Editor {
             && self.export_dialog.is_none()
             && self.text_dialog.is_none()
             && self.effect_dialog.is_none()
+            && self.selection_transform.is_none()
             && !self.recovery_prompt;
         let name = self
             .path
@@ -3054,6 +3084,10 @@ impl Editor {
                     self.layer_menu_contents(ui);
                 });
                 ui.menu_button("Selection", |ui| {
+                    if ui.add_enabled(self.document.selection().is_some(),egui::Button::new("Transform selection boundary…    Ctrl+Alt+M")).clicked() {
+                        self.begin_selection_transform(ctx);ui.close();
+                    }
+
                     if ui.button("Free transform pixels…").clicked() {
                         self.begin_effect(ctx, Effect::FreeTransform(Default::default()));
                         ui.close();
@@ -3426,6 +3460,7 @@ impl Editor {
                 self.canvas(ui);
             });
         self.dialogs(ctx);
+        self.show_selection_transform(ctx);
         self.show_help(ctx);
         if let Some(recovery) = &mut self.recovery {
             let wake = ctx.clone();
@@ -3442,6 +3477,7 @@ impl Editor {
         if enabled
             && !self.allow_close
             && !self.document.editing()
+            && self.selection_transform.is_none()
             && self.workspace_history_needs_storage(workspace::HISTORY_RAM_BUDGET)
         {
             self.store_workspace_history_async(workspace::HISTORY_RAM_BUDGET, false);

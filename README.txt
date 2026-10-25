@@ -1374,3 +1374,18 @@ from the observation count to avoid accumulated position drift. Tests cover know
 quantiles, marker ordering, constants, endpoints, seed stability, selections and
 cancellation. External sampling/iteration parity, partial-alpha weighting and
 large-image performance remain pending.
+
+Selection-boundary transforms
+-----------------------------
+Selection > Transform selection boundary (Ctrl+Alt+M), also available from Move
+selection options, transforms the mask without changing image pixels or history.
+Scale X/Y, proportional scaling, rotation, flips and pixel offsets use the original
+selection center. A coalescing background worker cancels superseded requests and
+publishes only the latest generation. Apply/Enter keeps the ready preview;
+Cancel/Escape/window close restores the exact original mask. Switching tabs,
+image undo, file operations and automatic history storage are blocked during the
+preview. The boundary uses binary nearest sampling and clips to canvas bounds;
+an off-canvas result remains an explicit empty selection. Tests cover geometry,
+ellipses and irregular masks, clipping, cancellation, stale results, tab guards,
+Apply and pixel/history/path preservation. On-canvas handles and antialiased
+selection coverage remain pending.

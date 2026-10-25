@@ -67,6 +67,7 @@ def main():
     parser.add_argument("--size", help="Requested native window size, e.g. 800x600")
     dialogs = parser.add_mutually_exclusive_group()
     dialogs.add_argument("--show-help", action="store_true")
+    dialogs.add_argument("--show-selection-transform", action="store_true")
     dialogs.add_argument("--show-effect", choices=("Clouds", "Turbulence", "Mandelbrot", "Julia"))
     args = parser.parse_args()
     if args.scale is not None and not 0.5 <= args.scale <= 3:
@@ -133,15 +134,20 @@ def main():
                             if size:
                                 subprocess.run(["xdotool", "windowsize", window, str(size[0]), str(size[1])], check=True, timeout=5)
                             time.sleep(2)
-                            if args.show_help or args.show_effect:
+                            if args.show_help or args.show_effect or args.show_selection_transform:
                                 subprocess.run(["xdotool", "windowactivate", "--sync", window], check=True, timeout=5)
                                 focused = subprocess.check_output(["xdotool", "getactivewindow"], text=True, timeout=5).strip()
                                 if focused != window:
                                     raise RuntimeError("Editor does not own focus; no keyboard input sent")
-                                press_key(window, 0xFFBE if args.show_help else ord("f"), 0 if args.show_help else 5)
+                                if args.show_selection_transform:
+                                    press_key(window, ord("a"), 4)
+                                    time.sleep(0.2)
+                                    press_key(window, ord("m"), 12)
+                                else:
+                                    press_key(window, 0xFFBE if args.show_help else ord("f"), 0 if args.show_help else 5)
                                 time.sleep(0.5)
                             subprocess.run(["import", "-window", window, str(args.output / f"launch-{attempt}.png")], check=True, timeout=10)
-                            if args.show_effect:
+                            if args.show_effect or args.show_selection_transform:
                                 press_key(window, 0xFF1B)  # Escape cancels the preview before closing.
                                 time.sleep(0.3)
                             # WM close preserves normal shutdown and settings persistence.

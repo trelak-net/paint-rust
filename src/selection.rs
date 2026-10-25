@@ -385,3 +385,87 @@ pub fn color_region_cancellable(
     }
     raster_selection(width, mask, (left, top, right, bottom), cancel)
 }
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct MaskTransform {
+    pub scale: [f32; 2],
+    pub offset: [f32; 2],
+    pub angle: f32,
+    pub flip: [bool; 2],
+}
+impl Default for MaskTransform {
+    fn default() -> Self {
+        Self {
+            scale: [1.0; 2],
+            offset: [0.0; 2],
+            angle: 0.0,
+            flip: [false; 2],
+        }
+    }
+}
+/// Transform the selection boundary around its center using binary nearest sampling.
+pub fn transform_cancellable(
+    width: u32,
+    height: u32,
+    source: &Selection,
+    parameters: MaskTransform,
+    cancel: &AtomicBool,
+) -> Result<Selection, String> {
+    check_cancel(cancel)?;
+    crate::document::Document::validate_size(width, height)?;
+    if !parameters
+        .scale
+        .into_iter()
+        .all(|v| v.is_finite() && (0.01..=64.0).contains(&v))
+        || !parameters
+            .offset
+            .into_iter()
+            .all(|v| v.is_finite() && v.abs() <= 1e6)
+        || !parameters.angle.is_finite()
+        || parameters.angle.abs() > 360.0
+    {
+        return Err("Invalid selection transform".into());
+    }
+    if parameters == MaskTransform::default() {
+        return Ok(source.clone());
+    }
+    let (cx, cy) = (
+        f64::from(source.x) + f64::from(source.width) / 2.0,
+        f64::from(source.y) + f64::from(source.height) / 2.0,
+    );
+    let (sin, cos) = f64::from(parameters.angle).to_radians().sin_cos();
+    let scale = std::array::from_fn::<f64, 2, _>(|i| {
+        f64::from(parameters.scale[i]) * if parameters.flip[i] { -1.0 } else { 1.0 }
+    });
+    let mut pixels = vec![0; width as usize * height as usize];
+    let (mut left, mut top, mut right, mut bottom) = (width, height, 0, 0);
+    for y in 0..height {
+        check_cancel(cancel)?;
+        for x in 0..width {
+            if x.is_multiple_of(4096) {
+                check_cancel(cancel)?;
+            }
+            let (dx, dy) = (
+                f64::from(x) + 0.5 - cx - f64::from(parameters.offset[0]),
+                f64::from(y) + 0.5 - cy - f64::from(parameters.offset[1]),
+            );
+            let (sx, sy) = (
+                cx + (cos * dx + sin * dy) / scale[0],
+                cy + (-sin * dx + cos * dy) / scale[1],
+            );
+            if sx >= 0.0
+                && sy >= 0.0
+                && sx < f64::from(width)
+                && sy < f64::from(height)
+                && source.contains(sx.floor() as usize, sy.floor() as usize)
+            {
+                pixels[y as usize * width as usize + x as usize] = 1;
+                left = left.min(x);
+                top = top.min(y);
+                right = right.max(x + 1);
+                bottom = bottom.max(y + 1);
+            }
+        }
+    }
+    raster_selection(width, pixels, (left, top, right, bottom), cancel)
+}

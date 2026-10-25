@@ -38,7 +38,8 @@ impl Editor {
     }
 
     pub(super) fn store_workspace_history_async(&mut self, budget: usize, retry: bool) {
-        if self.file_job.is_some() || self.document.editing() {
+        if self.file_job.is_some() || self.document.editing() || self.selection_transform.is_some()
+        {
             return;
         }
         self.history_storage_paused = false;
