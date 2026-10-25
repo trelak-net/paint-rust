@@ -6,6 +6,19 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 #[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum Effect {
+    RadialBlur {
+        angle: f32,
+        center: [f32; 2],
+    },
+    ZoomBlur {
+        amount: f32,
+        center: [f32; 2],
+    },
+    FragmentBlur {
+        distance: f32,
+        fragments: u8,
+        angle: f32,
+    },
     Exposure {
         stops: f32,
         offset: f32,
@@ -97,6 +110,21 @@ impl Effect {
                 offset,
                 gamma,
             } => range(stops, -10.0, 10.0) && range(offset, -1.0, 1.0) && range(gamma, 0.1, 10.0),
+            Self::RadialBlur { angle, center } => {
+                range(angle, 0.0, 180.0) && center.into_iter().all(|v| range(v, 0.0, 1.0))
+            }
+            Self::ZoomBlur { amount, center } => {
+                range(amount, 0.0, 1.0) && center.into_iter().all(|v| range(v, 0.0, 1.0))
+            }
+            Self::FragmentBlur {
+                distance,
+                fragments,
+                angle,
+            } => {
+                range(distance, 0.0, 200.0)
+                    && (2..=32).contains(&fragments)
+                    && range(angle, -180.0, 180.0)
+            }
             Self::AutoLevels(v) => range(v, 0.0, 5.0),
             Self::BrightnessContrast {
                 brightness,
@@ -145,7 +173,10 @@ impl Effect {
 
     pub fn category(self) -> &'static str {
         match self {
-            Self::GaussianBlur(_)
+            Self::RadialBlur { .. }
+            | Self::ZoomBlur { .. }
+            | Self::FragmentBlur { .. }
+            | Self::GaussianBlur(_)
             | Self::BoxBlur(_)
             | Self::MotionBlur { .. }
             | Self::Median { .. } => "Blurs",
@@ -172,6 +203,9 @@ impl Effect {
     }
     pub fn name(self) -> &'static str {
         match self {
+            Self::RadialBlur { .. } => "Radial blur",
+            Self::ZoomBlur { .. } => "Zoom blur",
+            Self::FragmentBlur { .. } => "Fragment blur",
             Self::Exposure { .. } => "Exposure",
             Self::Bulge(_) => "Bulge",
             Self::Twist(_) => "Twist",
@@ -345,6 +379,9 @@ pub fn render(
         }
         Effect::EdgeDetect => stylize::edges(source, width, height, None, cancel)?,
         Effect::Emboss(angle) => stylize::edges(source, width, height, Some(angle), cancel)?,
+        Effect::RadialBlur { .. } | Effect::ZoomBlur { .. } | Effect::FragmentBlur { .. } => {
+            blurs::trajectory(source, width, height, effect, cancel)?
+        }
         Effect::GaussianBlur(radius) => blurs::gaussian(source, width, height, radius, cancel)?,
         Effect::MotionBlur {
             distance,
@@ -494,7 +531,10 @@ pub fn render(
                         let steps = f64::from(levels.clamp(2, 32) - 1);
                         (f64::from(*channel) * steps / 255.0).round() * 255.0 / steps
                     }
-                    Effect::Exposure { .. }
+                    Effect::RadialBlur { .. }
+                    | Effect::ZoomBlur { .. }
+                    | Effect::FragmentBlur { .. }
+                    | Effect::Exposure { .. }
                     | Effect::Bulge(_)
                     | Effect::Twist(_)
                     | Effect::FrostedGlass { .. }

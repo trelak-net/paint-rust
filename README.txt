@@ -1090,3 +1090,14 @@ A bounded 256-entry table keeps preview work proportional to image size. Alpha,
 hidden RGB in fully transparent pixels and pixels outside the selection remain
 unchanged. Neutral settings preserve exact bytes. Parameters persist alongside
 other filters; reference transfer-function comparison remains pending.
+
+Additional blur paths
+---------------------
+Radial blur averages a centered angular arc, Zoom blur samples toward a movable
+center, and Fragment blur combines evenly spaced offset copies. Centers use
+normalized image coordinates; fragment distance is measured in pixels. Bilinear
+sampling uses premultiplied alpha and clamps at image edges. Radial/zoom paths
+use 65 samples per pixel; fragments use 2 to 32. Neutral settings preserve exact
+bytes. All three support selection masks, cancellable previews, undo and saved
+parameters. External reference output, configurable quality and large-image
+performance comparisons remain pending.

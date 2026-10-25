@@ -139,6 +139,7 @@ independent tasks; do not silently reduce the required scope.
 [x] Background input histograms for levels/curves with channel and logarithmic views.
 [ ] Remaining adjustment parity audit.
 [x] Gaussian and motion blur with premultiplied-alpha sampling and live previews.
+[x] Radial, zoom and fragment blur with persistent controls and alpha-aware sampling.
 [x] Seeded noise, median/percentile blur, edge detection and directional emboss.
 [x] Bulge, twist, frosted glass, crystalize, vignette and red-eye correction.
 [ ] Complete remaining blur, distortion, noise and stylization inventory.

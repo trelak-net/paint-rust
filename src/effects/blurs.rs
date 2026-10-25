@@ -125,3 +125,99 @@ pub(super) fn motion(
     }
     Some(output)
 }
+
+fn bilinear(source: &[Pixel], width: u32, height: u32, x: f64, y: f64) -> [f64; 4] {
+    let x = x.clamp(0.0, f64::from(width - 1));
+    let y = y.clamp(0.0, f64::from(height - 1));
+    let (x0, y0) = (x.floor() as u32, y.floor() as u32);
+    let (tx, ty) = (x - f64::from(x0), y - f64::from(y0));
+    let mut sum = [0.0; 4];
+    for (sx, sy, weight) in [
+        (x0, y0, (1.0 - tx) * (1.0 - ty)),
+        ((x0 + 1).min(width - 1), y0, tx * (1.0 - ty)),
+        (x0, (y0 + 1).min(height - 1), (1.0 - tx) * ty),
+        ((x0 + 1).min(width - 1), (y0 + 1).min(height - 1), tx * ty),
+    ] {
+        let pixel = premultiply(source[(sy * width + sx) as usize]);
+        for c in 0..4 {
+            sum[c] += pixel[c] * weight;
+        }
+    }
+    sum
+}
+
+pub(super) fn trajectory(
+    source: &[Pixel],
+    width: u32,
+    height: u32,
+    effect: super::Effect,
+    cancel: &AtomicBool,
+) -> Option<Vec<Pixel>> {
+    use super::Effect;
+    if !effect.valid_settings() {
+        return None;
+    }
+    if matches!(
+        effect,
+        Effect::RadialBlur { angle: 0.0, .. }
+            | Effect::ZoomBlur { amount: 0.0, .. }
+            | Effect::FragmentBlur { distance: 0.0, .. }
+    ) {
+        return Some(source.to_vec());
+    }
+    let (count, center) = match effect {
+        Effect::RadialBlur { center, .. } | Effect::ZoomBlur { center, .. } => (65, center),
+        Effect::FragmentBlur { fragments, .. } => (usize::from(fragments), [0.5, 0.5]),
+        _ => return None,
+    };
+    let (cx, cy) = (
+        f64::from(center[0]) * f64::from(width - 1),
+        f64::from(center[1]) * f64::from(height - 1),
+    );
+    // Precompute the bounded sampling paths; no trigonometry in the pixel loop.
+    let paths: Vec<_> = (0..count)
+        .map(|i| match effect {
+            Effect::RadialBlur { angle, .. } => {
+                let theta = (i as f64 / (count - 1) as f64 - 0.5) * f64::from(angle).to_radians();
+                (theta.cos(), theta.sin())
+            }
+            Effect::ZoomBlur { amount, .. } => {
+                (1.0 - f64::from(amount) * i as f64 / (count - 1) as f64, 0.0)
+            }
+            Effect::FragmentBlur {
+                distance, angle, ..
+            } => {
+                let theta =
+                    f64::from(angle).to_radians() + std::f64::consts::TAU * i as f64 / count as f64;
+                (
+                    f64::from(distance) * theta.cos(),
+                    f64::from(distance) * theta.sin(),
+                )
+            }
+            _ => unreachable!(),
+        })
+        .collect();
+    let mut output = vec![[0; 4]; source.len()];
+    for y in 0..height {
+        for x in 0..width {
+            if x.is_multiple_of(32) && cancel.load(Ordering::Relaxed) {
+                return None;
+            }
+            let (dx, dy) = (f64::from(x) - cx, f64::from(y) - cy);
+            let mut sum = [0.0; 4];
+            for &(a, b) in &paths {
+                let (sx, sy) = match effect {
+                    Effect::RadialBlur { .. } => (cx + dx * a - dy * b, cy + dx * b + dy * a),
+                    Effect::ZoomBlur { .. } => (cx + dx * a, cy + dy * a),
+                    _ => (f64::from(x) + a, f64::from(y) + b),
+                };
+                let pixel = bilinear(source, width, height, sx, sy);
+                for c in 0..4 {
+                    sum[c] += pixel[c];
+                }
+            }
+            output[(y * width + x) as usize] = unpremultiply(sum.map(|v| v / count as f64));
+        }
+    }
+    Some(output)
+}

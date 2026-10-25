@@ -2473,6 +2473,21 @@ impl Editor {
                                 changed |= ui.add(egui::Slider::new(shadows,-100..=100).text("Shadows")).changed();
                                 changed |= ui.add(egui::Slider::new(highlights,-100..=100).text("Highlights")).changed();
                             }
+                            Effect::RadialBlur { angle, center } => {
+                                changed |= ui.add(egui::Slider::new(angle,0.0..=180.0).text("Angle (degrees)")).changed();
+                                changed |= ui.add(egui::Slider::new(&mut center[0],0.0..=1.0).text("Center X")).changed();
+                                changed |= ui.add(egui::Slider::new(&mut center[1],0.0..=1.0).text("Center Y")).changed();
+                            }
+                            Effect::ZoomBlur { amount, center } => {
+                                changed |= ui.add(egui::Slider::new(amount,0.0..=1.0).text("Amount")).changed();
+                                changed |= ui.add(egui::Slider::new(&mut center[0],0.0..=1.0).text("Center X")).changed();
+                                changed |= ui.add(egui::Slider::new(&mut center[1],0.0..=1.0).text("Center Y")).changed();
+                            }
+                            Effect::FragmentBlur { distance, fragments, angle } => {
+                                changed |= ui.add(egui::Slider::new(distance,0.0..=200.0).text("Distance (px)")).changed();
+                                changed |= ui.add(egui::Slider::new(fragments,2..=32).text("Fragments")).changed();
+                                changed |= ui.add(egui::Slider::new(angle,-180.0..=180.0).text("Angle (degrees)")).changed();
+                            }
                             Effect::MotionBlur { distance,angle,centered } => {
                                 changed |= ui.add(egui::Slider::new(distance,0..=200).text("Distance (px)")).changed();
                                 changed |= ui.add(egui::Slider::new(angle,-180.0..=180.0).text("Angle (degrees)")).changed();
@@ -2996,6 +3011,19 @@ impl Editor {
                             },
                             Effect::EdgeDetect,
                             Effect::Emboss(45.0),
+                            Effect::RadialBlur {
+                                angle: 10.0,
+                                center: [0.5, 0.5],
+                            },
+                            Effect::ZoomBlur {
+                                amount: 0.1,
+                                center: [0.5, 0.5],
+                            },
+                            Effect::FragmentBlur {
+                                distance: 5.0,
+                                fragments: 4,
+                                angle: 0.0,
+                            },
                             Effect::GaussianBlur(3),
                             Effect::MotionBlur {
                                 distance: 10,
