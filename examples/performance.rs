@@ -47,7 +47,12 @@ fn main() {
                         style: paint_rust::document::GradientStyle {
                             start: [255, 50, 20, 200],
                             end: [20, 50, 255, 100],
-                            radial,
+                            shape: if radial {
+                                paint_rust::gradient::GradientShape::Radial
+                            } else {
+                                paint_rust::gradient::GradientShape::Linear
+                            },
+                            mode: paint_rust::gradient::GradientMode::Blend,
                         },
                     },
                     &std::sync::atomic::AtomicBool::new(false),

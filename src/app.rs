@@ -96,7 +96,8 @@ pub struct Editor {
     tool: Tool,
     color: Color32,
     secondary_color: Color32,
-    radial_gradient: bool,
+    gradient_shape: paint_rust::gradient::GradientShape,
+    gradient_mode: paint_rust::gradient::GradientMode,
     brush_size: f32,
     shape_filled: bool,
     move_selection_only: bool,
@@ -199,7 +200,8 @@ impl Editor {
             tool: Tool::Brush,
             color: Color32::from_rgb(42, 113, 224),
             secondary_color: Color32::WHITE,
-            radial_gradient: false,
+            gradient_shape: paint_rust::gradient::GradientShape::Linear,
+            gradient_mode: paint_rust::gradient::GradientMode::Blend,
             brush_size: 12.0,
             shape_filled: false,
             move_selection_only: false,
@@ -1458,18 +1460,26 @@ impl Editor {
                         ));
                     }
                     if self.tool == Tool::Gradient {
+                        let mut start = drawing_color.to_srgba_unmultiplied();
+                        let mut end = if drawing_button == egui::PointerButton::Secondary {
+                            self.color
+                        } else {
+                            self.secondary_color
+                        }
+                        .to_srgba_unmultiplied();
+                        if self.gradient_mode == paint_rust::gradient::GradientMode::Transparency {
+                            let reverse = drawing_button == egui::PointerButton::Secondary;
+                            start[3] = if reverse { 0 } else { 255 };
+                            end[3] = if reverse { 255 } else { 0 };
+                        }
                         let effect = Effect::Gradient(paint_rust::gradient::Gradient {
                             from: self.shape_origin.unwrap_or(point),
                             to: point,
                             style: GradientStyle {
-                                start: drawing_color.to_srgba_unmultiplied(),
-                                end: if drawing_button == egui::PointerButton::Secondary {
-                                    self.color
-                                } else {
-                                    self.secondary_color
-                                }
-                                .to_srgba_unmultiplied(),
-                                radial: self.radial_gradient,
+                                start,
+                                end,
+                                shape: self.gradient_shape,
+                                mode: self.gradient_mode,
                             },
                         });
                         self.request_gesture_preview(effect);
@@ -1569,8 +1579,21 @@ impl Editor {
             ui.label("Pencil: 1 px");
         }
         if self.tool == Tool::Gradient {
-            ui.checkbox(&mut self.radial_gradient, "Radial gradient");
-            ui.small("Right drag reverses colors");
+            egui::ComboBox::from_label("Gradient shape")
+                .selected_text(self.gradient_shape.label())
+                .show_ui(ui, |ui| {
+                    for shape in paint_rust::gradient::GradientShape::ALL {
+                        ui.selectable_value(&mut self.gradient_shape, shape, shape.label());
+                    }
+                });
+            egui::ComboBox::from_label("Gradient mode")
+                .selected_text(self.gradient_mode.label())
+                .show_ui(ui, |ui| {
+                    for mode in paint_rust::gradient::GradientMode::ALL {
+                        ui.selectable_value(&mut self.gradient_mode, mode, mode.label());
+                    }
+                });
+            ui.small("Right drag reverses colors or transparency");
         }
         if matches!(self.tool, Tool::ColorSelect | Tool::Fill) {
             ui.add(egui::Slider::new(&mut self.color_tolerance, 0..=255).text("Tolerance"));
@@ -3900,7 +3923,8 @@ mod tests {
             style: GradientStyle {
                 start: [255, 0, 0, 255],
                 end: [0, 0, 255, 255],
-                radial: false,
+                shape: paint_rust::gradient::GradientShape::Linear,
+                mode: paint_rust::gradient::GradientMode::Blend,
             },
         });
         let mut preview = crate::preview::EffectPreview::new(

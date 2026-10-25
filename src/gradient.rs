@@ -1,6 +1,50 @@
 use crate::document::{GradientStyle, Pixel, Selection, blend};
 use std::sync::atomic::{AtomicBool, Ordering};
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum GradientShape {
+    Linear,
+    Reflected,
+    Radial,
+    Diamond,
+    Conical,
+}
+impl GradientShape {
+    pub const ALL: [Self; 5] = [
+        Self::Linear,
+        Self::Reflected,
+        Self::Radial,
+        Self::Diamond,
+        Self::Conical,
+    ];
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Linear => "Linear",
+            Self::Reflected => "Reflected",
+            Self::Radial => "Radial",
+            Self::Diamond => "Diamond",
+            Self::Conical => "Conical",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum GradientMode {
+    Blend,
+    Replace,
+    Transparency,
+}
+impl GradientMode {
+    pub const ALL: [Self; 3] = [Self::Blend, Self::Replace, Self::Transparency];
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Blend => "Blend colors",
+            Self::Replace => "Replace colors",
+            Self::Transparency => "Transparency",
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Gradient {
     pub from: (f32, f32),
@@ -26,7 +70,10 @@ pub fn render(
         return None;
     }
     let mut output = source.to_vec();
-    let (dx, dy) = (f64::from(to.0 - from.0), f64::from(to.1 - from.1));
+    let (dx, dy) = (
+        f64::from(to.0) - f64::from(from.0),
+        f64::from(to.1) - f64::from(from.1),
+    );
     let distance = dx * dx + dy * dy;
     for y in 0..height {
         if cancel.load(Ordering::Relaxed) {
@@ -45,10 +92,19 @@ pub fn render(
             );
             let t = if distance <= f64::EPSILON {
                 0.0
-            } else if style.radial {
-                (px * px + py * py).sqrt() / distance.sqrt()
             } else {
-                (px * dx + py * dy) / distance
+                let along = (px * dx + py * dy) / distance;
+                let across = (py * dx - px * dy) / distance;
+                match style.shape {
+                    GradientShape::Linear => along,
+                    GradientShape::Reflected => along.abs(),
+                    GradientShape::Radial => (px * px + py * py).sqrt() / distance.sqrt(),
+                    GradientShape::Diamond => along.abs() + across.abs(),
+                    GradientShape::Conical => {
+                        across.atan2(along).rem_euclid(std::f64::consts::TAU)
+                            / std::f64::consts::TAU
+                    }
+                }
             };
             let t = t.clamp(0.0, 1.0);
             let a = f64::from(style.start[3]) * (1.0 - t);
@@ -65,7 +121,14 @@ pub fn render(
                 color[3] = alpha.round().clamp(0.0, 255.0) as u8;
             }
             let i = y as usize * width as usize + x as usize;
-            output[i] = blend(output[i], color, 255);
+            match style.mode {
+                GradientMode::Blend => output[i] = blend(output[i], color, 255),
+                GradientMode::Replace => output[i] = color,
+                GradientMode::Transparency => {
+                    output[i][3] =
+                        ((u16::from(source[i][3]) * u16::from(color[3]) + 127) / 255) as u8
+                }
+            }
         }
     }
     if cancel.load(Ordering::Relaxed) {

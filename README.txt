@@ -839,3 +839,9 @@ Flood fill shares tolerance, connectivity and sampling controls with Select colo
 It always writes the active layer, even when sampling the merged image. Selection
 boundaries block connected fills; global matching can fill disconnected selected
 regions. Matching uses the original seed color throughout the operation.
+
+Gradient shapes include Linear, Reflected, Radial, Diamond and Conical. Color
+blending overlays the existing pixels; Replace writes the gradient RGBA directly.
+Transparency preserves RGB while fading existing alpha from its original value
+to zero. Right-button dragging reverses colors or the direction of the alpha fade.
+All modes use the current selection and the cancellable gesture preview.

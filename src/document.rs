@@ -26,7 +26,8 @@ pub struct ShapeStyle {
 pub struct GradientStyle {
     pub start: Pixel,
     pub end: Pixel,
-    pub radial: bool,
+    pub shape: crate::gradient::GradientShape,
+    pub mode: crate::gradient::GradientMode,
 }
 
 pub const MAX_PIXELS: usize = 4096 * 4096;
