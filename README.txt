@@ -1571,3 +1571,20 @@ pixel dimensions. Canvas expansion can fill each layer's new pixels with
 transparency, primary/secondary color, white or black. Existing pixels, hidden
 layers and layer properties are preserved; one undo restores the entire edit.
 The resize dialog keeps Apply/Cancel outside its scrollable option area.
+
+OpenType text layout
+-------------------
+Text preview uses Rustybuzz shaping and Unicode bidirectional/script runs before
+rasterizing outlines. Combining marks, optional ligatures and contextual forms
+use the selected font's tables. Letter spacing applies between shaped clusters;
+nonzero spacing disables optional Latin ligatures. Collection face indices are
+preserved through font selection, cached reuse, shaping and outline rendering.
+Underline and strikeout use font metrics with a fallback for absent metrics.
+Alignment, selection clipping, antialiasing, cancellation and one-step undo still
+apply. Automatic cross-font fallback and variable-axis controls remain pending;
+choose a font covering the characters required by the document.
+Typography probe with a locally installed font (the font is not bundled):
+    cargo run --locked --example text_shaping -- /path/to/font.ttf /tmp/text.png
+Tests cover composed/decomposed accents, bidi override ordering, ligatures,
+spacing, font decoration position and invalid collection indices. Arabic and
+Hebrew system-font renders have also been inspected on the development host.

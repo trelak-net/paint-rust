@@ -15,7 +15,7 @@ pub(super) enum Outcome {
     ClipboardImage(paste::Image),
     SelectionCopied,
     PastedImage(Box<Document>),
-    TextFont(ab_glyph::FontArc, String),
+    TextFont(ab_glyph::FontArc, String, u32),
     FontCatalog(Vec<paint_rust::fonts::InstalledFont>),
     Copied(Option<Box<Document>>),
     Opened(Box<Document>, PathBuf),
@@ -346,7 +346,7 @@ impl Editor {
         self.start_cancellable_file_job("load installed font", move |cancel| {
             let font =
                 paint_rust::text::load_font_face_cancellable(&record.path, record.index, cancel)?;
-            Ok(Outcome::TextFont(font, record.label()))
+            Ok(Outcome::TextFont(font, record.label(), record.index))
         });
     }
 
@@ -361,7 +361,7 @@ impl Editor {
                 .unwrap_or_default()
                 .to_string_lossy()
                 .into_owned();
-            Ok(Outcome::TextFont(font, name))
+            Ok(Outcome::TextFont(font, name, 0))
         });
     }
 
@@ -445,9 +445,10 @@ impl Editor {
                 self.status = format!("Found {} installed font faces", fonts.len());
                 self.system_fonts = fonts;
             }
-            Ok(Outcome::TextFont(font, name)) => {
+            Ok(Outcome::TextFont(font, name, index)) => {
                 if let Some(dialog) = &mut self.text_dialog {
-                    self.text_font = Some((font.clone(), name.clone()));
+                    self.text_font = Some((font.clone(), name.clone(), index));
+                    dialog.layout.font_index = index;
                     dialog.font = font;
                     dialog.font_name = name;
                     dialog.preview.request_text(crate::preview::TextInput {

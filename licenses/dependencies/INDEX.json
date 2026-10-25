@@ -1,6 +1,6 @@
 {
   "target": "x86_64-unknown-linux-gnu",
-  "cargo_lock_sha256": "99bcd0cdb80691182c20b4f88d42922b783fe616a5f2cc0cd88b174779607a49",
+  "cargo_lock_sha256": "a920a560997bad1316021fabb8f0c33412e0c5b4bd5c76538b868ccb303264fd",
   "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1",
   "rust_library_notice_sha256": "5647be074c8edf7339fd863055923a8fc80bc5610a8d4661ec3b767b9d392c27",
   "packages": [
@@ -818,6 +818,20 @@
       "files": {
         "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
         "LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      }
+    },
+    {
+      "name": "core_maths",
+      "version": "0.1.1",
+      "license": "MIT",
+      "authors": [
+        "Robert Bastian <me@robertbastian.dev"
+      ],
+      "repository": "https://github.com/robertbastian/core_maths",
+      "source": "https://crates.io/crates/core_maths/0.1.1",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE": "9ebf8c4cc0b735ca13a766451f7b8097db3185975ceb2ba94b5abf439156a91f"
       }
     },
     {
@@ -2158,6 +2172,24 @@
       }
     },
     {
+      "name": "libm",
+      "version": "0.2.16",
+      "license": "MIT",
+      "authors": [
+        "Alex Crichton <alex@alexcrichton.com>",
+        "Amanieu d'Antras <amanieu@gmail.com>",
+        "Jorge Aparicio <japaricious@gmail.com>",
+        "Trevor Gross <tg@trevorgross.com>"
+      ],
+      "repository": "https://github.com/rust-lang/compiler-builtins",
+      "source": "https://crates.io/crates/libm/0.2.16",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE.txt": "3823dda7cf046602f4b4e77ec8e227863dc4736037cc85bb33d9f19febe16bb7",
+        "SOURCE-COPYRIGHTS.txt": "9462ffa0714113199053d976b1d0e96be52f585e3de2c0d645b441bed5aa6880"
+      }
+    },
+    {
       "name": "linux-raw-sys",
       "version": "0.12.1",
       "license": "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT",
@@ -2927,6 +2959,24 @@
       }
     },
     {
+      "name": "rustybuzz",
+      "version": "0.20.1",
+      "license": "MIT",
+      "authors": [
+        "Caleb Maclennan <caleb@alerque.com>",
+        "Laurenz Stampfl <laurenz.stampfl@gmail.com>",
+        "Yevhenii Reizner <razrfalcon@gmail.com>",
+        "خالد حسني (Khaled Hosny) <khaled@aliftype.com>"
+      ],
+      "repository": "https://github.com/harfbuzz/rustybuzz",
+      "source": "https://crates.io/crates/rustybuzz/0.20.1",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE": "3a7c3f0b887abb7c638faf022d29257418458614c6724b120ceeffb279f9c7d2",
+        "scripts/ms-use/COPYING": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+      }
+    },
+    {
       "name": "scoped-tls",
       "version": "1.0.1",
       "license": "MIT/Apache-2.0",
@@ -3566,6 +3616,53 @@
       }
     },
     {
+      "name": "unicode-bidi",
+      "version": "0.3.18",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "The Servo Project Developers"
+      ],
+      "repository": "https://github.com/servo/unicode-bidi",
+      "source": "https://crates.io/crates/unicode-bidi/0.3.18",
+      "upstream_notices": [],
+      "files": {
+        "COPYRIGHT": "edb20b474f6cbd4f4db066b54a9e0f687d0009d309412a63431189b59b8e2a07",
+        "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "LICENSE-MIT": "7b63ecd5f1902af1b63729947373683c32745c16a10e8e6292e2e2dcd7e90ae0",
+        "SOURCE-COPYRIGHTS.txt": "96c9e96cede3e13bc9b7059844432c88f247ba899ba6e733b9c4f00bfef150b3"
+      }
+    },
+    {
+      "name": "unicode-bidi-mirroring",
+      "version": "0.4.0",
+      "license": "MIT/Apache-2.0",
+      "authors": [
+        "Yevhenii Reizner <razrfalcon@gmail.com>"
+      ],
+      "repository": "https://github.com/RazrFalcon/unicode-bidi-mirroring",
+      "source": "https://crates.io/crates/unicode-bidi-mirroring/0.4.0",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "LICENSE-MIT": "59a1fdac3bd550043599bd159fd70f09a1108c2b09e3751d39b11e1ff8e51f00"
+      }
+    },
+    {
+      "name": "unicode-ccc",
+      "version": "0.4.0",
+      "license": "MIT/Apache-2.0",
+      "authors": [
+        "Yevhenii Reizner <razrfalcon@gmail.com>"
+      ],
+      "repository": "https://github.com/RazrFalcon/unicode-ccc",
+      "source": "https://crates.io/crates/unicode-ccc/0.4.0",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "LICENSE-MIT": "59a1fdac3bd550043599bd159fd70f09a1108c2b09e3751d39b11e1ff8e51f00"
+      }
+    },
+    {
       "name": "unicode-ident",
       "version": "1.0.27",
       "license": "(MIT OR Apache-2.0) AND Unicode-3.0",
@@ -3579,6 +3676,40 @@
         "LICENSE-APACHE": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
         "LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
         "LICENSE-UNICODE": "f7db81051789b729fea528a63ec4c938fdcb93d9d61d97dc8cc2e9df6d47f2a1"
+      }
+    },
+    {
+      "name": "unicode-properties",
+      "version": "0.1.4",
+      "license": "MIT/Apache-2.0",
+      "authors": [
+        "Charles Lew <crlf0710@gmail.com>",
+        "Manish Goregaokar <manishsmail@gmail.com>"
+      ],
+      "repository": "https://github.com/unicode-rs/unicode-properties",
+      "source": "https://crates.io/crates/unicode-properties/0.1.4",
+      "upstream_notices": [],
+      "files": {
+        "COPYRIGHT": "23860c2a7b5d96b21569afedf033469bab9fe14a1b24a35068b8641c578ce24d",
+        "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "LICENSE-MIT": "7b63ecd5f1902af1b63729947373683c32745c16a10e8e6292e2e2dcd7e90ae0",
+        "SOURCE-COPYRIGHTS.txt": "2bf9d62571cf08bfb4c0ca6b261fbefa4b8867577a3ca4ccb526effda644382c"
+      }
+    },
+    {
+      "name": "unicode-script",
+      "version": "0.5.8",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "Manish Goregaokar <manishsmail@gmail.com>"
+      ],
+      "repository": "https://github.com/unicode-rs/unicode-script",
+      "source": "https://crates.io/crates/unicode-script/0.5.8",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "7cbb56d1b5d83d735056b363ab20958524120afafc4ad8206e6be98cdec5d737",
+        "LICENSE-MIT": "7ad3ea8ca3caf894db98c3f31d5d4949173ffa93c883ef19a9e529ad48960f8c",
+        "SOURCE-COPYRIGHTS.txt": "605f8e316044e05aedc15812150a996e8e0c84f2ef60ea644114826f7b6dc711"
       }
     },
     {

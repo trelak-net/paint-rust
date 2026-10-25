@@ -372,3 +372,105 @@ fn decorations_cover_spaces_follow_alignment_and_preserve_selection() {
             .any(|(i, _)| i % 200 >= 100)
     );
 }
+
+#[test]
+fn shaping_composes_marks_and_reorders_embedded_rtl_runs() {
+    use ab_glyph::Font;
+    use paint_rust::text::shaping;
+    use std::sync::atomic::AtomicBool;
+    let font = font();
+    let face = rustybuzz::Face::from_slice(font.font_data(), 0).unwrap();
+    let shape =
+        |text| shaping::line(&face, &font, text, 32.0, 0.0, &AtomicBool::new(false)).unwrap();
+    let composed = shape("é");
+    let combining = shape("e\u{301}");
+    assert_eq!(composed.glyphs.len(), combining.glyphs.len());
+    for (a, b) in composed.glyphs.iter().zip(&combining.glyphs) {
+        assert_eq!(a.id, b.id);
+        assert_eq!(a.position, b.position);
+    }
+    let mixed = shape("A\u{202e}BC\u{202c}D");
+    let letters: Vec<_> = mixed
+        .glyphs
+        .iter()
+        .map(|g| g.id)
+        .filter(|id| "ABCD".chars().any(|c| font.glyph_id(c) == *id))
+        .collect();
+    assert_eq!(
+        letters,
+        "ACBD".chars().map(|c| font.glyph_id(c)).collect::<Vec<_>>()
+    );
+    assert!(shaping::line(&face, &font, "cancelled", 32.0, 0.0, &AtomicBool::new(true)).is_none());
+}
+
+#[test]
+fn text_decoration_uses_font_position_and_face_index_is_validated() {
+    use ab_glyph::{Font, ScaleFont};
+    use paint_rust::text::{self, TextLayout};
+    let font = font();
+    let face = rustybuzz::Face::from_slice(font.font_data(), 0).unwrap();
+    let metrics = face.underline_metrics().unwrap();
+    let size = 64.0;
+    let baseline = 10.0 + font.as_scaled(size).ascent();
+    let expected = baseline - metrics.position as f32 * size / font.height_unscaled();
+    let mut pixels = vec![[0; 4]; 200 * 100];
+    text::render(
+        &mut pixels,
+        200,
+        100,
+        None,
+        TextStyle {
+            font: &font,
+            text: "    ",
+            origin: (10.0, 10.0),
+            size,
+            color: [255; 4],
+            layout: TextLayout {
+                underline: true,
+                ..Default::default()
+            },
+        },
+    );
+    let mut mass = 0.0;
+    let mut moment = 0.0;
+    for (i, p) in pixels.iter().enumerate() {
+        mass += f64::from(p[3]);
+        moment += (i / 200) as f64 * f64::from(p[3]) + 0.5 * f64::from(p[3]);
+    }
+    assert!(mass > 0.0);
+    assert!((moment / mass - f64::from(expected)).abs() < 0.6);
+    let before = pixels.clone();
+    assert!(!text::render_cancellable(
+        &mut pixels,
+        200,
+        100,
+        None,
+        TextStyle {
+            font: &font,
+            text: "invalid face",
+            origin: (0.0, 0.0),
+            size,
+            color: [255; 4],
+            layout: TextLayout {
+                font_index: u32::MAX,
+                ..Default::default()
+            }
+        },
+        &std::sync::atomic::AtomicBool::new(false)
+    ));
+    assert_eq!(pixels, before);
+}
+
+#[test]
+fn optional_ligatures_are_disabled_when_letter_spacing_is_requested() {
+    use ab_glyph::Font;
+    use paint_rust::text::shaping;
+    use std::sync::atomic::AtomicBool;
+    let font = font();
+    let face = rustybuzz::Face::from_slice(font.font_data(), 0).unwrap();
+    let joined = shaping::line(&face, &font, "ffi", 32.0, 0.0, &AtomicBool::new(false)).unwrap();
+    let spaced = shaping::line(&face, &font, "ffi", 32.0, 4.0, &AtomicBool::new(false)).unwrap();
+    assert!(joined.glyphs.len() < 3);
+    assert_eq!(spaced.glyphs.len(), 3);
+    assert!(spaced.width > joined.width);
+}

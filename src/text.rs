@@ -1,3 +1,4 @@
+pub mod shaping;
 use crate::document::{Pixel, Selection, blend};
 use ab_glyph::{Font, FontArc, ScaleFont, point};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -20,6 +21,7 @@ impl Alignment {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TextLayout {
+    pub font_index: u32,
     pub underline: bool,
     pub strikethrough: bool,
     pub alignment: Alignment,
@@ -30,6 +32,7 @@ pub struct TextLayout {
 impl Default for TextLayout {
     fn default() -> Self {
         Self {
+            font_index: 0,
             underline: false,
             strikethrough: false,
             alignment: Alignment::Left,
@@ -91,106 +94,102 @@ pub fn render_cancellable(
         return false;
     }
     let font = style.font.as_scaled(style.size);
-    let mut widths = Vec::new();
+    let Some(face) = rustybuzz::Face::from_slice(style.font.font_data(), style.layout.font_index)
+    else {
+        return false;
+    };
+    let mut lines = Vec::new();
     for line in style.text.split('\n') {
-        let mut advance = 0.0;
-        let mut previous = None;
-        for ch in line.chars() {
-            if cancel.load(Ordering::Relaxed) {
-                return false;
-            }
-            if ch == '\t' {
-                advance += font.h_advance(font.glyph_id(' ')) * 4.0;
-                previous = None;
-            } else if !ch.is_control() {
-                let id = font.glyph_id(ch);
-                if let Some(prior) = previous {
-                    advance += font.kern(prior, id) + style.layout.letter_spacing;
-                }
-                advance += font.h_advance(id);
-                previous = Some(id);
-            }
-        }
-        widths.push(advance);
+        let Some(line) = shaping::line(
+            &face,
+            style.font,
+            line,
+            style.size,
+            style.layout.letter_spacing,
+            cancel,
+        ) else {
+            return false;
+        };
+        lines.push(line);
     }
     let factor = match style.layout.alignment {
         Alignment::Left => 0.0,
         Alignment::Center => 0.5,
         Alignment::Right => 1.0,
     };
-    let mut line = 0;
-    let mut caret = point(
-        style.origin.0 - widths[0] * factor,
-        style.origin.1 + font.ascent(),
-    );
     let line_height = (font.height() + font.line_gap()) * style.layout.line_spacing;
-    let mut previous = None;
-    for ch in style.text.chars() {
-        if cancel.load(Ordering::Relaxed) {
-            return false;
-        }
-        if ch == '\n' {
-            line += 1;
-            caret.x = style.origin.0 - widths[line] * factor;
-            caret.y += line_height;
-            previous = None;
-            continue;
-        }
-        if ch == '\t' {
-            caret.x += font.h_advance(font.glyph_id(' ')) * 4.0;
-            previous = None;
-            continue;
-        }
-        if ch.is_control() {
-            continue;
-        }
-        let id = font.glyph_id(ch);
-        if let Some(prior) = previous {
-            caret.x += font.kern(prior, id) + style.layout.letter_spacing;
-        }
-        if let Some(glyph) = font.outline_glyph(id.with_scale_and_position(style.size, caret)) {
-            let bounds = glyph.px_bounds();
-            if bounds.max.x > 0.0
-                && bounds.max.y > 0.0
-                && bounds.min.x < width as f32
-                && bounds.min.y < height as f32
-            {
-                glyph.draw(|x, y, coverage| {
-                    if cancel.load(Ordering::Relaxed) {
-                        return;
-                    }
-                    let x = bounds.min.x as i64 + i64::from(x);
-                    let y = bounds.min.y as i64 + i64::from(y);
-                    if x < 0 || y < 0 || x >= i64::from(width) || y >= i64::from(height) {
-                        return;
-                    }
-                    if selection
-                        .as_ref()
-                        .is_some_and(|r| !r.contains(x as usize, y as usize))
-                    {
-                        return;
-                    }
-                    let i = y as usize * width as usize + x as usize;
-                    pixels[i] = blend(
-                        pixels[i],
-                        style.color,
-                        if style.layout.antialias {
-                            (coverage * 255.0).round().clamp(0.0, 255.0) as u8
-                        } else if coverage >= 0.5 {
-                            255
-                        } else {
-                            0
-                        },
-                    );
-                });
+    for (line_index, line) in lines.iter().enumerate() {
+        let origin = point(
+            style.origin.0 - line.width * factor,
+            style.origin.1 + font.ascent() + line_index as f32 * line_height,
+        );
+        for shaped in &line.glyphs {
+            if cancel.load(Ordering::Relaxed) {
+                return false;
+            }
+            let caret = point(origin.x + shaped.position.x, origin.y + shaped.position.y);
+            let id = shaped.id;
+            if let Some(glyph) = font.outline_glyph(id.with_scale_and_position(style.size, caret)) {
+                let bounds = glyph.px_bounds();
+                if bounds.max.x > 0.0
+                    && bounds.max.y > 0.0
+                    && bounds.min.x < width as f32
+                    && bounds.min.y < height as f32
+                {
+                    glyph.draw(|x, y, coverage| {
+                        if cancel.load(Ordering::Relaxed) {
+                            return;
+                        }
+                        let x = bounds.min.x as i64 + i64::from(x);
+                        let y = bounds.min.y as i64 + i64::from(y);
+                        if x < 0 || y < 0 || x >= i64::from(width) || y >= i64::from(height) {
+                            return;
+                        }
+                        if selection
+                            .as_ref()
+                            .is_some_and(|r| !r.contains(x as usize, y as usize))
+                        {
+                            return;
+                        }
+                        let i = y as usize * width as usize + x as usize;
+                        pixels[i] = blend(
+                            pixels[i],
+                            style.color,
+                            if style.layout.antialias {
+                                (coverage * 255.0).round().clamp(0.0, 255.0) as u8
+                            } else if coverage >= 0.5 {
+                                255
+                            } else {
+                                0
+                            },
+                        );
+                    });
+                }
             }
         }
-        caret.x += font.h_advance(id);
-        previous = Some(id);
     }
     if style.layout.underline || style.layout.strikethrough {
-        let thickness = (style.size / 16.0).max(1.0);
-        for (line, advance) in widths.into_iter().enumerate() {
+        let scale = style.size / style.font.height_unscaled();
+        let underline = face
+            .underline_metrics()
+            .map(|m| {
+                (
+                    -(m.position as f32) * scale,
+                    (m.thickness as f32 * scale).max(1.0),
+                )
+            })
+            .unwrap_or((style.size * 0.08, (style.size / 16.0).max(1.0)));
+        let strike = face
+            .strikeout_metrics()
+            .map(|m| {
+                (
+                    -(m.position as f32) * scale,
+                    (m.thickness as f32 * scale).max(1.0),
+                )
+            })
+            .unwrap_or((-style.size * 0.3, (style.size / 16.0).max(1.0)));
+        for (line, shaped) in lines.iter().enumerate() {
+            let advance = shaped.width;
             if cancel.load(Ordering::Relaxed) {
                 return false;
             }
@@ -200,10 +199,11 @@ pub fn render_cancellable(
             let left = style.origin.0 - advance * factor;
             let right = left + advance;
             let baseline = style.origin.1 + font.ascent() + line as f32 * line_height;
-            for (enabled, center) in [
-                (style.layout.underline, baseline + style.size * 0.08),
-                (style.layout.strikethrough, baseline - style.size * 0.3),
+            for (enabled, (offset, thickness)) in [
+                (style.layout.underline, underline),
+                (style.layout.strikethrough, strike),
             ] {
+                let center = baseline + offset;
                 if !enabled {
                     continue;
                 }

@@ -174,7 +174,7 @@ pub struct Editor {
     text_dialog: Option<TextDialog>,
     system_fonts: Vec<paint_rust::fonts::InstalledFont>,
     font_search: String,
-    text_font: Option<(ab_glyph::FontArc, String)>,
+    text_font: Option<(ab_glyph::FontArc, String, u32)>,
     effect_dialog: Option<EffectDialog>,
     selection_transform: Option<selection_transform::Dialog>,
     paste_confirmation: Option<paste::Image>,
@@ -483,15 +483,16 @@ impl Editor {
                 .and_then(|name| definitions.font_data.get(name))
                 .cloned()
         });
+        let default_index = data.as_ref().map_or(0, |data| data.index);
         let font = data
             .and_then(|data| {
                 ab_glyph::FontVec::try_from_vec_and_index(data.font.to_vec(), data.index).ok()
             })
             .map(ab_glyph::FontArc::new);
-        let (font, font_name) = if let Some((font, name)) = &self.text_font {
-            (Some(font.clone()), name.clone())
+        let (font, font_name, font_index) = if let Some((font, name, index)) = &self.text_font {
+            (Some(font.clone()), name.clone(), *index)
         } else {
-            (font, "System UI font".into())
+            (font, "System UI font".into(), default_index)
         };
         if let Some(font) = font {
             self.document.begin("Text");
@@ -502,7 +503,10 @@ impl Editor {
                 self.document.height,
                 self.document.selection(),
                 crate::preview::TextInput {
-                    layout: Default::default(),
+                    layout: paint_rust::text::TextLayout {
+                        font_index,
+                        ..Default::default()
+                    },
                     font: font.clone(),
                     content: String::new(),
                     origin,
@@ -512,7 +516,10 @@ impl Editor {
             );
             self.text_dialog = Some(TextDialog {
                 font_name,
-                layout: Default::default(),
+                layout: paint_rust::text::TextLayout {
+                    font_index,
+                    ..Default::default()
+                },
                 preview,
                 content: String::new(),
                 font,
@@ -2413,6 +2420,7 @@ impl Editor {
                                 ));
                             }
                         });
+                        ui.small("Choose a font containing all characters in your text.");
                         let label = ui.label("Text content");
                         let response = ui
                             .add(

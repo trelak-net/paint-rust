@@ -93,3 +93,9 @@ the active image resolution. Resize image and Canvas size also accept these unit
 and let you set linked or independent X/Y DPI. Changing DPI alone changes print
 size without resampling pixels. Editing width or height changes the target pixel
 size shown in the dialog. Apply records the complete change in one undo step.
+
+Text typography
+Text supports font ligatures, combining marks and mixed writing directions.
+Choose an installed font containing the characters you need. Underline and
+strikethrough follow that font's metrics; letter spacing adjusts character
+clusters without separating combining marks from their base letters.
