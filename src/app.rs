@@ -2473,6 +2473,10 @@ impl Editor {
                                 changed |= ui.add(egui::Slider::new(shadows,-100..=100).text("Shadows")).changed();
                                 changed |= ui.add(egui::Slider::new(highlights,-100..=100).text("Highlights")).changed();
                             }
+                            Effect::SurfaceBlur { radius, threshold } => {
+                                changed |= ui.add(egui::Slider::new(radius,0..=10).text("Radius (px)")).changed();
+                                changed |= ui.add(egui::Slider::new(threshold,1..=255).text("Color threshold")).changed();
+                            }
                             Effect::RadialBlur { angle, center } => {
                                 changed |= ui.add(egui::Slider::new(angle,0.0..=180.0).text("Angle (degrees)")).changed();
                                 changed |= ui.add(egui::Slider::new(&mut center[0],0.0..=1.0).text("Center X")).changed();
@@ -3023,6 +3027,10 @@ impl Editor {
                                 distance: 5.0,
                                 fragments: 4,
                                 angle: 0.0,
+                            },
+                            Effect::SurfaceBlur {
+                                radius: 3,
+                                threshold: 30,
                             },
                             Effect::GaussianBlur(3),
                             Effect::MotionBlur {

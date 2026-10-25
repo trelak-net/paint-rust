@@ -221,3 +221,69 @@ pub(super) fn trajectory(
     }
     Some(output)
 }
+
+pub(super) fn surface(
+    source: &[Pixel],
+    width: u32,
+    height: u32,
+    radius: u32,
+    threshold: u8,
+    cancel: &AtomicBool,
+) -> Option<Vec<Pixel>> {
+    if radius > 10 || threshold == 0 {
+        return None;
+    }
+    if radius == 0 {
+        return Some(source.to_vec());
+    }
+    let radius = i64::from(radius);
+    let sigma = (radius as f64 / 2.0).max(0.5);
+    let weights: Vec<_> = (-radius..=radius)
+        .flat_map(|dy| {
+            (-radius..=radius).map(move |dx| {
+                (
+                    dx,
+                    dy,
+                    (-(dx * dx + dy * dy) as f64 / (2.0 * sigma * sigma)).exp(),
+                )
+            })
+        })
+        .collect();
+    let mut output = source.to_vec();
+    for y in 0..height {
+        for x in 0..width {
+            if x.is_multiple_of(16) && cancel.load(Ordering::Relaxed) {
+                return None;
+            }
+            let index = (y * width + x) as usize;
+            let center = source[index];
+            if center[3] == 0 {
+                continue;
+            }
+            let mut sum = [0.0; 3];
+            let mut total = 0.0;
+            for &(dx, dy, spatial) in &weights {
+                let sx = (i64::from(x) + dx).clamp(0, i64::from(width) - 1) as u32;
+                let sy = (i64::from(y) + dy).clamp(0, i64::from(height) - 1) as u32;
+                let pixel = source[(sy * width + sx) as usize];
+                let difference = (0..3).map(|c| center[c].abs_diff(pixel[c])).max().unwrap();
+                if difference >= threshold || pixel[3] == 0 {
+                    continue;
+                }
+                let weight = spatial
+                    * (1.0 - f64::from(difference) / f64::from(threshold))
+                    * f64::from(pixel[3]);
+                for c in 0..3 {
+                    sum[c] += f64::from(pixel[c]) * weight;
+                }
+                total += weight;
+            }
+            if total > 0.0 {
+                for c in 0..3 {
+                    output[index][c] = (sum[c] / total).round() as u8;
+                }
+            }
+        }
+    }
+    Some(output)
+}

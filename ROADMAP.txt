@@ -140,6 +140,7 @@ independent tasks; do not silently reduce the required scope.
 [ ] Remaining adjustment parity audit.
 [x] Gaussian and motion blur with premultiplied-alpha sampling and live previews.
 [x] Radial, zoom and fragment blur with persistent controls and alpha-aware sampling.
+[x] Surface blur with radius and color threshold controls.
 [x] Seeded noise, median/percentile blur, edge detection and directional emboss.
 [x] Bulge, twist, frosted glass, crystalize, vignette and red-eye correction.
 [ ] Complete remaining blur, distortion, noise and stylization inventory.

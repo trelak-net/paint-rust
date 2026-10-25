@@ -6,6 +6,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 #[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum Effect {
+    SurfaceBlur {
+        radius: u32,
+        threshold: u8,
+    },
     RadialBlur {
         angle: f32,
         center: [f32; 2],
@@ -125,6 +129,7 @@ impl Effect {
                     && (2..=32).contains(&fragments)
                     && range(angle, -180.0, 180.0)
             }
+            Self::SurfaceBlur { radius, threshold } => radius <= 10 && threshold > 0,
             Self::AutoLevels(v) => range(v, 0.0, 5.0),
             Self::BrightnessContrast {
                 brightness,
@@ -173,7 +178,8 @@ impl Effect {
 
     pub fn category(self) -> &'static str {
         match self {
-            Self::RadialBlur { .. }
+            Self::SurfaceBlur { .. }
+            | Self::RadialBlur { .. }
             | Self::ZoomBlur { .. }
             | Self::FragmentBlur { .. }
             | Self::GaussianBlur(_)
@@ -206,6 +212,7 @@ impl Effect {
             Self::RadialBlur { .. } => "Radial blur",
             Self::ZoomBlur { .. } => "Zoom blur",
             Self::FragmentBlur { .. } => "Fragment blur",
+            Self::SurfaceBlur { .. } => "Surface blur",
             Self::Exposure { .. } => "Exposure",
             Self::Bulge(_) => "Bulge",
             Self::Twist(_) => "Twist",
@@ -382,6 +389,9 @@ pub fn render(
         Effect::RadialBlur { .. } | Effect::ZoomBlur { .. } | Effect::FragmentBlur { .. } => {
             blurs::trajectory(source, width, height, effect, cancel)?
         }
+        Effect::SurfaceBlur { radius, threshold } => {
+            blurs::surface(source, width, height, radius, threshold, cancel)?
+        }
         Effect::GaussianBlur(radius) => blurs::gaussian(source, width, height, radius, cancel)?,
         Effect::MotionBlur {
             distance,
@@ -531,7 +541,8 @@ pub fn render(
                         let steps = f64::from(levels.clamp(2, 32) - 1);
                         (f64::from(*channel) * steps / 255.0).round() * 255.0 / steps
                     }
-                    Effect::RadialBlur { .. }
+                    Effect::SurfaceBlur { .. }
+                    | Effect::RadialBlur { .. }
                     | Effect::ZoomBlur { .. }
                     | Effect::FragmentBlur { .. }
                     | Effect::Exposure { .. }

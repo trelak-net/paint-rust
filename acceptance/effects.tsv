@@ -46,7 +46,7 @@ Sketch Blur	Blurs	missing	No implementation yet	Kernel, parameter UI, cancellati
 Soften Portrait	Photo	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
 Square Blur	Blurs	partial	Box blur with replicated edges	Exact transfer function, ranges, color space and reference output audit
 Straighten	Photo	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
-Surface Blur	Blurs	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Surface Blur	Blurs	partial	Spatial and color-distance weighted smoothing; source alpha retained	External reference kernel/ranges and large-image performance audit
 Temperature / Tint	Adjustment	partial	Warm/cool and green/magenta channel controls; alpha retained	External reference output, ranges and color-space audit
 Tile Reflection	Distort	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
 Turbulence	Render	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases

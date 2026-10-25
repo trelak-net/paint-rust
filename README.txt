@@ -1101,3 +1101,12 @@ use 65 samples per pixel; fragments use 2 to 32. Neutral settings preserve exact
 bytes. All three support selection masks, cancellable previews, undo and saved
 parameters. External reference output, configurable quality and large-image
 performance comparisons remain pending.
+
+Surface blur
+------------
+Surface blur averages nearby colors with Gaussian spatial weights and a linear
+color-distance cutoff. The radius is bounded to 10 pixels; threshold 1 preserves
+all distinct colors. Neighbor weights include opacity, while the destination
+alpha and fully transparent RGB are retained. The filter supports the common
+preview, cancellation, selection, undo and saved-parameter workflow. Reference
+kernel comparison and large-image performance validation remain pending.
