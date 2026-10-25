@@ -1275,3 +1275,16 @@ inside iteration loops. Tests cover seed stability, known interior/exterior
 points, conjugate symmetry, palette alpha, selections and the complete preview/
 cancel/apply/undo/repeat workflow. Exact external algorithms, additional palettes
 and large-image performance comparisons remain pending.
+
+Additional distortions
+-----------------------
+Effects > Distort includes Dents (seeded smooth displacement), Polar inversion
+(adjustable center and signed amount), and Tile reflection (periodic displacement
+with size, strength and rotation). Sampling is bilinear in premultiplied alpha;
+coordinates outside the canvas replicate edge pixels. Zero strength preserves
+all bytes, including hidden RGB. The inversion center remains fixed rather than
+sampling an undefined radial direction. Selection clipping, preview/cancel, undo,
+repeat and persistent settings use the common effect pipeline. Tests cover exact
+neutral output, known coordinate mappings, deterministic seeds, constant colors,
+hidden-color isolation, single-pixel images and invalid parameters. External
+kernel/range comparisons and additional edge modes remain outstanding.

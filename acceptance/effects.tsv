@@ -9,7 +9,7 @@ Bulge	Distort	partial	Centered radial power warp with signed amount	Reference al
 Clouds	Render	partial	Seeded eight-octave smooth value noise, scale, roughness and alpha-aware two-color palette	External reference algorithms/ranges, palette options and large-image performance audit
 Crystalize	Distort	partial	Seeded Voronoi cells and size control	Reference algorithm/ranges, center controls and color-space audit
 Curves	Adjustment	partial	RGB/per-channel and independent luminance curves, cubic LUT, presets and preview	External reference transfer function and presentation audit
-Dents	Distort	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Dents	Distort	partial	Seeded smooth displacement field with scale and strength; alpha-aware bilinear sampling	External reference kernels/ranges, edge modes and large-image performance audit
 Black and White	Adjustment	partial	Grayscale with weighted RGB luminance	Exact transfer function, ranges, color space and reference output audit
 Drop Shadow	Object	partial	Gaussian alpha shadow with color, opacity and XY offset behind source	External reference ranges, edge behavior and large-image performance audit
 Edge Detect	Stylize	partial	Sobel magnitude with premultiplied input; source alpha retained	External reference output, ranges and color-space audit
@@ -34,7 +34,7 @@ Oil Painting	Artistic	missing	No implementation yet	Kernel, parameter UI, cancel
 Outline	Stylize	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
 Pencil Sketch	Artistic	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
 Pixelate	Distort	partial	Alpha-weighted block averaging	Exact transfer function, ranges, color space and reference output audit
-Polar Inversion	Distort	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Polar Inversion	Distort	partial	Adjustable radial inversion around a normalized center; replicated edges	External reference kernels/ranges, edge modes and large-image performance audit
 Posterize	Adjustment	partial	Shared channel quantization control	Exact transfer function, ranges, color space and reference output audit
 Radial Blur	Blurs	partial	Centered angular sampling with adjustable normalized center; premultiplied bilinear samples	External reference output, quality controls and large-image performance audit
 Reduce Noise	Noise	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
@@ -48,7 +48,7 @@ Square Blur	Blurs	partial	Box blur with replicated edges	Exact transfer function
 Straighten	Photo	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
 Surface Blur	Blurs	partial	Spatial and color-distance weighted smoothing; source alpha retained	External reference kernel/ranges and large-image performance audit
 Temperature / Tint	Adjustment	partial	Warm/cool and green/magenta channel controls; alpha retained	External reference output, ranges and color-space audit
-Tile Reflection	Distort	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Tile Reflection	Distort	partial	Rotated periodic XY displacement with tile size and signed strength	External reference kernels/ranges, edge modes and large-image performance audit
 Turbulence	Render	partial	Absolute-value noise octaves, seed, scale, roughness and alpha-aware palette	External reference algorithms/ranges, palette options and large-image performance audit
 Twist	Distort	partial	Centered radial twist with angle control	Reference algorithm/ranges, center controls and color-space audit
 Vignette	Photo	partial	Elliptical edge darkening with clear center radius	Reference algorithm/ranges, center controls and color-space audit

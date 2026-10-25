@@ -74,7 +74,7 @@ fn random(x: i64, y: i64, seed: u32) -> f64 {
     n ^= n >> 16;
     f64::from(n) / f64::from(u32::MAX)
 }
-fn noise(x: f64, y: f64, seed: u32) -> f64 {
+pub(super) fn noise(x: f64, y: f64, seed: u32) -> f64 {
     let (ix, iy) = (x.floor() as i64, y.floor() as i64);
     let smooth = |t: f64| t * t * t * (t * (t * 6.0 - 15.0) + 10.0);
     let (tx, ty) = (smooth(x - x.floor()), smooth(y - y.floor()));

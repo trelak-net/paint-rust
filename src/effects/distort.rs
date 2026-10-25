@@ -1,6 +1,9 @@
 use super::{AtomicBool, Ordering, Pixel, premultiply};
 #[derive(Clone, Copy)]
 pub(super) enum Warp {
+    Dents { scale: f32, amount: f32, seed: u32 },
+    Polar { amount: f32, center: [f32; 2] },
+    Tiles { size: f32, amount: f32, angle: f32 },
     Bulge(f32),
     Twist(f32),
     Frosted { radius: u32, seed: u32 },
@@ -57,7 +60,10 @@ pub(super) fn render(
     }
     if matches!(
         warp,
-        Warp::Bulge(0.0)
+        Warp::Dents { amount: 0.0, .. }
+            | Warp::Polar { amount: 0.0, .. }
+            | Warp::Tiles { amount: 0.0, .. }
+            | Warp::Bulge(0.0)
             | Warp::Twist(0.0)
             | Warp::Frosted { radius: 0, .. }
             | Warp::Crystal { size: 0..=1, .. }
@@ -74,6 +80,47 @@ pub(super) fn render(
             }
             let (px, py) = (f64::from(x), f64::from(y));
             let (sx, sy) = match warp {
+                Warp::Dents {
+                    scale,
+                    amount,
+                    seed,
+                } => {
+                    let nx = px / f64::from(scale);
+                    let ny = py / f64::from(scale);
+                    let dx = (super::render::noise(nx, ny, seed) * 2.0 - 1.0) * f64::from(amount);
+                    let dy = (super::render::noise(nx, ny, seed.wrapping_add(1)) * 2.0 - 1.0)
+                        * f64::from(amount);
+                    (px + dx, py + dy)
+                }
+                Warp::Polar { amount, center } => {
+                    let center_x = f64::from(center[0]) * f64::from(width - 1);
+                    let center_y = f64::from(center[1]) * f64::from(height - 1);
+                    let (dx, dy) = (px - center_x, py - center_y);
+                    let distance = dx * dx + dy * dy;
+                    if distance < 1e-12 {
+                        (px, py)
+                    } else {
+                        let factor = 1.0 + f64::from(amount) * (radius * radius / distance - 1.0);
+                        (center_x + dx * factor, center_y + dy * factor)
+                    }
+                }
+                Warp::Tiles {
+                    size,
+                    amount,
+                    angle,
+                } => {
+                    let angle = f64::from(angle).to_radians();
+                    let (cos, sin) = (angle.cos(), angle.sin());
+                    let (dx, dy) = (px - cx, py - cy);
+                    let (tx, ty) = (dx * cos + dy * sin, -dx * sin + dy * cos);
+                    let phase = std::f64::consts::TAU / f64::from(size);
+                    let (tx, ty) = (
+                        tx + (tx * phase).sin() * f64::from(amount),
+                        ty + (ty * phase).sin() * f64::from(amount),
+                    );
+                    (cx + tx * cos - ty * sin, cy + tx * sin + ty * cos)
+                }
+
                 Warp::Bulge(amount) => {
                     let (dx, dy) = ((px - cx) / radius, (py - cy) / radius);
                     let r = dx.hypot(dy);

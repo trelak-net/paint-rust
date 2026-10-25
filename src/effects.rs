@@ -10,6 +10,20 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 #[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum Effect {
+    Dents {
+        scale: f32,
+        amount: f32,
+        seed: u32,
+    },
+    PolarInversion {
+        amount: f32,
+        center: [f32; 2],
+    },
+    TileReflection {
+        size: f32,
+        amount: f32,
+        angle: f32,
+    },
     Clouds(NoiseSettings),
     Turbulence(NoiseSettings),
     Mandelbrot(FractalSettings),
@@ -125,6 +139,21 @@ impl Effect {
         let range = |v: f32, min: f32, max: f32| v.is_finite() && (min..=max).contains(&v);
         match self {
             Self::Move(_) | Self::Shape(_) | Self::Gradient(_) | Self::FreeTransform(_) => false,
+            Self::Dents { scale, amount, .. } => {
+                range(scale, 1.0, 1000.0) && range(amount, 0.0, 200.0)
+            }
+            Self::PolarInversion { amount, center } => {
+                range(amount, -1.0, 1.0) && center.into_iter().all(|v| range(v, 0.0, 1.0))
+            }
+            Self::TileReflection {
+                size,
+                amount,
+                angle,
+            } => {
+                range(size, 1.0, 500.0)
+                    && range(amount, -100.0, 100.0)
+                    && range(angle, -180.0, 180.0)
+            }
             Self::Clouds(settings) | Self::Turbulence(settings) => settings.valid(),
             Self::Mandelbrot(settings) | Self::Julia(settings) => settings.valid(),
             Self::Levels(levels) => levels.tables().is_some(),
@@ -222,7 +251,10 @@ impl Effect {
             | Self::BoxBlur(_)
             | Self::MotionBlur { .. }
             | Self::Median { .. } => "Blurs",
-            Self::Bulge(_)
+            Self::Dents { .. }
+            | Self::PolarInversion { .. }
+            | Self::TileReflection { .. }
+            | Self::Bulge(_)
             | Self::Twist(_)
             | Self::FrostedGlass { .. }
             | Self::Crystalize { .. }
@@ -250,6 +282,9 @@ impl Effect {
     }
     pub fn name(self) -> &'static str {
         match self {
+            Self::Dents { .. } => "Dents",
+            Self::PolarInversion { .. } => "Polar inversion",
+            Self::TileReflection { .. } => "Tile reflection",
             Self::Clouds(_) => "Clouds",
             Self::Turbulence(_) => "Turbulence",
             Self::Mandelbrot(_) => "Mandelbrot fractal",
@@ -414,7 +449,51 @@ pub fn render(
         ),
         _ => None,
     };
+    if matches!(
+        effect,
+        Effect::Dents { .. } | Effect::PolarInversion { .. } | Effect::TileReflection { .. }
+    ) && !effect.valid_settings()
+    {
+        return None;
+    }
     let mut output = match effect {
+        Effect::Dents {
+            scale,
+            amount,
+            seed,
+        } => distort::render(
+            source,
+            width,
+            height,
+            distort::Warp::Dents {
+                scale,
+                amount,
+                seed,
+            },
+            cancel,
+        )?,
+        Effect::PolarInversion { amount, center } => distort::render(
+            source,
+            width,
+            height,
+            distort::Warp::Polar { amount, center },
+            cancel,
+        )?,
+        Effect::TileReflection {
+            size,
+            amount,
+            angle,
+        } => distort::render(
+            source,
+            width,
+            height,
+            distort::Warp::Tiles {
+                size,
+                amount,
+                angle,
+            },
+            cancel,
+        )?,
         Effect::Clouds(_) | Effect::Turbulence(_) | Effect::Mandelbrot(_) | Effect::Julia(_) => {
             render::render(width, height, effect, cancel)?
         }
@@ -619,7 +698,10 @@ pub fn render(
                         let steps = f64::from(levels.clamp(2, 32) - 1);
                         (f64::from(*channel) * steps / 255.0).round() * 255.0 / steps
                     }
-                    Effect::Clouds(_)
+                    Effect::Dents { .. }
+                    | Effect::PolarInversion { .. }
+                    | Effect::TileReflection { .. }
+                    | Effect::Clouds(_)
                     | Effect::Turbulence(_)
                     | Effect::Mandelbrot(_)
                     | Effect::Julia(_)

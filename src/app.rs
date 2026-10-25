@@ -2531,6 +2531,22 @@ impl Editor {
                                 changed |= ui.add(egui::Slider::new(shadows,-100..=100).text("Shadows")).changed();
                                 changed |= ui.add(egui::Slider::new(highlights,-100..=100).text("Highlights")).changed();
                             }
+                            Effect::Dents {scale,amount,seed} => {
+                                changed |= ui.add(egui::Slider::new(scale,1.0..=1000.0).logarithmic(true).text("Scale (px)")).changed();
+                                changed |= ui.add(egui::Slider::new(amount,0.0..=200.0).text("Displacement (px)")).changed();
+                                changed |= ui.add(egui::DragValue::new(seed).prefix("Seed ")).changed();
+                                if ui.button("New seed").clicked() {*seed=seed.wrapping_add(1);changed=true;}
+                            }
+                            Effect::PolarInversion {amount,center} => {
+                                changed |= ui.add(egui::Slider::new(amount,-1.0..=1.0).text("Amount")).changed();
+                                changed |= ui.add(egui::Slider::new(&mut center[0],0.0..=1.0).text("Center X")).changed();
+                                changed |= ui.add(egui::Slider::new(&mut center[1],0.0..=1.0).text("Center Y")).changed();
+                            }
+                            Effect::TileReflection {size,amount,angle} => {
+                                changed |= ui.add(egui::Slider::new(size,1.0..=500.0).text("Tile size (px)")).changed();
+                                changed |= ui.add(egui::Slider::new(amount,-100.0..=100.0).text("Displacement (px)")).changed();
+                                changed |= ui.add(egui::Slider::new(angle,-180.0..=180.0).text("Angle (degrees)")).changed();
+                            }
                             Effect::Clouds(settings) | Effect::Turbulence(settings) => {
                                 changed |= ui.add(egui::Slider::new(&mut settings.scale,1.0..=1000.0).logarithmic(true).text("Scale (px)")).changed();
                                 changed |= ui.add(egui::Slider::new(&mut settings.roughness,0.0..=1.0).text("Roughness")).changed();
@@ -3118,6 +3134,9 @@ impl Editor {
                                 softness: 0.5,
                                 warmth: 0.1,
                             },
+                            Effect::Dents {scale:40.0,amount:10.0,seed:1},
+                            Effect::PolarInversion {amount:1.0,center:[0.5,0.5]},
+                            Effect::TileReflection {size:40.0,amount:8.0,angle:0.0},
                             Effect::Clouds(paint_rust::effects::NoiseSettings::default()),
                             Effect::Turbulence(paint_rust::effects::NoiseSettings::default()),
                             Effect::Mandelbrot(paint_rust::effects::FractalSettings::default()),
