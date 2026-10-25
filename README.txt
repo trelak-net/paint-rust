@@ -1233,3 +1233,13 @@ use scrollable sidebars. All twenty tools use a compact icon grid. The floating
 preference and saved window positions remain unchanged, and larger windows return
 to that layout. Tests verify the preserved state and resize threshold; native
 800x600/light and 200%/dark launches verify both layouts and clean restarts.
+
+Window menu and help
+--------------------
+Window lists open documents in tab order, marks unsaved work and offers previous/
+next navigation. Help > Guide and shortcuts, or F1, opens a scrollable English
+user guide and shortcut reference. Escape closes help without altering the image
+or selection. USER_GUIDE.txt is embedded in the executable and included in Linux
+installation and distribution files. Tests cover non-destructive help shortcuts
+and packaging. Polish localization and complete keyboard-navigation acceptance
+remain pending.

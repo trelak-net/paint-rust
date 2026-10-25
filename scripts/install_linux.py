@@ -34,7 +34,7 @@ def artifacts(prefix, data_dir, binary):
         data_dir / "icons/hicolor/scalable/apps" / f"{APP_ID}.svg": ((ROOT / "assets/app-icon.svg").read_bytes(), 0o644),
         data_dir / "icons/hicolor/128x128/apps" / f"{APP_ID}.png": ((ROOT / "assets/app-icon.png").read_bytes(), 0o644),
     }
-    for name in ("LICENSE-MIT", "LICENSE-APACHE", "THIRD_PARTY_NOTICES", "README.txt"):
+    for name in ("LICENSE-MIT", "LICENSE-APACHE", "THIRD_PARTY_NOTICES", "README.txt", "USER_GUIDE.txt"):
         result[data_dir / "doc/paint-rust" / name] = ((ROOT / name).read_bytes(), 0o644)
     for source in (ROOT / "licenses").rglob("*"):
         if source.is_file():

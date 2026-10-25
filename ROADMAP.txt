@@ -173,7 +173,8 @@ independent tasks; do not silently reduce the required scope.
 11. Distribution and preferences
 [x] Persistent theme/grid/brush preferences, recent-file menu and file-drop queue.
 [ ] Remaining general preferences.
-[ ] English/Polish localization and user documentation.
+[x] Window document list and embedded English guide/shortcut reference under Help/F1.
+[ ] English/Polish localization and expanded user documentation.
 [ ] Installation/update validation across Linux desktop environments.
 12. Final acceptance
 [ ] Repeat all reference workflows and classify remaining differences.

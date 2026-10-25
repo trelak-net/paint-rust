@@ -4,6 +4,7 @@ mod curves;
 mod effect_settings;
 mod export;
 mod file_operations;
+mod help;
 mod histogram;
 mod lasso;
 mod panels;
@@ -91,6 +92,7 @@ struct EffectDialog {
 }
 
 pub struct Editor {
+    help_open: bool,
     preferences: preferences::Preferences,
     system_theme: Option<egui::Theme>,
     panel_layout: panels::Layout,
@@ -238,6 +240,7 @@ impl Editor {
         crate::appearance::configure(ctx);
         egui_extras::install_image_loaders(ctx);
         Self {
+            help_open: false,
             panel_layout: Default::default(),
             color_panel: Default::default(),
             layer_thumbnails: Default::default(),
@@ -828,6 +831,14 @@ impl Editor {
     }
 
     fn shortcuts(&mut self, ctx: &egui::Context) {
+        if self.help_open && ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::Escape)) {
+            self.help_open = false;
+            return;
+        }
+        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::F1)) {
+            self.help_open = true;
+            return;
+        }
         if ctx.wants_keyboard_input() {
             return;
         }
@@ -2796,6 +2807,7 @@ impl Editor {
             && self.text_dialog.is_none()
             && self.effect_dialog.is_none()
             && !self.recovery_prompt;
+
         if enabled {
             self.shortcuts(ctx);
         }
@@ -3196,6 +3208,10 @@ impl Editor {
                         ui.close();
                     }
                 });
+                ui.menu_button("Window",|ui| self.document_menu(ui));
+                ui.menu_button("Help",|ui| {
+                    if ui.button("Guide and shortcuts    F1").clicked() { self.help_open=true; ui.close(); }
+                });
             });
             ui.horizontal_wrapped(|ui| {
                 if ui
@@ -3306,6 +3322,7 @@ impl Editor {
                 self.canvas(ui);
             });
         self.dialogs(ctx);
+        self.show_help(ctx);
         if let Some(recovery) = &mut self.recovery {
             let wake = ctx.clone();
             if let Err(error) = recovery.tick(&self.document, move || wake.request_repaint()) {

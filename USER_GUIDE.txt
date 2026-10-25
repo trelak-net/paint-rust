@@ -1,0 +1,20 @@
+Getting started
+Create a new image or open a file from the File menu. Drop files onto the window to open them in separate tabs. Use Window to switch documents, or Ctrl+Tab and Ctrl+Shift+Tab.
+
+Painting and colors
+Choose a tool from Tools. Left-click paints with the primary color; right-click uses the secondary color where supported. X swaps colors. Brush options include size, hardness, opacity and antialiasing. Enable Blend color to use the selected paint blend mode. Ctrl+click sets the Clone stamp source before painting.
+
+Selections and layers
+Use rectangle, ellipse, lasso, polygon or color selection to restrict edits. Selection options can add, subtract, intersect or replace. Layers has commands to add, duplicate, import, reorder and merge layers. Layer properties changes the name, opacity and blend mode. Hidden layers are retained in project files.
+
+Saving your work
+Use PRUST or PDN to retain editable layers. Saving to a raster format requires flattening confirmation; Undo restores the layered document after saving. Export writes the visible image without replacing the current document. Preview the encoded result before writing. JPEG and GIF can lose detail; JPEG/BMP remove transparency. GIF opens and saves one frame.
+
+Color profiles
+Supported embedded RGB/grayscale profiles are converted to sRGB when opening raster images. PNG, JPEG, WebP and TIFF exports embed sRGB. Other raster exports are untagged. Source author, location and comment tags are omitted from raster exports. EXIF orientation is applied to the image.
+
+Navigation and panels
+Use the Zoom or Pan tools, or hold Space to pan temporarily. Ctrl+B fits the image; Ctrl+Shift+B fits the selection. View controls the theme, pixel grid, rulers and panel visibility. Small windows use scrollable sidebars; enlarging restores a chosen floating layout.
+
+Previews and recovery
+Adjustments, effects and text show a preview. Apply commits the change; Cancel or Escape returns to the previous image. Undo/Redo navigates edits. Unsaved recovery copies can be restored when offered at startup. Saving a project remains the way to keep a deliberate copy of your work.

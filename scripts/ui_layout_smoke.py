@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Launch isolated editor sessions and verify native floating-layout persistence."""
 import argparse
+import ctypes
 import json
 import os
 from pathlib import Path
@@ -10,6 +11,52 @@ import tempfile
 import time
 
 
+def press_help_key(window):
+    # Address the isolated test window with an explicit unmodified key event.
+    # Duplicate F1 keysyms in XKB can confuse keysym-to-modifier automation.
+    class KeyEvent(ctypes.Structure):
+        _fields_ = [("type", ctypes.c_int), ("serial", ctypes.c_ulong),
+                    ("send_event", ctypes.c_int), ("display", ctypes.c_void_p),
+                    ("window", ctypes.c_ulong), ("root", ctypes.c_ulong),
+                    ("subwindow", ctypes.c_ulong), ("time", ctypes.c_ulong),
+                    ("x", ctypes.c_int), ("y", ctypes.c_int),
+                    ("x_root", ctypes.c_int), ("y_root", ctypes.c_int),
+                    ("state", ctypes.c_uint), ("keycode", ctypes.c_uint),
+                    ("same_screen", ctypes.c_int)]
+    class Event(ctypes.Union):
+        _fields_ = [("key", KeyEvent), ("pad", ctypes.c_long * 24)]
+    x11 = ctypes.CDLL("libX11.so.6")
+    x11.XOpenDisplay.argtypes = [ctypes.c_char_p]
+    x11.XOpenDisplay.restype = ctypes.c_void_p
+    x11.XKeysymToKeycode.argtypes = [ctypes.c_void_p, ctypes.c_ulong]
+    x11.XKeysymToKeycode.restype = ctypes.c_ubyte
+    x11.XDefaultRootWindow.argtypes = [ctypes.c_void_p]
+    x11.XDefaultRootWindow.restype = ctypes.c_ulong
+    x11.XSendEvent.argtypes = [ctypes.c_void_p, ctypes.c_ulong, ctypes.c_int, ctypes.c_long, ctypes.POINTER(Event)]
+    x11.XFlush.argtypes = [ctypes.c_void_p]
+    x11.XCloseDisplay.argtypes = [ctypes.c_void_p]
+    display = x11.XOpenDisplay(None)
+    if not display:
+        raise RuntimeError("Could not connect to X11 for the help shortcut")
+    try:
+        code = x11.XKeysymToKeycode(display, 0xFFBE)
+        if not code:
+            raise RuntimeError("F1 is not mapped in the active keyboard layout")
+        event = Event()
+        event.key.display = display
+        event.key.window = int(window)
+        event.key.root = x11.XDefaultRootWindow(display)
+        event.key.keycode = code
+        event.key.same_screen = 1
+        for kind, mask in [(2, 1), (3, 2)]:
+            event.key.type = kind
+            if not x11.XSendEvent(display, int(window), 0, mask, ctypes.byref(event)):
+                raise RuntimeError("Could not deliver the help shortcut")
+        x11.XFlush(display)
+    finally:
+        x11.XCloseDisplay(display)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=Path("/tmp/paint-rust-layout-smoke"))
@@ -17,6 +64,7 @@ def main():
     parser.add_argument("--scale", type=float)
     parser.add_argument("--rulers", action="store_true")
     parser.add_argument("--size", help="Requested native window size, e.g. 800x600")
+    parser.add_argument("--show-help", action="store_true")
     args = parser.parse_args()
     if args.scale is not None and not 0.5 <= args.scale <= 3:
         parser.error("Scale must be between 0.5 and 3")
@@ -74,6 +122,13 @@ def main():
                             if size:
                                 subprocess.run(["xdotool", "windowsize", window, str(size[0]), str(size[1])], check=True, timeout=5)
                             time.sleep(2)
+                            if args.show_help:
+                                subprocess.run(["xdotool", "windowactivate", "--sync", window], check=True, timeout=5)
+                                focused = subprocess.check_output(["xdotool", "getactivewindow"], text=True, timeout=5).strip()
+                                if focused != window:
+                                    raise RuntimeError("Editor does not own focus; no keyboard input sent")
+                                press_help_key(window)
+                                time.sleep(0.5)
                             subprocess.run(["import", "-window", window, str(args.output / f"launch-{attempt}.png")], check=True, timeout=10)
                             # WM close preserves normal shutdown and settings persistence.
                             subprocess.run(["xdotool", "windowquit", window], check=True, timeout=5)

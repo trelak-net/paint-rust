@@ -12,6 +12,61 @@ pub(super) struct DocumentSlot {
     recovery: Option<paint_rust::recovery::Recovery>,
 }
 impl Editor {
+    pub(super) fn document_menu(&mut self, ui: &mut egui::Ui) {
+        ui.set_max_width(360.0);
+        if ui.button("Next document    Ctrl+Tab").clicked() {
+            self.cycle_document(1);
+            ui.close();
+        }
+        if ui.button("Previous document    Ctrl+Shift+Tab").clicked() {
+            self.cycle_document(-1);
+            ui.close();
+        }
+        ui.separator();
+        let mut activate = None;
+        egui::ScrollArea::vertical()
+            .max_height((ui.ctx().content_rect().height() - 160.0).clamp(80.0, 400.0))
+            .show(ui, |ui| {
+                for id in &self.document_order {
+                    let (document, path) = if *id == self.active_document_id {
+                        (&self.document, &self.path)
+                    } else {
+                        let Some(slot) = self.documents.iter().find(|slot| slot.id == *id) else {
+                            continue;
+                        };
+                        (&slot.document, &slot.path)
+                    };
+                    let name = path
+                        .as_ref()
+                        .and_then(|p| p.file_name())
+                        .map(|p| p.to_string_lossy().into_owned())
+                        .unwrap_or_else(|| format!("Untitled {}", id + 1));
+                    let label = format!("{name}{}", if document.dirty() { " *" } else { "" });
+                    ui.push_id(id, |ui| {
+                        if ui
+                            .add(
+                                egui::Button::new(label)
+                                    .selected(*id == self.active_document_id)
+                                    .truncate(),
+                            )
+                            .on_hover_text(
+                                path.as_ref()
+                                    .map(|p| p.display().to_string())
+                                    .unwrap_or(name),
+                            )
+                            .clicked()
+                        {
+                            activate = Some(*id);
+                            ui.close();
+                        }
+                    });
+                }
+            });
+        if let Some(id) = activate {
+            self.activate_document(id);
+        }
+    }
+
     pub(super) fn save_all_next(&mut self) {
         if !self.document.dirty() {
             let next = self

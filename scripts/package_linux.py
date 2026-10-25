@@ -32,7 +32,7 @@ def package_files(root, binary, build_info):
         "install.py": ((root / "scripts/install_linux.py").read_bytes(), 0o755),
         "BUILD_INFO.json": ((json.dumps(build_info, indent=2, sort_keys=True) + "\n").encode(), 0o644),
     }
-    for name in ("LICENSE-MIT", "LICENSE-APACHE", "THIRD_PARTY_NOTICES", "README.txt"):
+    for name in ("LICENSE-MIT", "LICENSE-APACHE", "THIRD_PARTY_NOTICES", "README.txt", "USER_GUIDE.txt"):
         files[name] = ((root / name).read_bytes(), 0o644)
     for directory in ("assets", "packaging/linux", "licenses"):
         for path in sorted((root / directory).rglob("*")):

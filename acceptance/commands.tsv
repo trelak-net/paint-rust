@@ -78,3 +78,5 @@ Help.Tutorials	Tutorials	different	-	-	Project-specific destination or deferred 
 Help.Plugins	Plugins	different	-	-	Project-specific destination or deferred extension integration; external product services are out of scope
 Help.SendFeedback	Send feedback or bug report...	missing	-	-	Not implemented
 Help.About	About	missing	-	-	Not implemented
+Window.Documents	Open documents	supported	Ctrl+Tab / Ctrl+Shift+Tab	-	Menu follows tab order, marks dirty documents and activates stable document IDs
+Help.Guide	Guide and shortcuts	supported	F1	-	Scrollable English guide and shortcut reference; Escape closes without editing
