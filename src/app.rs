@@ -2099,6 +2099,11 @@ impl Editor {
                                     .add(egui::Slider::new(contrast, -100..=100).text("Contrast"))
                                     .changed();
                             }
+                            Effect::HueSaturation { hue, saturation, lightness } => {
+                                changed |= ui.add(egui::Slider::new(hue,-180..=180).text("Hue (degrees)")).changed();
+                                changed |= ui.add(egui::Slider::new(saturation,0.0..=2.0).text("Saturation")).changed();
+                                changed |= ui.add(egui::Slider::new(lightness,-100..=100).text("Lightness")).changed();
+                            }
                             Effect::Saturation(amount) => {
                                 changed |= ui
                                     .add(egui::Slider::new(amount, 0.0..=2.0).text("Saturation"))
@@ -2539,7 +2544,11 @@ impl Editor {
                                 brightness: 0,
                                 contrast: 0,
                             },
-                            Effect::Saturation(1.0),
+                            Effect::HueSaturation {
+                                hue: 0,
+                                saturation: 1.0,
+                                lightness: 0,
+                            },
                             Effect::Grayscale,
                             Effect::Sepia,
                             Effect::Posterize(4),

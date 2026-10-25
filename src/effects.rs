@@ -7,8 +7,16 @@ pub enum Effect {
     Shape(crate::shapes::Parameters),
     Gradient(crate::gradient::Gradient),
     FreeTransform(crate::affine::FreeTransform),
-    BrightnessContrast { brightness: i16, contrast: i16 },
+    BrightnessContrast {
+        brightness: i16,
+        contrast: i16,
+    },
     Saturation(f32),
+    HueSaturation {
+        hue: i16,
+        saturation: f32,
+        lightness: i16,
+    },
     Grayscale,
     Sepia,
     BoxBlur(u32),
@@ -41,6 +49,7 @@ impl Effect {
             Self::FreeTransform(_) => "Free transform",
             Self::BrightnessContrast { .. } => "Brightness / Contrast",
             Self::Saturation(_) => "Saturation",
+            Self::HueSaturation { .. } => "Hue / Saturation / Lightness",
             Self::Grayscale => "Grayscale",
             Self::Sepia => "Sepia",
             Self::BoxBlur(_) => "Box blur",
@@ -106,6 +115,11 @@ pub fn render(
             cancel,
         );
     }
+    if let Effect::HueSaturation { saturation, .. } = effect
+        && !saturation.is_finite()
+    {
+        return None;
+    }
     let mut output = match effect {
         Effect::BoxBlur(radius) if radius > 0 => {
             blur(source, width, height, radius.min(64), cancel)?
@@ -121,12 +135,24 @@ pub fn render(
             return None;
         }
         for x in 0..width as usize {
+            if x.is_multiple_of(4096) && cancel.load(Ordering::Relaxed) {
+                return None;
+            }
             let i = y * width as usize + x;
             if selection.as_ref().is_some_and(|s| !s.contains(x, y)) {
                 output[i] = source[i];
                 continue;
             }
             let p = source[i];
+            if let Effect::HueSaturation {
+                hue,
+                saturation,
+                lightness,
+            } = effect
+            {
+                output[i] = adjust_hsl(p, hue, saturation, lightness);
+                continue;
+            }
             if matches!(effect, Effect::Sharpen(_)) {
                 output[i][3] = p[3];
             }
@@ -163,7 +189,8 @@ pub fn render(
                         let steps = f64::from(levels.clamp(2, 32) - 1);
                         (f64::from(*channel) * steps / 255.0).round() * 255.0 / steps
                     }
-                    Effect::BoxBlur(_)
+                    Effect::HueSaturation { .. }
+                    | Effect::BoxBlur(_)
                     | Effect::Pixelate(_)
                     | Effect::FreeTransform(_)
                     | Effect::Gradient(_)
@@ -175,6 +202,46 @@ pub fn render(
         }
     }
     Some(output)
+}
+
+fn adjust_hsl(pixel: Pixel, hue: i16, saturation: f32, lightness: i16) -> Pixel {
+    let rgb = [pixel[0], pixel[1], pixel[2]].map(|v| f64::from(v) / 255.0);
+    let max = rgb.into_iter().fold(0.0_f64, f64::max);
+    let min = rgb.into_iter().fold(1.0_f64, f64::min);
+    let chroma = max - min;
+    let mut l = (max + min) * 0.5;
+    let (h, s) = if chroma == 0.0 {
+        (0.0, 0.0)
+    } else {
+        let h = if max == rgb[0] {
+            ((rgb[1] - rgb[2]) / chroma).rem_euclid(6.0)
+        } else if max == rgb[1] {
+            (rgb[2] - rgb[0]) / chroma + 2.0
+        } else {
+            (rgb[0] - rgb[1]) / chroma + 4.0
+        };
+        (h, chroma / (1.0 - (2.0 * l - 1.0).abs()))
+    };
+    let h = (h + f64::from(hue.clamp(-180, 180)) / 60.0).rem_euclid(6.0);
+    let s = (s * f64::from(saturation.clamp(0.0, 2.0))).clamp(0.0, 1.0);
+    let shift = f64::from(lightness.clamp(-100, 100)) / 100.0;
+    l = if shift < 0.0 {
+        l * (1.0 + shift)
+    } else {
+        l + (1.0 - l) * shift
+    };
+    let c = (1.0 - (2.0 * l - 1.0).abs()) * s;
+    let x = c * (1.0 - (h.rem_euclid(2.0) - 1.0).abs());
+    let rgb = match h as u8 {
+        0 => [c, x, 0.0],
+        1 => [x, c, 0.0],
+        2 => [0.0, c, x],
+        3 => [0.0, x, c],
+        4 => [x, 0.0, c],
+        _ => [c, 0.0, x],
+    };
+    let rgb = rgb.map(|v| ((v + l - c * 0.5) * 255.0).round().clamp(0.0, 255.0) as u8);
+    [rgb[0], rgb[1], rgb[2], pixel[3]]
 }
 
 fn premultiply(pixel: Pixel) -> [f64; 4] {

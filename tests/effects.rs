@@ -197,3 +197,102 @@ fn sharpening_preserves_unselected_pixels_and_transparent_color_values() {
     .unwrap();
     assert_eq!(output, source);
 }
+
+#[test]
+fn hsl_rotates_primary_colors_and_preserves_alpha_and_selection() {
+    let source = [[255, 0, 0, 123], [0, 0, 255, 57], [80, 80, 80, 0]];
+    let adjusted = effects::render(
+        &source,
+        3,
+        1,
+        None,
+        Effect::HueSaturation {
+            hue: 120,
+            saturation: 1.0,
+            lightness: 0,
+        },
+        &AtomicBool::new(false),
+    )
+    .unwrap();
+    assert_eq!(
+        adjusted,
+        [[0, 255, 0, 123], [255, 0, 0, 57], [80, 80, 80, 0]]
+    );
+    let selection = Selection {
+        x: 1,
+        y: 0,
+        width: 1,
+        height: 1,
+        mask: None,
+        ellipse: None,
+    };
+    let adjusted = effects::render(
+        &source,
+        3,
+        1,
+        Some(selection),
+        Effect::HueSaturation {
+            hue: -120,
+            saturation: 1.0,
+            lightness: 0,
+        },
+        &AtomicBool::new(false),
+    )
+    .unwrap();
+    assert_eq!(
+        adjusted,
+        [[255, 0, 0, 123], [0, 255, 0, 57], [80, 80, 80, 0]]
+    );
+}
+
+#[test]
+fn hsl_identity_is_exact_and_lightness_extremes_keep_alpha() {
+    let source: Vec<_> = (0..256_u16)
+        .map(|i| {
+            [
+                i as u8,
+                (i * 37 % 256) as u8,
+                (i * 113 % 256) as u8,
+                (i * 7 % 256) as u8,
+            ]
+        })
+        .collect();
+    let render = |hue, saturation, lightness| {
+        effects::render(
+            &source,
+            256,
+            1,
+            None,
+            Effect::HueSaturation {
+                hue,
+                saturation,
+                lightness,
+            },
+            &AtomicBool::new(false),
+        )
+        .unwrap()
+    };
+    assert_eq!(render(0, 1.0, 0), source);
+    for (lightness, expected) in [(-100, 0), (100, 255)] {
+        for (before, after) in source.iter().zip(render(90, 2.0, lightness)) {
+            assert_eq!(after, [expected, expected, expected, before[3]]);
+        }
+    }
+    let gray = render(0, 0.0, 0);
+    assert!(gray.iter().all(|p| p[0] == p[1] && p[1] == p[2]));
+    assert!(
+        effects::render(
+            &source,
+            256,
+            1,
+            None,
+            Effect::HueSaturation {
+                hue: 0,
+                saturation: f32::NAN,
+                lightness: 0
+            },
+            &AtomicBool::new(false)
+        )
+        .is_none()
+    );
+}

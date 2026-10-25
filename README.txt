@@ -872,3 +872,7 @@ Exclusive or combines selections by keeping pixels in exactly one of the two
 regions. With no previous selection, it starts from the new region. Ctrl+I inverts
 the selection within the canvas; an absent selection represents the full canvas
 for inversion, producing an explicit empty mask. Ctrl+Shift+I inverts pixel colors.
+
+Hue / Saturation / Lightness rotates hue by up to 180 degrees, scales HSL saturation
+from zero to twice its original value, and adjusts lightness toward black or white.
+It affects selected RGB pixels while retaining alpha, including transparent pixels.

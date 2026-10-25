@@ -119,7 +119,8 @@ independent tasks; do not silently reduce the required scope.
 [ ] Complete blend modes and layer transformations.
 [ ] History action grouping and full state restoration audit.
 8. Adjustments and effects
-[ ] Levels, curves, hue and complete adjustment inventory.
+[x] Hue, saturation and lightness adjustment with selection and alpha preservation.
+[ ] Levels, curves and remaining adjustment inventory.
 [ ] Complete blur, distortion, noise and stylization inventory.
 [x] Repeat last effect and restore last-applied parameters within the session.
 [ ] Persist effect parameters across restarts and complete preview/cancel parity audit.
