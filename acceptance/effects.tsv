@@ -6,7 +6,7 @@ Auto-Level	Adjustment	partial	Auto levels; selected nontransparent histogram, co
 Bokeh Blur	Blurs	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
 Brightness / Contrast	Adjustment	partial	CPU transfer curve and live preview	Exact transfer function, ranges, color space and reference output audit
 Bulge	Distort	partial	Centered radial power warp with signed amount	Reference algorithm/ranges, center controls and color-space audit
-Clouds	Render	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Clouds	Render	partial	Seeded eight-octave smooth value noise, scale, roughness and alpha-aware two-color palette	External reference algorithms/ranges, palette options and large-image performance audit
 Crystalize	Distort	partial	Seeded Voronoi cells and size control	Reference algorithm/ranges, center controls and color-space audit
 Curves	Adjustment	partial	RGB/per-channel and independent luminance curves, cubic LUT, presets and preview	External reference transfer function and presentation audit
 Dents	Distort	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
@@ -24,9 +24,9 @@ Hue / Saturation	Adjustment	partial	HSL hue, saturation and lightness controls	E
 Ink Sketch	Artistic	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
 Invert Alpha	Adjustment	partial	Invert alpha without changing RGB	External reference output, ranges and color-space audit
 Invert Colors	Adjustment	partial	RGB inversion; preserves alpha	Exact transfer function, ranges, color space and reference output audit
-Julia Fractal	Render	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Julia Fractal	Render	partial	Complex-plane iteration with editable constant, center, zoom, rotation and palette	External reference algorithms/ranges, palette options and large-image performance audit
 Levels	Adjustment	partial	Master/R/G/B input and output endpoints, gamma and background input/output histograms	Exact transfer function, ranges, color space and reference output audit
-Mandelbrot Fractal	Render	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Mandelbrot Fractal	Render	partial	Complex-plane iteration with center, zoom, rotation, iteration limit and two-color palette	External reference algorithms/ranges, palette options and large-image performance audit
 Median Blur	Blurs	partial	Sliding alpha-weighted RGB histogram; radius and percentile controls	External reference output, ranges and color-space audit
 Morphology	Distort	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
 Motion Blur	Blurs	partial	Bilinear premultiplied sampling, angle, distance and centered mode	External reference output, ranges and color-space audit
@@ -49,7 +49,7 @@ Straighten	Photo	missing	No implementation yet	Kernel, parameter UI, cancellatio
 Surface Blur	Blurs	partial	Spatial and color-distance weighted smoothing; source alpha retained	External reference kernel/ranges and large-image performance audit
 Temperature / Tint	Adjustment	partial	Warm/cool and green/magenta channel controls; alpha retained	External reference output, ranges and color-space audit
 Tile Reflection	Distort	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
-Turbulence	Render	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Turbulence	Render	partial	Absolute-value noise octaves, seed, scale, roughness and alpha-aware palette	External reference algorithms/ranges, palette options and large-image performance audit
 Twist	Distort	partial	Centered radial twist with angle control	Reference algorithm/ranges, center controls and color-space audit
 Vignette	Photo	partial	Elliptical edge darkening with clear center radius	Reference algorithm/ranges, center controls and color-space audit
 Zoom Blur	Blurs	partial	Inward scale sampling with adjustable normalized center; premultiplied bilinear samples	External reference output, quality controls and large-image performance audit

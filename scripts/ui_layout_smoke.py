@@ -11,7 +11,7 @@ import tempfile
 import time
 
 
-def press_help_key(window):
+def press_key(window, keysym, modifiers=0):
     # Address the isolated test window with an explicit unmodified key event.
     # Duplicate F1 keysyms in XKB can confuse keysym-to-modifier automation.
     class KeyEvent(ctypes.Structure):
@@ -39,14 +39,15 @@ def press_help_key(window):
     if not display:
         raise RuntimeError("Could not connect to X11 for the help shortcut")
     try:
-        code = x11.XKeysymToKeycode(display, 0xFFBE)
+        code = x11.XKeysymToKeycode(display, keysym)
         if not code:
-            raise RuntimeError("F1 is not mapped in the active keyboard layout")
+            raise RuntimeError("Requested key is not mapped in the active keyboard layout")
         event = Event()
         event.key.display = display
         event.key.window = int(window)
         event.key.root = x11.XDefaultRootWindow(display)
         event.key.keycode = code
+        event.key.state = modifiers
         event.key.same_screen = 1
         for kind, mask in [(2, 1), (3, 2)]:
             event.key.type = kind
@@ -64,7 +65,9 @@ def main():
     parser.add_argument("--scale", type=float)
     parser.add_argument("--rulers", action="store_true")
     parser.add_argument("--size", help="Requested native window size, e.g. 800x600")
-    parser.add_argument("--show-help", action="store_true")
+    dialogs = parser.add_mutually_exclusive_group()
+    dialogs.add_argument("--show-help", action="store_true")
+    dialogs.add_argument("--show-effect", choices=("Clouds", "Turbulence", "Mandelbrot", "Julia"))
     args = parser.parse_args()
     if args.scale is not None and not 0.5 <= args.scale <= 3:
         parser.error("Scale must be between 0.5 and 3")
@@ -102,7 +105,15 @@ def main():
         saved = []
         saved_preferences = []
         effects = settings.with_name("effects.json")
-        effects.write_text(json.dumps({"version": 1, "last": {"GaussianBlur": 3}, "parameters": [{"GaussianBlur": 3}]}))
+        last_effect = {"GaussianBlur": 3}
+        if args.show_effect:
+            colors = [[0, 0, 0, 255], [255, 255, 255, 255]]
+            parameters = ({"scale": 40.0, "roughness": 0.5, "seed": 1, "colors": colors}
+                          if args.show_effect in ("Clouds", "Turbulence") else
+                          {"iterations": 100, "zoom": 1.0, "center": [-0.5, 0.0], "angle": 0.0,
+                           "julia": [-0.7, 0.27015], "colors": colors})
+            last_effect = {args.show_effect: parameters}
+        effects.write_text(json.dumps({"version": 1, "last": last_effect, "parameters": [last_effect]}))
         saved_effects = []
         with (args.output / "editor.log").open("w") as log:
             for attempt in range(2):
@@ -122,14 +133,17 @@ def main():
                             if size:
                                 subprocess.run(["xdotool", "windowsize", window, str(size[0]), str(size[1])], check=True, timeout=5)
                             time.sleep(2)
-                            if args.show_help:
+                            if args.show_help or args.show_effect:
                                 subprocess.run(["xdotool", "windowactivate", "--sync", window], check=True, timeout=5)
                                 focused = subprocess.check_output(["xdotool", "getactivewindow"], text=True, timeout=5).strip()
                                 if focused != window:
                                     raise RuntimeError("Editor does not own focus; no keyboard input sent")
-                                press_help_key(window)
+                                press_key(window, 0xFFBE if args.show_help else ord("f"), 0 if args.show_help else 5)
                                 time.sleep(0.5)
                             subprocess.run(["import", "-window", window, str(args.output / f"launch-{attempt}.png")], check=True, timeout=10)
+                            if args.show_effect:
+                                press_key(window, 0xFF1B)  # Escape cancels the preview before closing.
+                                time.sleep(0.3)
                             # WM close preserves normal shutdown and settings persistence.
                             subprocess.run(["xdotool", "windowquit", window], check=True, timeout=5)
                             if app.wait(timeout=10) != 0:
@@ -137,7 +151,7 @@ def main():
                             saved.append(settings.read_text())
                             saved_preferences.append(preferences.read_text())
                             saved_effects.append(effects.read_text())
-                            if json.loads(saved_effects[-1])["last"] != {"GaussianBlur": 3}:
+                            if json.loads(saved_effects[-1])["last"] != last_effect:
                                 raise RuntimeError("Last effect settings were not preserved")
                             if not saved_preferences[-1].splitlines()[1].startswith(args.theme + " "):
                                 raise RuntimeError("Theme preference was not preserved")

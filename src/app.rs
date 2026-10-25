@@ -9,6 +9,7 @@ mod histogram;
 mod lasso;
 mod panels;
 mod preferences;
+mod render_controls;
 mod rulers;
 mod thumbnails;
 mod toolbar;
@@ -2530,6 +2531,20 @@ impl Editor {
                                 changed |= ui.add(egui::Slider::new(shadows,-100..=100).text("Shadows")).changed();
                                 changed |= ui.add(egui::Slider::new(highlights,-100..=100).text("Highlights")).changed();
                             }
+                            Effect::Clouds(settings) | Effect::Turbulence(settings) => {
+                                changed |= ui.add(egui::Slider::new(&mut settings.scale,1.0..=1000.0).logarithmic(true).text("Scale (px)")).changed();
+                                changed |= ui.add(egui::Slider::new(&mut settings.roughness,0.0..=1.0).text("Roughness")).changed();
+                                changed |= ui.add(egui::DragValue::new(&mut settings.seed).prefix("Seed ")).changed();
+                                if ui.button("New seed").clicked() { settings.seed=settings.seed.wrapping_add(1);changed=true; }
+                                changed |= render_controls::colors(ui,&mut settings.colors);
+                                ui.small("Replaces selected pixels with a generated texture.");
+                            }
+                            Effect::Mandelbrot(settings) => {
+                                changed |= render_controls::fractal(ui,settings,false);
+                            }
+                            Effect::Julia(settings) => {
+                                changed |= render_controls::fractal(ui,settings,true);
+                            }
                             Effect::Glow { radius, amount } => {
                                 changed |= ui.add(egui::Slider::new(radius,0..=64).text("Radius (px)")).changed();
                                 changed |= ui.add(egui::Slider::new(amount,0.0..=1.0).text("Amount")).changed();
@@ -3103,6 +3118,10 @@ impl Editor {
                                 softness: 0.5,
                                 warmth: 0.1,
                             },
+                            Effect::Clouds(paint_rust::effects::NoiseSettings::default()),
+                            Effect::Turbulence(paint_rust::effects::NoiseSettings::default()),
+                            Effect::Mandelbrot(paint_rust::effects::FractalSettings::default()),
+                            Effect::Julia(paint_rust::effects::FractalSettings { center:[0.0,0.0], ..Default::default() }),
                             Effect::GaussianBlur(3),
                             Effect::MotionBlur {
                                 distance: 10,
@@ -3153,7 +3172,7 @@ impl Editor {
                         }
                         if title == "Effects" {
                             for category in
-                                ["Blurs", "Distort", "Noise", "Object", "Photo", "Stylize"]
+                                ["Blurs", "Distort", "Noise", "Object", "Photo", "Render", "Stylize"]
                             {
                                 ui.menu_button(category, |ui| {
                                     for &effect in effects
@@ -5303,6 +5322,64 @@ mod tests {
         assert_eq!(editor.document.selection(), previous);
         assert!(!editor.document.can_undo());
     }
+    #[test]
+    fn generated_textures_preview_cancel_apply_undo_and_repeat() {
+        let ctx = egui::Context::default();
+        for effect in [
+            Effect::Clouds(Default::default()),
+            Effect::Turbulence(Default::default()),
+            Effect::Mandelbrot(Default::default()),
+            Effect::Julia(Default::default()),
+        ] {
+            let mut editor = Editor::blank(&ctx);
+            editor.document = Document::new(12, 10, [25, 50, 100, 128]).unwrap();
+            editor
+                .document
+                .set_selection(Some(Selection::elliptical(2, 2, 8, 6)));
+            let source = editor.document.pixels().to_vec();
+            let selection = editor.document.selection();
+            for cancel in [true, false] {
+                editor.begin_effect(&ctx, effect);
+                let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+                while !editor.effect_dialog.as_ref().unwrap().preview.ready {
+                    frame(&mut editor, &ctx, vec![]);
+                    assert!(std::time::Instant::now() < deadline);
+                    std::thread::sleep(std::time::Duration::from_millis(2));
+                }
+                assert_ne!(editor.document.pixels(), source);
+                if cancel {
+                    frame(
+                        &mut editor,
+                        &ctx,
+                        vec![egui::Event::Key {
+                            key: Key::Escape,
+                            physical_key: None,
+                            pressed: true,
+                            repeat: false,
+                            modifiers: egui::Modifiers::NONE,
+                        }],
+                    );
+                    assert_eq!(editor.document.pixels(), source);
+                    assert!(!editor.document.can_undo());
+                    assert_eq!(editor.last_effect, None);
+                } else {
+                    let preview = editor.document.pixels().to_vec();
+                    editor.apply_effect(effect);
+                    editor.effect_dialog = None;
+                    assert_eq!(editor.document.history().count(), 1);
+                    assert_eq!(editor.last_effect, Some(effect));
+                    editor.undo();
+                    assert_eq!(editor.document.pixels(), source);
+                    editor.repeat_effect();
+                    wait_for_files(&mut editor, &ctx);
+                    assert_eq!(editor.document.pixels(), preview);
+                    assert_eq!(editor.document.history().count(), 1);
+                }
+                assert_eq!(editor.document.selection(), selection);
+            }
+        }
+    }
+
     #[test]
     fn free_transform_preview_cancels_and_applies_as_one_undoable_edit() {
         let ctx = egui::Context::default();

@@ -1259,3 +1259,19 @@ This is not a total process-memory limit: current pixels, previews, textures,
 metadata and temporary worker allocations are separate. Disk usage is not capped.
 Regression checks cover inactive histories, exact undo/redo, guarded publication,
 cancellation after a private partial batch and persistent workspace pause.
+
+Procedural render effects
+-------------------------
+Effects > Render contains Clouds, Turbulence, Mandelbrot fractal and Julia fractal.
+Clouds combines eight octaves of smooth value noise; Turbulence combines absolute
+signed noise. Scale, roughness and seed are editable. Fractals expose iteration
+count, center, zoom and rotation; Julia also exposes the complex constant.
+Both colors, including alpha, are editable. Color interpolation uses premultiplied
+alpha to avoid hidden-color fringes. Generators replace selected pixels, including
+transparent pixels; areas outside the selection remain byte-identical.
+Preview/cancel, one-step undo, repeat and persisted parameters use the shared
+effect workflow. Iterations are limited to 512 and workers check cancellation
+inside iteration loops. Tests cover seed stability, known interior/exterior
+points, conjugate symmetry, palette alpha, selections and the complete preview/
+cancel/apply/undo/repeat workflow. Exact external algorithms, additional palettes
+and large-image performance comparisons remain pending.

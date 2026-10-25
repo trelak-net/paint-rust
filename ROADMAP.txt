@@ -150,6 +150,7 @@ independent tasks; do not silently reduce the required scope.
 [x] Glow and portrait softening with blur, strength and warm/cool controls.
 [x] Seeded noise, median/percentile blur, edge detection and directional emboss.
 [x] Bulge, twist, frosted glass, crystalize, vignette and red-eye correction.
+[x] Seeded clouds/turbulence and configurable Mandelbrot/Julia generators with selection-aware previews.
 [ ] Complete remaining blur, distortion, noise and stylization inventory.
 [x] Repeat last effect and restore last-applied parameters within the session.
 [x] Persist validated effect parameters and the last effect across restarts.

@@ -2,12 +2,18 @@ mod blurs;
 mod distort;
 mod object;
 mod photo;
+mod render;
+pub use render::{FractalSettings, NoiseSettings};
 mod stylize;
 use crate::document::{Pixel, Selection};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 #[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum Effect {
+    Clouds(NoiseSettings),
+    Turbulence(NoiseSettings),
+    Mandelbrot(FractalSettings),
+    Julia(FractalSettings),
     Glow {
         radius: u32,
         amount: f32,
@@ -119,6 +125,8 @@ impl Effect {
         let range = |v: f32, min: f32, max: f32| v.is_finite() && (min..=max).contains(&v);
         match self {
             Self::Move(_) | Self::Shape(_) | Self::Gradient(_) | Self::FreeTransform(_) => false,
+            Self::Clouds(settings) | Self::Turbulence(settings) => settings.valid(),
+            Self::Mandelbrot(settings) | Self::Julia(settings) => settings.valid(),
             Self::Levels(levels) => levels.tables().is_some(),
             Self::Curves(_)
             | Self::InvertAlpha
@@ -203,6 +211,9 @@ impl Effect {
 
     pub fn category(self) -> &'static str {
         match self {
+            Self::Clouds(_) | Self::Turbulence(_) | Self::Mandelbrot(_) | Self::Julia(_) => {
+                "Render"
+            }
             Self::SurfaceBlur { .. }
             | Self::RadialBlur { .. }
             | Self::ZoomBlur { .. }
@@ -239,6 +250,10 @@ impl Effect {
     }
     pub fn name(self) -> &'static str {
         match self {
+            Self::Clouds(_) => "Clouds",
+            Self::Turbulence(_) => "Turbulence",
+            Self::Mandelbrot(_) => "Mandelbrot fractal",
+            Self::Julia(_) => "Julia fractal",
             Self::RadialBlur { .. } => "Radial blur",
             Self::ZoomBlur { .. } => "Zoom blur",
             Self::FragmentBlur { .. } => "Fragment blur",
@@ -400,6 +415,9 @@ pub fn render(
         _ => None,
     };
     let mut output = match effect {
+        Effect::Clouds(_) | Effect::Turbulence(_) | Effect::Mandelbrot(_) | Effect::Julia(_) => {
+            render::render(width, height, effect, cancel)?
+        }
         Effect::Bulge(amount) => {
             distort::render(source, width, height, distort::Warp::Bulge(amount), cancel)?
         }
@@ -601,7 +619,11 @@ pub fn render(
                         let steps = f64::from(levels.clamp(2, 32) - 1);
                         (f64::from(*channel) * steps / 255.0).round() * 255.0 / steps
                     }
-                    Effect::Glow { .. }
+                    Effect::Clouds(_)
+                    | Effect::Turbulence(_)
+                    | Effect::Mandelbrot(_)
+                    | Effect::Julia(_)
+                    | Effect::Glow { .. }
                     | Effect::SoftenPortrait { .. }
                     | Effect::DropShadow { .. }
                     | Effect::SurfaceBlur { .. }
