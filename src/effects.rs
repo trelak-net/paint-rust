@@ -10,12 +10,19 @@ mod photo;
 mod quantize;
 mod render;
 pub use render::{FractalSettings, NoiseSettings};
+mod sketch;
 mod stylize;
 use crate::document::{Pixel, Selection};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 #[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum Effect {
+    SketchBlur {
+        radius: u32,
+        percentile: u8,
+        smoothness: u8,
+        seed: u32,
+    },
     Straighten {
         angle: f32,
         auto_crop: bool,
@@ -183,6 +190,12 @@ impl Effect {
         let range = |v: f32, min: f32, max: f32| v.is_finite() && (min..=max).contains(&v);
         match self {
             Self::Move(_) | Self::Shape(_) | Self::Gradient(_) | Self::FreeTransform(_) => false,
+            Self::SketchBlur {
+                radius,
+                percentile,
+                smoothness,
+                ..
+            } => radius <= 100 && percentile <= 100 && (1..=5).contains(&smoothness),
             Self::Straighten { angle, .. } => range(angle, -45.0, 45.0),
             Self::BokehBlur {
                 radius,
@@ -311,7 +324,8 @@ impl Effect {
             Self::Clouds(_) | Self::Turbulence(_) | Self::Mandelbrot(_) | Self::Julia(_) => {
                 "Render"
             }
-            Self::BokehBlur { .. }
+            Self::SketchBlur { .. }
+            | Self::BokehBlur { .. }
             | Self::SurfaceBlur { .. }
             | Self::RadialBlur { .. }
             | Self::ZoomBlur { .. }
@@ -355,6 +369,7 @@ impl Effect {
     }
     pub fn name(self) -> &'static str {
         match self {
+            Self::SketchBlur { .. } => "Sketch blur",
             Self::Straighten { .. } => "Straighten",
             Self::BokehBlur { .. } => "Bokeh blur",
             Self::Quantize(_) => "Quantize",
@@ -540,6 +555,7 @@ pub fn render(
         return None;
     }
     let mut output = match effect {
+        Effect::SketchBlur { .. } => sketch::render(source, width, height, effect, cancel)?,
         Effect::Straighten { angle, auto_crop } => {
             photo::straighten(source, width, height, angle, auto_crop, cancel)?
         }
@@ -799,7 +815,8 @@ pub fn render(
                         let steps = f64::from(levels.clamp(2, 32) - 1);
                         (f64::from(*channel) * steps / 255.0).round() * 255.0 / steps
                     }
-                    Effect::Straighten { .. }
+                    Effect::SketchBlur { .. }
+                    | Effect::Straighten { .. }
                     | Effect::BokehBlur { .. }
                     | Effect::Quantize(_)
                     | Effect::OilPainting { .. }

@@ -2531,6 +2531,13 @@ impl Editor {
                                 changed |= ui.add(egui::Slider::new(shadows,-100..=100).text("Shadows")).changed();
                                 changed |= ui.add(egui::Slider::new(highlights,-100..=100).text("Highlights")).changed();
                             }
+                            Effect::SketchBlur {radius,percentile,smoothness,seed} => {
+                                changed |= ui.add(egui::Slider::new(radius,0..=100).text("Radius (px)")).changed();
+                                changed |= ui.add(egui::Slider::new(percentile,0..=100).text("Percentile")).changed();
+                                changed |= ui.add(egui::Slider::new(smoothness,1..=5).text("Smoothness")).changed();
+                                changed |= ui.add(egui::DragValue::new(seed).prefix("Seed ")).changed();
+                                if ui.button("New seed").clicked() {*seed=seed.wrapping_add(1);changed=true;}
+                            }
                             Effect::Straighten {angle,auto_crop} => {
                                 changed |= ui.add(egui::Slider::new(angle,-45.0..=45.0).text("Angle (degrees)")).changed();
                                 changed |= ui.checkbox(auto_crop,"Fill frame after rotation").changed();
@@ -3182,6 +3189,7 @@ impl Editor {
                                 softness: 0.5,
                                 warmth: 0.1,
                             },
+                            Effect::SketchBlur {radius:5,percentile:50,smoothness:2,seed:1},
                             Effect::Straighten {angle:0.0,auto_crop:true},
                             Effect::BokehBlur {radius:4.0,gamma:1.0,quality:2},
                             Effect::Quantize(16),

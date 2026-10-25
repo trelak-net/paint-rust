@@ -1360,3 +1360,17 @@ interpolation. Zero angle preserves exact bytes, and selection limits output.
 Tests cover opaque corners in landscape/portrait/thin images, rotation direction,
 center stability, selection, cancellation and bounds. An interactive horizon
 line and external interpolation/range comparisons remain pending.
+
+Sketch blur
+------------
+Sketch blur estimates RGB percentiles from seeded disk samples using a five-marker
+P² streaming estimator. Radius sets neighborhood size; Smoothness increases the
+sample count from 17 to 257, including the current pixel. Fully transparent
+neighbors are excluded; visible samples have equal quantile weight. Source alpha
+and hidden RGB remain unchanged. Zero radius is exact, and selection limits output.
+The estimator follows the mathematical piecewise-parabolic algorithm described at
+https://aakinshin.net/posts/p2-quantile-estimator-intro/; marker targets are computed
+from the observation count to avoid accumulated position drift. Tests cover known
+quantiles, marker ordering, constants, endpoints, seed stability, selections and
+cancellation. External sampling/iteration parity, partial-alpha weighting and
+large-image performance remain pending.

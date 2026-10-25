@@ -42,7 +42,7 @@ Relief	Stylize	partial	Directional Sobel shading added to source color with stre
 Rotate / Zoom	Layer transform	partial	Affine translation, scale, rotation and flips; perspective tilt missing	Exact transfer function, ranges, color space and reference output audit
 Sepia	Adjustment	partial	Weighted luminance tint	Exact transfer function, ranges, color space and reference output audit
 Sharpen	Photo	partial	Unsharp-style detail boost	Exact transfer function, ranges, color space and reference output audit
-Sketch Blur	Blurs	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Sketch Blur	Blurs	partial	Seeded disk samples with streaming P² channel quantiles, percentile and smoothness	External sampling/iteration parity, partial-alpha weighting and large-image performance audit
 Soften Portrait	Photo	partial	Gaussian detail softening with strength and warm/cool channel balance; source alpha retained	External reference algorithm/ranges and color-space audit
 Square Blur	Blurs	partial	Box blur with replicated edges	Exact transfer function, ranges, color space and reference output audit
 Straighten	Photo	partial	Canvas-center rotation with optional frame-filling zoom, fixed dimensions and alpha-aware sampling	Interactive horizon guide, external reference ranges and interpolation audit

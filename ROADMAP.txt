@@ -145,6 +145,7 @@ independent tasks; do not silently reduce the required scope.
 [ ] Remaining adjustment parity audit.
 [x] Gaussian and motion blur with premultiplied-alpha sampling and live previews.
 [x] Bokeh disk blur with gamma boost, quality control and cancellable sampling.
+[x] Sketch blur with seeded disk sampling and streaming percentile estimation.
 [x] Radial, zoom and fragment blur with persistent controls and alpha-aware sampling.
 [x] Surface blur with radius and color threshold controls.
 [x] Colored drop shadow with blur, opacity, offset and object-effect menu.
@@ -158,7 +159,8 @@ independent tasks; do not silently reduce the required scope.
 [x] Seeded dents, centered polar inversion and rotated tile-reflection distortions.
 [x] Alpha-aware dilation, erosion, opening and closing with separable sliding extrema.
 [x] Seeded clouds/turbulence and configurable Mandelbrot/Julia generators with selection-aware previews.
-[ ] Complete remaining blur, distortion, noise and stylization inventory.
+[x] First implementation of every listed blur, distortion, noise, render and stylization effect.
+[ ] Complete external algorithm, parameter-range and quality parity for the effect inventory.
 [x] Repeat last effect and restore last-applied parameters within the session.
 [x] Persist validated effect parameters and the last effect across restarts.
 [ ] Complete external preview/cancel parity audit.
