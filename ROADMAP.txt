@@ -66,3 +66,70 @@ Later iterations
 [ ] Tablet pressure and further large-document responsiveness work.
 [ ] Distribution checks on additional Linux environments.
 The full screen-reader audit remains the final task.
+
+Full implementation program
+===========================
+Scope: complete the built-in desktop editing workflow. PDN read/write is required.
+Compatibility with external managed plugins is deferred. Existing checkmarks above
+record the first release, not completion of this program. Every task needs targeted
+validation and a commit with the Generated-by trailer. Record blockers and continue
+independent tasks; do not silently reduce the required scope.
+
+0. Acceptance inventory
+[ ] Catalogue commands, shortcuts, tool parameters, dialogs and file formats.
+[ ] Build repeatable reference input/output cases and UI scenarios.
+[ ] Track supported, partial, missing and intentionally different behavior.
+1. Multiple documents
+[ ] Independent document/history/path/view/recovery state.
+[ ] Thumbnail tabs, switching, reordering, individual close and close all.
+[ ] Save/discard/cancel flows across multiple dirty documents.
+2. Workspace
+[ ] Movable, hideable panels with layout persistence and reset.
+[ ] Complete menu/toolbar organization and contextual options.
+[ ] Light/dark/high-DPI and compact-window acceptance checks.
+3. Colors and navigation
+[ ] Full RGB/HSV/alpha/HEX editing, palette persistence and defaults.
+[ ] Zoom/Pan tools, temporary spacebar navigation and zoom-to-region.
+[ ] Pixel grid, rulers and measurement units.
+4. Rendering
+[ ] Antialiasing, brush hardness, opacity, blending and replacement modes.
+[ ] Eraser coverage, continuous strokes and tablet pressure.
+[ ] Reference comparisons on opaque and transparent layers.
+5. Selection and transforms
+[ ] Lasso and color-based selection with tolerance and sampling scope.
+[ ] Complete selection combination and pixel/selection transform options.
+[ ] Interpolation, constraints and edge-case validation.
+6. Tools
+[ ] Clone stamp and recolor.
+[ ] Fill tolerance/sampling and complete gradient shapes/transparency modes.
+[ ] Editable curves, shape catalogue and outline/fill options.
+[ ] Font selection, text alignment and complete text controls.
+7. Layers and history
+[ ] Layer thumbnails, drag reordering and merge down.
+[ ] Complete blend modes and layer transformations.
+[ ] History action grouping and full state restoration audit.
+8. Adjustments and effects
+[ ] Levels, curves, hue and complete adjustment inventory.
+[ ] Complete blur, distortion, noise and stylization inventory.
+[ ] Repeat last effect, parameter persistence and preview/cancel parity.
+9. Files and color management
+[ ] Mandatory PDN import/export with real external interoperability fixtures.
+[ ] Preserve layer names, visibility, opacity, blend modes and metadata.
+[ ] Complete raster format inventory and export option previews.
+[ ] EXIF orientation and ICC color management.
+10. Reliability and performance
+[ ] Bounded foreground work, large-document/multi-document benchmarks.
+[ ] Disk-full, corrupted-input, interrupted-save and low-memory scenarios.
+[ ] Session recovery across multiple documents.
+11. Distribution and preferences
+[ ] Persistent preferences, recent files and file drop.
+[ ] English/Polish localization and user documentation.
+[ ] Installation/update validation across Linux desktop environments.
+12. Final acceptance
+[ ] Repeat all reference workflows and classify remaining differences.
+[ ] Full keyboard navigation and final native screen-reader audit (last task).
+
+Blockers
+--------
+No new program blocker recorded yet. The isolated desktop portal limitation in
+first-release accessibility validation remains documented above.
