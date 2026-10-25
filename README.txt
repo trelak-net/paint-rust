@@ -1638,3 +1638,10 @@ Color selection and sampled fill expose Tolerance alpha. Premultiplied alpha
 fully transparent pixels as equal. Straight alpha compares the stored RGBA
 channels, so different hidden RGB can form separate regions. Connectivity,
 selection boundaries, merged sampling, cancellation and paint blending still apply.
+
+Recolor can sample the active-layer pixel at the first click of each stroke.
+That source color stays fixed while dragging, and the next stroke samples again.
+Left button replaces with primary; right button replaces with secondary. The
+existing primary/secondary source mode remains available. Selection, tolerance,
+coverage and one-step undo apply in both modes. This does not complete external
+shading or alpha-comparison parity for the recolor algorithm.

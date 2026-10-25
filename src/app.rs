@@ -136,6 +136,8 @@ pub struct Editor {
     clone_anchor: Option<(u64, (i32, i32))>,
     clone_offset: Option<(i32, i32)>,
     clone_aligned: bool,
+    recolor_once: bool,
+    recolor_sample: Option<[u8; 4]>,
     clone_layer: Option<u64>,
     clone_merged: bool,
     shape_filled: bool,
@@ -288,6 +290,8 @@ impl Editor {
             clone_anchor: None,
             clone_offset: None,
             clone_aligned: true,
+            recolor_once: false,
+            recolor_sample: None,
             clone_layer: None,
             clone_merged: false,
             shape_filled: false,
@@ -721,6 +725,7 @@ impl Editor {
             self.texture_dirty = true;
             let mut document = self.document.snapshot();
             document.set_selection(self.document.selection());
+            self.recolor_sample = None;
             self.last_point = None;
             self.shape_origin = None;
             let label = gesture.effect.name();
@@ -776,6 +781,7 @@ impl Editor {
                 });
             }
         }
+        self.recolor_sample = None;
         self.last_point = None;
         self.shape_origin = None;
         self.selection_before = None;
@@ -1655,7 +1661,23 @@ impl Editor {
                                 }
                                 self.document.begin("Clone stamp");
                             }
-                            Tool::Recolor => self.document.begin("Recolor"),
+                            Tool::Recolor => {
+                                let (x, y) = (point.0.floor() as i64, point.1.floor() as i64);
+                                self.recolor_sample = if x >= 0
+                                    && y >= 0
+                                    && x < i64::from(self.document.width)
+                                    && y < i64::from(self.document.height)
+                                {
+                                    Some(
+                                        self.document.pixels()[y as usize
+                                            * self.document.width as usize
+                                            + x as usize],
+                                    )
+                                } else {
+                                    None
+                                };
+                                self.document.begin("Recolor");
+                            }
                             Tool::Pencil => self.document.begin("Pencil stroke"),
                             Tool::Gradient => self.document.begin("Gradient"),
                             Tool::Move => self.document.begin(if self.move_selection_only {
@@ -1746,7 +1768,12 @@ impl Editor {
                                 self.secondary_color
                             };
                             paint_rust::brush::Paint::Recolor {
-                                from: from.to_srgba_unmultiplied(),
+                                from: if self.recolor_once {
+                                    self.recolor_sample
+                                        .unwrap_or_else(|| from.to_srgba_unmultiplied())
+                                } else {
+                                    from.to_srgba_unmultiplied()
+                                },
                                 to: drawing_color.to_srgba_unmultiplied(),
                                 tolerance: self.color_tolerance,
                             }
@@ -2003,8 +2030,22 @@ impl Editor {
             }
         }
         if self.tool == Tool::Recolor {
+            egui::ComboBox::from_label("Recolor sampling")
+                .selected_text(if self.recolor_once {
+                    "Sample once per stroke"
+                } else {
+                    "Primary/secondary color"
+                })
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut self.recolor_once, true, "Sample once per stroke");
+                    ui.selectable_value(&mut self.recolor_once, false, "Primary/secondary color");
+                });
             ui.add(egui::Slider::new(&mut self.color_tolerance, 0..=255).text("Color tolerance"));
-            ui.small("Left: secondary → primary · Right: primary → secondary");
+            ui.small(if self.recolor_once {
+                "First clicked color → primary; right button uses secondary."
+            } else {
+                "Left: secondary → primary · Right: primary → secondary"
+            });
         }
         if self.tool == Tool::Pencil {
             ui.label("Pencil: 1 px");
@@ -4278,6 +4319,81 @@ mod tests {
         assert!(editor.document.pixels().iter().all(|p| *p == [255; 4]));
     }
 
+    #[test]
+    fn recolor_samples_once_per_stroke_and_uses_each_buttons_target() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        let a = [20, 40, 60, 255];
+        let b = [80, 100, 120, 255];
+        editor.document = Document::from_pixels(
+            200,
+            200,
+            (0..40000)
+                .map(|i| if i % 200 < 50 { a } else { b })
+                .collect(),
+        )
+        .unwrap();
+        editor.tool = Tool::Recolor;
+        editor.recolor_once = true;
+        editor.brush_size = 8.0;
+        editor.color = Color32::RED.into();
+        editor.secondary_color = Color32::GREEN.into();
+        frame(&mut editor, &ctx, vec![]);
+        frame(&mut editor, &ctx, vec![]);
+        let start = editor.canvas_viewport.min + Vec2::new(20.5, 20.5);
+        let end = start + Vec2::new(60.0, 0.0);
+        let event = |pos, pressed, button| egui::Event::PointerButton {
+            pos,
+            pressed,
+            button,
+            modifiers: egui::Modifiers::NONE,
+        };
+        frame(
+            &mut editor,
+            &ctx,
+            vec![
+                egui::Event::PointerMoved(start),
+                event(start, true, egui::PointerButton::Primary),
+            ],
+        );
+        assert_eq!(editor.recolor_sample, Some(a));
+        frame(&mut editor, &ctx, vec![egui::Event::PointerMoved(end)]);
+        assert_eq!(editor.recolor_sample, Some(a));
+        frame(
+            &mut editor,
+            &ctx,
+            vec![event(end, false, egui::PointerButton::Primary)],
+        );
+        assert!(editor.document.pixels().contains(&[255, 0, 0, 255]));
+        assert_eq!(
+            editor.document.pixels().iter().filter(|p| **p == b).count(),
+            150 * 200
+        );
+        assert!(editor.recolor_sample.is_none());
+        frame(
+            &mut editor,
+            &ctx,
+            vec![
+                egui::Event::PointerMoved(end),
+                event(end, true, egui::PointerButton::Secondary),
+            ],
+        );
+        assert_eq!(editor.recolor_sample, Some(b));
+        frame(
+            &mut editor,
+            &ctx,
+            vec![event(end, false, egui::PointerButton::Secondary)],
+        );
+        assert!(editor.document.pixels().contains(&[0, 255, 0, 255]));
+        assert_eq!(editor.document.history().count(), 2);
+        editor.undo();
+        editor.undo();
+        assert_eq!(
+            editor.document.pixels().iter().filter(|p| **p == a).count(),
+            50 * 200
+        );
+        assert!(!editor.document.dirty());
+    }
     #[test]
     fn raster_save_matches_decoded_file_and_keeps_layered_undo() {
         let ctx = egui::Context::default();
