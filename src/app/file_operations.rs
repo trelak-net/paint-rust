@@ -11,6 +11,7 @@ pub(super) enum DocumentEdit {
 
 pub(super) enum Outcome {
     TextFont(ab_glyph::FontArc, String),
+    FontCatalog(Vec<paint_rust::fonts::InstalledFont>),
     Copied(Option<Box<Document>>),
     Opened(Box<Document>, PathBuf),
     Recovered(Box<Document>, usize),
@@ -218,6 +219,24 @@ impl Editor {
         });
     }
 
+    pub(super) fn discover_fonts(&mut self) {
+        self.start_cancellable_file_job("find installed fonts", |cancel| {
+            Ok(Outcome::FontCatalog(
+                paint_rust::fonts::installed_cancellable(cancel)?,
+            ))
+        });
+    }
+    pub(super) fn load_installed_font(&mut self, record: paint_rust::fonts::InstalledFont) {
+        if self.text_dialog.is_none() {
+            return;
+        }
+        self.start_cancellable_file_job("load installed font", move |cancel| {
+            let font =
+                paint_rust::text::load_font_face_cancellable(&record.path, record.index, cancel)?;
+            Ok(Outcome::TextFont(font, record.label()))
+        });
+    }
+
     pub(super) fn load_text_font(&mut self, path: PathBuf) {
         if self.text_dialog.is_none() {
             return;
@@ -293,6 +312,10 @@ impl Editor {
         let operation = job.operation;
         self.file_job = None;
         match result {
+            Ok(Outcome::FontCatalog(fonts)) => {
+                self.status = format!("Found {} installed font faces", fonts.len());
+                self.system_fonts = fonts;
+            }
             Ok(Outcome::TextFont(font, name)) => {
                 if let Some(dialog) = &mut self.text_dialog {
                     self.text_font = Some((font.clone(), name.clone()));

@@ -144,6 +144,8 @@ pub struct Editor {
     export_dialog: Option<export::ExportDialog>,
     export_options: files::RasterOptions,
     text_dialog: Option<TextDialog>,
+    system_fonts: Vec<paint_rust::fonts::InstalledFont>,
+    font_search: String,
     text_font: Option<(ab_glyph::FontArc, String)>,
     effect_dialog: Option<EffectDialog>,
     last_effect: Option<Effect>,
@@ -258,6 +260,8 @@ impl Editor {
             export_dialog: None,
             export_options: files::RasterOptions::new(files::RasterFormat::Png),
             text_dialog: None,
+            system_fonts: Vec::new(),
+            font_search: String::new(),
             text_font: None,
             effect_dialog: None,
             last_effect: None,
@@ -2054,6 +2058,8 @@ impl Editor {
         if let Some(mut dialog) = self.text_dialog.take() {
             let mut keep = true;
             let mut font_path = None;
+            let mut font_record = None;
+            let mut discover_fonts = false;
             if let Some(pixels) = dialog.preview.poll() {
                 match self.document.publish_preview(pixels) {
                     Ok(()) => self.texture_dirty = true,
@@ -2067,6 +2073,8 @@ impl Editor {
                 keep = false;
             } else {
                 egui::Window::new("Text")
+                    .vscroll(true)
+                    .max_height((ctx.content_rect().height() - 80.0).max(180.0))
                     .collapsible(false)
                     .resizable(true)
                     .default_width(320.0)
@@ -2083,6 +2091,53 @@ impl Editor {
                                 font_path = rfd::FileDialog::new()
                                     .add_filter("Font", &["ttf", "otf", "ttc"])
                                     .pick_file();
+                            }
+                        });
+                        egui::CollapsingHeader::new("Installed fonts").show(ui, |ui| {
+                            discover_fonts = ui
+                                .add_enabled(
+                                    self.file_job.is_none(),
+                                    egui::Button::new(if self.system_fonts.is_empty() {
+                                        "Find installed fonts"
+                                    } else {
+                                        "Refresh fonts"
+                                    }),
+                                )
+                                .clicked();
+                            let label = ui.label("Search family or style");
+                            ui.text_edit_singleline(&mut self.font_search)
+                                .labelled_by(label.id);
+                            let query = self.font_search.to_lowercase();
+                            let matching: Vec<_> = self
+                                .system_fonts
+                                .iter()
+                                .filter(|font| {
+                                    font.family.to_lowercase().contains(&query)
+                                        || font.style.to_lowercase().contains(&query)
+                                })
+                                .collect();
+                            egui::ScrollArea::vertical()
+                                .id_salt("installed-font-list")
+                                .max_height(150.0)
+                                .show(ui, |ui| {
+                                    for record in matching.iter().take(200) {
+                                        if ui
+                                            .add_enabled(
+                                                self.file_job.is_none(),
+                                                egui::Button::new(record.label()),
+                                            )
+                                            .on_hover_text(record.path.display().to_string())
+                                            .clicked()
+                                        {
+                                            font_record = Some((*record).clone());
+                                        }
+                                    }
+                                });
+                            if matching.len() > 200 {
+                                ui.small(format!(
+                                    "Showing 200 of {} matches; narrow the search.",
+                                    matching.len()
+                                ));
                             }
                         });
                         let label = ui.label("Text content");
@@ -2174,6 +2229,10 @@ impl Editor {
                 self.text_dialog = Some(dialog);
                 if let Some(path) = font_path {
                     self.load_text_font(path);
+                } else if let Some(record) = font_record {
+                    self.load_installed_font(record);
+                } else if discover_fonts {
+                    self.discover_fonts();
                 }
             } else {
                 self.last_point = None;

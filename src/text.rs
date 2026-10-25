@@ -192,6 +192,14 @@ pub fn load_font_cancellable(
     path: &std::path::Path,
     cancel: &AtomicBool,
 ) -> Result<FontArc, String> {
+    load_font_face_cancellable(path, 0, cancel)
+}
+
+pub fn load_font_face_cancellable(
+    path: &std::path::Path,
+    index: u32,
+    cancel: &AtomicBool,
+) -> Result<FontArc, String> {
     use std::io::Read;
     const LIMIT: usize = 16 * 1024 * 1024;
     if cancel.load(Ordering::Relaxed) {
@@ -219,8 +227,10 @@ pub fn load_font_cancellable(
         }
         data.extend_from_slice(&buffer[..count]);
     }
-    let font =
-        FontArc::try_from_vec(data).map_err(|_| "Unsupported or invalid font file.".to_string())?;
+    let font = FontArc::new(
+        ab_glyph::FontVec::try_from_vec_and_index(data, index)
+            .map_err(|_| "Unsupported or invalid font face.".to_string())?,
+    );
     if cancel.load(Ordering::Relaxed) {
         return Err(crate::files::CANCELLED.into());
     }

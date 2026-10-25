@@ -252,6 +252,10 @@ fn font_loader_accepts_valid_files_and_rejects_invalid_oversized_or_cancelled_re
     let name = &definitions.families[&eframe::egui::FontFamily::Proportional][0];
     std::fs::write(&path, definitions.font_data[name].font.as_ref()).unwrap();
     let loaded = paint_rust::text::load_font_cancellable(&path, &AtomicBool::new(false)).unwrap();
+    assert!(
+        paint_rust::text::load_font_face_cancellable(&path, u32::MAX, &AtomicBool::new(false))
+            .is_err()
+    );
     assert_eq!(loaded.glyph_id('M'), font().glyph_id('M'));
     assert!(paint_rust::text::load_font_cancellable(&path, &AtomicBool::new(true)).is_err());
     std::fs::write(&path, b"not a font").unwrap();

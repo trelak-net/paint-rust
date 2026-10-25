@@ -978,3 +978,14 @@ a single raster, as well as cancellation and exact atomic output bytes.
 Raster exports omit document metadata and ICC profiles. Codec options, multipage
 editing and high-bit-depth working buffers remain pending. Dependency notices
 were refreshed for the TIFF decoder/encoder and its active dependencies.
+
+Installed-font browser
+----------------------
+The text dialog includes an Installed fonts section with a background Fontconfig
+query, family/style search and face selection. The catalog is bounded to 4 MiB
+and 16384 faces, with cancellation and a 15-second timeout. Font files retain the
+16 MiB load limit. Available static styles and collection face indices are used
+explicitly; named variable-font instances, bitmap fonts and Type 1 fonts are
+excluded. Manual font-file selection remains available when Fontconfig is absent.
+A native catalog probe found 321 outline faces and loaded the first twenty. Run
+that environment-dependent check with cargo test --test system_fonts -- --ignored.

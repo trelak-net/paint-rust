@@ -17,3 +17,5 @@ pub mod levels;
 pub mod brush;
 
 pub mod curves;
+
+pub mod fonts;
