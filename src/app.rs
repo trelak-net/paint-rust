@@ -59,6 +59,7 @@ struct ResizeDialog {
 }
 
 struct TextDialog {
+    layout: paint_rust::text::TextLayout,
     preview: crate::preview::EffectPreview,
     content: String,
     font: ab_glyph::FontArc,
@@ -397,6 +398,7 @@ impl Editor {
                 self.document.height,
                 self.document.selection(),
                 crate::preview::TextInput {
+                    layout: Default::default(),
                     font: font.clone(),
                     content: String::new(),
                     origin,
@@ -405,6 +407,7 @@ impl Editor {
                 },
             );
             self.text_dialog = Some(TextDialog {
+                layout: Default::default(),
                 preview,
                 content: String::new(),
                 font,
@@ -1904,6 +1907,38 @@ impl Editor {
                         changed |= ui
                             .add(egui::Slider::new(&mut dialog.size, 4.0..=256.0).text("Size (px)"))
                             .changed();
+                        egui::ComboBox::from_label("Alignment")
+                            .selected_text(dialog.layout.alignment.label())
+                            .show_ui(ui, |ui| {
+                                for alignment in [
+                                    paint_rust::text::Alignment::Left,
+                                    paint_rust::text::Alignment::Center,
+                                    paint_rust::text::Alignment::Right,
+                                ] {
+                                    changed |= ui
+                                        .selectable_value(
+                                            &mut dialog.layout.alignment,
+                                            alignment,
+                                            alignment.label(),
+                                        )
+                                        .changed();
+                                }
+                            });
+                        changed |= ui
+                            .add(
+                                egui::Slider::new(&mut dialog.layout.letter_spacing, -32.0..=128.0)
+                                    .text("Letter spacing (px)"),
+                            )
+                            .changed();
+                        changed |= ui
+                            .add(
+                                egui::Slider::new(&mut dialog.layout.line_spacing, 0.5..=3.0)
+                                    .text("Line spacing"),
+                            )
+                            .changed();
+                        changed |= ui
+                            .checkbox(&mut dialog.layout.antialias, "Antialias text")
+                            .changed();
                         let label = ui.label("Text color");
                         changed |= ui
                             .color_edit_button_srgba(&mut dialog.color)
@@ -1911,6 +1946,7 @@ impl Editor {
                             .changed();
                         if changed {
                             dialog.preview.request_text(crate::preview::TextInput {
+                                layout: dialog.layout,
                                 font: dialog.font.clone(),
                                 content: dialog.content.clone(),
                                 origin: dialog.origin,

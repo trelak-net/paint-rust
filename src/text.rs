@@ -2,7 +2,42 @@ use crate::document::{Pixel, Selection, blend};
 use ab_glyph::{Font, FontArc, ScaleFont, point};
 use std::sync::atomic::{AtomicBool, Ordering};
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Alignment {
+    Left,
+    Center,
+    Right,
+}
+impl Alignment {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Left => "Left",
+            Self::Center => "Center",
+            Self::Right => "Right",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct TextLayout {
+    pub alignment: Alignment,
+    pub letter_spacing: f32,
+    pub line_spacing: f32,
+    pub antialias: bool,
+}
+impl Default for TextLayout {
+    fn default() -> Self {
+        Self {
+            alignment: Alignment::Left,
+            letter_spacing: 0.0,
+            line_spacing: 1.0,
+            antialias: true,
+        }
+    }
+}
+
 pub struct TextStyle<'a> {
+    pub layout: TextLayout,
     pub font: &'a FontArc,
     pub text: &'a str,
     pub origin: (f32, f32),
@@ -39,6 +74,10 @@ pub fn render_cancellable(
         || !style.size.is_finite()
         || !(1.0..=512.0).contains(&style.size)
         || style.text.len() > 16384
+        || !style.layout.letter_spacing.is_finite()
+        || !(-32.0..=128.0).contains(&style.layout.letter_spacing)
+        || !style.layout.line_spacing.is_finite()
+        || !(0.5..=3.0).contains(&style.layout.line_spacing)
         || !style.origin.0.is_finite()
         || !style.origin.1.is_finite()
         || width == 0
@@ -48,15 +87,47 @@ pub fn render_cancellable(
         return false;
     }
     let font = style.font.as_scaled(style.size);
-    let mut caret = point(style.origin.0, style.origin.1 + font.ascent());
-    let line_height = font.height() + font.line_gap();
+    let mut widths = Vec::new();
+    for line in style.text.split('\n') {
+        let mut advance = 0.0;
+        let mut previous = None;
+        for ch in line.chars() {
+            if cancel.load(Ordering::Relaxed) {
+                return false;
+            }
+            if ch == '\t' {
+                advance += font.h_advance(font.glyph_id(' ')) * 4.0;
+                previous = None;
+            } else if !ch.is_control() {
+                let id = font.glyph_id(ch);
+                if let Some(prior) = previous {
+                    advance += font.kern(prior, id) + style.layout.letter_spacing;
+                }
+                advance += font.h_advance(id);
+                previous = Some(id);
+            }
+        }
+        widths.push(advance);
+    }
+    let factor = match style.layout.alignment {
+        Alignment::Left => 0.0,
+        Alignment::Center => 0.5,
+        Alignment::Right => 1.0,
+    };
+    let mut line = 0;
+    let mut caret = point(
+        style.origin.0 - widths[0] * factor,
+        style.origin.1 + font.ascent(),
+    );
+    let line_height = (font.height() + font.line_gap()) * style.layout.line_spacing;
     let mut previous = None;
     for ch in style.text.chars() {
         if cancel.load(Ordering::Relaxed) {
             return false;
         }
         if ch == '\n' {
-            caret.x = style.origin.0;
+            line += 1;
+            caret.x = style.origin.0 - widths[line] * factor;
             caret.y += line_height;
             previous = None;
             continue;
@@ -71,7 +142,7 @@ pub fn render_cancellable(
         }
         let id = font.glyph_id(ch);
         if let Some(prior) = previous {
-            caret.x += font.kern(prior, id);
+            caret.x += font.kern(prior, id) + style.layout.letter_spacing;
         }
         if let Some(glyph) = font.outline_glyph(id.with_scale_and_position(style.size, caret)) {
             let bounds = glyph.px_bounds();
@@ -99,7 +170,13 @@ pub fn render_cancellable(
                     pixels[i] = blend(
                         pixels[i],
                         style.color,
-                        (coverage * 255.0).round().clamp(0.0, 255.0) as u8,
+                        if style.layout.antialias {
+                            (coverage * 255.0).round().clamp(0.0, 255.0) as u8
+                        } else if coverage >= 0.5 {
+                            255
+                        } else {
+                            0
+                        },
                     );
                 });
             }

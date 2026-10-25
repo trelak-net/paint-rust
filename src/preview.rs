@@ -10,6 +10,7 @@ use std::sync::{
 };
 
 pub struct TextInput {
+    pub layout: paint_rust::text::TextLayout,
     pub font: ab_glyph::FontArc,
     pub content: String,
     pub origin: (f32, f32),
@@ -93,6 +94,7 @@ impl EffectPreview {
                             height,
                             selection.clone(),
                             paint_rust::text::TextStyle {
+                                layout: text.layout,
                                 font: &text.font,
                                 text: &text.content,
                                 origin: text.origin,
@@ -190,6 +192,7 @@ mod tests {
         let font =
             ab_glyph::FontArc::try_from_vec(definitions.font_data[name].font.to_vec()).unwrap();
         let input = |content: &str| TextInput {
+            layout: Default::default(),
             font: font.clone(),
             content: content.into(),
             origin: (1.0, 1.0),

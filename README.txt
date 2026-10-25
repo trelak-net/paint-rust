@@ -851,3 +851,8 @@ rounding is verified against externally saved PDN fixtures for all fourteen blen
 modes, including partially
 transparent pixels and hidden layers. The display compositor retains continuous
 precision until the final output, so a merge can shift a channel by one level.
+
+Text alignment positions each line relative to the clicked anchor: Left, Center
+or Right. Letter spacing adjusts the gap between glyphs; line spacing scales the
+font line height. Antialias text can be disabled for binary edge coverage. All
+controls update the background preview; Apply remains one undoable text edit.
