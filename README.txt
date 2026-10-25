@@ -1837,3 +1837,20 @@ The same native Windows editor opened the 256x192 export as fully opaque,
 while a PNG control retained alpha through the same clipboard-PNG capture.
 Both independent HEVC decoders retain the exported alpha. Windows alpha
 interoperability remains unresolved; use PNG when that workflow needs transparency.
+
+Save failure verification
+-------------------------
+On Linux, run python3 scripts/save_failure_smoke.py. It builds an isolated probe
+and a temporary C fault-injection library (requires cc and Linux headers). The
+24 scenarios cover PRUST, PDN, PNG and pre-encoded raster saves, both new and
+existing destinations. Writes fail with ENOSPC after 128 bytes, fsync fails with
+EIO, or replacement syscalls fail with EACCES. The probe must return the expected
+error, preserve existing destination bytes and document pixels/history, avoid
+publishing a new destination, and remove its temporary file.
+
+LD_PRELOAD applies only to the disposable child. A child-local seccomp filter
+handles direct rename syscalls; no mounts, quotas, global settings or user files
+are modified. These tests model specific syscall failures, not an actually full
+filesystem or sudden power loss. The existing cancellation test covers stopping
+before atomic replacement. Hard termination and crash-durability checks remain
+separate acceptance work.

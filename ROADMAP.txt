@@ -224,7 +224,8 @@ independent tasks; do not silently reduce the required scope.
 [x] Shared workspace undo RAM budget, inactive-document storage and global cancellation pause.
 [x] Shared 1 GiB compressed undo disk quota with RAM fallback, explicit retry and no history eviction.
 [ ] Bounded foreground work, large-document/multi-document benchmarks.
-[ ] Disk-full, corrupted-input, interrupted-save and low-memory scenarios.
+[x] Process-isolated partial-write ENOSPC, synchronization EIO and replacement-denied checks for project, PDN, PNG and encoded saves.
+[ ] Further corrupted-input, process termination/power-loss and low-memory scenarios.
 [x] Recover all snapshots into separate unsaved tabs; skip corrupt copies and retain failed recovery data.
 [x] Restore recoverable tab order, file destinations/titles, active tab and zoom/pan metadata.
 11. Distribution and preferences
