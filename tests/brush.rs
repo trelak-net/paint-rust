@@ -13,6 +13,7 @@ fn subdividing_and_repeating_a_stroke_does_not_accumulate_opacity() {
                 opacity: 0.6,
                 antialias: true,
                 blend,
+                ..Default::default()
             };
             let mut whole = Document::new(32, 16, [20, 100, 180, 200]).unwrap();
             let mut split = whole.snapshot();
@@ -64,6 +65,7 @@ fn soft_edges_eraser_and_blend_have_explicit_alpha_behavior() {
             opacity: 0.5,
             antialias: true,
             blend: false,
+            ..Default::default()
         },
         true,
     );
@@ -92,4 +94,44 @@ fn coverage_is_reset_between_transactions_and_invalid_input_is_ignored() {
     stroke(&mut doc, (f32::NAN, 0.0), (0.0, 0.0), options, false);
     assert!(!doc.commit());
     assert_eq!(doc.pixels(), before);
+}
+
+#[test]
+fn brush_blend_modes_match_layer_compositing_and_do_not_accumulate() {
+    use paint_rust::document::{BlendMode, Layer};
+    let background = [80, 130, 200, 123];
+    let color = [190, 75, 35, 137];
+    for mode in BlendMode::ALL
+        .into_iter()
+        .filter(|mode| *mode != BlendMode::Normal)
+    {
+        let mut upper = Layer::new("Paint".into(), vec![color]);
+        upper.blend_mode = mode;
+        upper.opacity = 153;
+        let layers = Document::from_layers(
+            1,
+            1,
+            vec![Layer::new("Base".into(), vec![background]), upper],
+            1,
+        )
+        .unwrap();
+        let expected = layers.composite()[0];
+        let mut document = Document::new(1, 1, background).unwrap();
+        document.begin("Blended brush");
+        let options = Options {
+            blend: true,
+            blend_mode: mode,
+            opacity: 0.6,
+            ..Default::default()
+        };
+        for _ in 0..3 {
+            document.brush_segment((0.5, 0.5), (0.5, 0.5), 1.0, color, options, false);
+        }
+        assert_eq!(document.pixels()[0], expected, "{mode:?}");
+        assert!(document.commit());
+        document.undo();
+        assert_eq!(document.pixels()[0], background);
+        document.redo();
+        assert_eq!(document.pixels()[0], expected);
+    }
 }

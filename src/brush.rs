@@ -1,8 +1,9 @@
 //! Coverage-based round strokes. Coverage is accumulated once per transaction.
-use crate::document::{Pixel, Selection};
+use crate::document::{BlendMode, Pixel, Selection};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Options {
+    pub blend_mode: BlendMode,
     pub hardness: f32,
     pub opacity: f32,
     pub antialias: bool,
@@ -11,6 +12,7 @@ pub struct Options {
 impl Default for Options {
     fn default() -> Self {
         Self {
+            blend_mode: BlendMode::Normal,
             hardness: 1.0,
             opacity: 1.0,
             antialias: false,
@@ -161,7 +163,11 @@ pub(crate) fn render(
                 }
             };
             coverage[i] = amount;
-            pixels[i] = composite(source[i], color, amount, blend, erase);
+            pixels[i] = if blend && !erase && options.blend_mode != BlendMode::Normal {
+                crate::document::blend_layer(source[i], color, amount, options.blend_mode)
+            } else {
+                composite(source[i], color, amount, blend, erase)
+            };
         }
     }
 }

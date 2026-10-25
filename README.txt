@@ -1203,3 +1203,14 @@ alpha and fully transparent RGB, use the common selection/preview/undo workflow
 and persist parameters. Zero-strength neutral settings preserve exact bytes.
 Tests cover hidden colors, partial alpha, smoothing and warm/cool direction;
 external reference algorithms and parameter-range comparisons remain pending.
+
+Brush color blending
+--------------------
+Brush and Clone stamp offer all fourteen layer color blend modes when Blend color
+is enabled. The mode is applied against the frozen pre-stroke destination, with
+brush coverage and opacity counted once across repeated pointer samples. With
+Blend color disabled, replacement painting remains unchanged. Eraser and Recolor
+retain their existing behavior. The chosen mode is saved in preferences; older
+preferences default to Normal and invalid mode indices are rejected. Tests compare
+non-Normal brush results to layer compositing and cover Undo/Redo. A native dark
+200% scaling check verifies the mode menu wraps without clipping and survives restart.

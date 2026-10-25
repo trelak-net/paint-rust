@@ -35,7 +35,7 @@ impl Preferences {
     }
     fn encode(&self) -> String {
         let mut text = format!(
-            "preferences-v1\n{} {} {} {} {} {} {} {}\n",
+            "preferences-v1\n{} {} {} {} {} {} {} {} {}\n",
             match self.theme {
                 Theme::System => "system",
                 Theme::Light => "light",
@@ -47,7 +47,8 @@ impl Preferences {
             self.brush.opacity,
             u8::from(self.brush.antialias),
             u8::from(self.brush.blend),
-            u8::from(self.rulers)
+            u8::from(self.rulers),
+            self.brush.blend_mode as u8
         );
         for path in self.recent.iter().take(16) {
             if let Some(path) = path.to_str()
@@ -75,7 +76,7 @@ impl Preferences {
             .ok_or_else(invalid)?
             .split_whitespace()
             .collect();
-        if fields.len() != 7 && fields.len() != 8 {
+        if !(7..=9).contains(&fields.len()) {
             return Err(invalid());
         }
         let boolean = |v: &str| match v {
@@ -99,13 +100,20 @@ impl Preferences {
                 _ => return Err(invalid()),
             },
             pixel_grid: boolean(fields[1])?,
-            rulers: if fields.len() == 8 {
+            rulers: if fields.len() >= 8 {
                 boolean(fields[7])?
             } else {
                 false
             },
             brush_size: number(fields[2], 1.0, 128.0)?,
             brush: paint_rust::brush::Options {
+                blend_mode: if fields.len() == 9 {
+                    *BlendMode::ALL
+                        .get(fields[8].parse::<usize>().map_err(|_| invalid())?)
+                        .ok_or_else(invalid)?
+                } else {
+                    BlendMode::Normal
+                },
                 hardness: number(fields[3], 0.0, 1.0)?,
                 opacity: number(fields[4], 0.0, 1.0)?,
                 antialias: boolean(fields[5])?,
@@ -272,6 +280,7 @@ mod tests {
                 opacity: 0.75,
                 antialias: true,
                 blend: true,
+                blend_mode: BlendMode::Screen,
             },
             ..Default::default()
         };
@@ -291,5 +300,24 @@ mod tests {
         ] {
             assert!(Preferences::decode(invalid).is_err());
         }
+    }
+    #[test]
+    fn legacy_preferences_default_to_normal_blending_and_invalid_modes_fail() {
+        for line in ["system 0 12 1 1 0 1", "system 0 12 1 1 0 1 0"] {
+            let settings = Preferences::decode(&format!("preferences-v1\n{line}\n")).unwrap();
+            assert_eq!(settings.brush.blend_mode, BlendMode::Normal);
+        }
+        for mode in BlendMode::ALL {
+            let mut settings = Preferences::default();
+            settings.brush.blend_mode = mode;
+            assert_eq!(
+                Preferences::decode(&settings.encode())
+                    .unwrap()
+                    .brush
+                    .blend_mode,
+                mode
+            );
+        }
+        assert!(Preferences::decode("preferences-v1\nsystem 0 12 1 1 0 1 0 14\n").is_err());
     }
 }

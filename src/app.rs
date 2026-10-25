@@ -1806,6 +1806,25 @@ impl Editor {
             ui.checkbox(&mut self.brush_options.antialias, "Antialias");
             if matches!(self.tool, Tool::Brush | Tool::Clone) {
                 ui.checkbox(&mut self.brush_options.blend, "Blend color");
+                ui.menu_button(
+                    format!("Paint mode: {}", self.brush_options.blend_mode.name()),
+                    |ui| {
+                        for mode in BlendMode::ALL {
+                            if ui
+                                .selectable_value(
+                                    &mut self.brush_options.blend_mode,
+                                    mode,
+                                    mode.name(),
+                                )
+                                .clicked()
+                            {
+                                ui.close();
+                            }
+                        }
+                    },
+                )
+                .response
+                .on_hover_text("Applied when Blend color is enabled");
             }
         }
         if self.tool == Tool::Clone {

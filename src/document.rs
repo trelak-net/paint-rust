@@ -1682,7 +1682,7 @@ fn merge_pixel(dst: Pixel, src: Pixel, opacity: u8, mode: BlendMode) -> Pixel {
     result
 }
 
-fn blend_layer(dst: Pixel, src: Pixel, opacity: u8, mode: BlendMode) -> Pixel {
+pub(crate) fn blend_layer(dst: Pixel, src: Pixel, opacity: u8, mode: BlendMode) -> Pixel {
     if mode == BlendMode::Normal {
         return blend(dst, src, opacity);
     }
