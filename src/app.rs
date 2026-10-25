@@ -1768,6 +1768,7 @@ impl Editor {
                                 self.secondary_color
                             };
                             paint_rust::brush::Paint::Recolor {
+                                edge_basis: Some(from.to_srgba_unmultiplied()),
                                 alpha: self.color_alpha,
                                 from: if self.recolor_once {
                                     self.recolor_sample

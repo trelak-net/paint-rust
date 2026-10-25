@@ -51,6 +51,7 @@ fn recolor_preserves_shade_differences_and_obeys_alpha_tolerance_and_selection()
     }));
     doc.begin("Recolor");
     let paint = Paint::Recolor {
+        edge_basis: None,
         alpha: paint_rust::selection::AlphaMatch::Straight,
         from: [100, 50, 20, 255],
         to: [0, 150, 220, 255],
@@ -104,6 +105,7 @@ fn recolor_shifts_all_channels_clamps_edges_and_does_not_accumulate_on_overlap()
     let mut doc = Document::from_pixels(3, 1, original.clone()).unwrap();
     doc.begin("Recolor");
     let paint = Paint::Recolor {
+        edge_basis: None,
         alpha: paint_rust::selection::AlphaMatch::Premultiplied,
         from: [120, 140, 160, 128],
         to: [160, 100, 255, 200],
@@ -134,6 +136,7 @@ fn recolor_alpha_comparison_controls_hidden_color_matching() {
             (1.5, 0.5),
             1.0,
             Paint::Recolor {
+                edge_basis: None,
                 alpha,
                 from: original[0],
                 to: [0, 0, 0, 255],
@@ -173,29 +176,68 @@ fn compare_native_ramp(fixture: &str, percent: u8) {
         (175.5, 24.5),
         1000.0,
         Paint::Recolor {
+            edge_basis: Some([255; 4]),
             alpha: paint_rust::selection::AlphaMatch::Premultiplied,
             from,
             to: [0, 0, 0, 255],
             tolerance: paint_rust::selection::tolerance_threshold(percent),
         },
-        Options::default(),
+        Options {
+            antialias: true,
+            ..Options::default()
+        },
     );
     let mismatches: Vec<_> = document
         .pixels()
         .iter()
         .zip(native.pixels())
         .enumerate()
-        .filter(|(index, (a, b))| {
-            // The partial-tolerance reference feathers region edges. Compare cell
-            // interiors here; edge coverage remains a separate acceptance item.
-            let (x, y) = (index % 350, index / 350);
-            let interior = (2..48).contains(&(x % 50)) && (2..8).contains(&(y % 10));
-            (percent == 100 || interior) && a != b
-        })
+        .filter(|(_, (a, b))| a != b)
         .take(8)
         .collect();
     assert!(
         mismatches.is_empty(),
         "basis {from:?}; mismatches {mismatches:?}"
     );
+}
+
+#[test]
+fn recolor_feathering_is_optional_local_and_stable_with_overlapping_samples() {
+    for antialias in [false, true] {
+        let mut document = Document::from_pixels(
+            5,
+            1,
+            vec![
+                [100, 100, 100, 255],
+                [120, 120, 120, 255],
+                [120, 120, 120, 255],
+                [120, 120, 120, 255],
+                [120, 120, 120, 255],
+            ],
+        )
+        .unwrap();
+        let before = document.pixels().to_vec();
+        document.begin("Recolor");
+        let paint = Paint::Recolor {
+            edge_basis: None,
+            alpha: paint_rust::selection::AlphaMatch::Straight,
+            from: before[0],
+            to: [0, 0, 0, 255],
+            tolerance: 0,
+        };
+        let options = Options {
+            antialias,
+            ..Options::default()
+        };
+        document.paint_segment((2.5, 0.5), (2.5, 0.5), 20.0, paint, options);
+        let once = document.pixels().to_vec();
+        assert_eq!(once[0], [0, 0, 0, 255]);
+        assert_eq!(&once[2..], &before[2..]);
+        assert_eq!(once[1] != before[1], antialias);
+        document.paint_segment((2.5, 0.5), (2.5, 0.5), 20.0, paint, options);
+        assert_eq!(document.pixels(), once);
+        document.commit();
+        document.undo();
+        assert_eq!(document.pixels(), before);
+    }
 }

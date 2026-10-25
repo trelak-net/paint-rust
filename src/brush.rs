@@ -31,6 +31,8 @@ pub enum Paint {
     },
     /// Shift matching RGBA values toward the target while preserving shade differences.
     Recolor {
+        /// Palette basis for edge feathering; None uses the sampled color.
+        edge_basis: Option<Pixel>,
         alpha: crate::selection::AlphaMatch,
         from: Pixel,
         to: Pixel,
@@ -131,7 +133,7 @@ pub(crate) fn render(
             } else {
                 1.0
             };
-            let amount = (255.0 * edge * softness * f64::from(options.opacity.clamp(0.0, 1.0)))
+            let mut amount = (255.0 * edge * softness * f64::from(options.opacity.clamp(0.0, 1.0)))
                 .round() as u8;
             let i = y as usize * width as usize + x as usize;
             if amount <= coverage[i] {
@@ -153,12 +155,23 @@ pub(crate) fn render(
                     )
                 }
                 Paint::Recolor {
+                    edge_basis,
                     alpha,
                     from,
                     to,
                     tolerance,
                 } => {
-                    if !alpha.matches(source[i], from, tolerance) {
+                    let mask = recolor_coverage(
+                        source,
+                        dimensions,
+                        (x, y),
+                        alpha,
+                        (from, edge_basis.unwrap_or(from)),
+                        tolerance,
+                        options.antialias,
+                    );
+                    amount = scale_byte(amount, mask);
+                    if amount <= coverage[i] {
                         continue;
                     }
                     let shifted = std::array::from_fn(|c| {
@@ -208,4 +221,70 @@ pub(crate) fn composite(dst: Pixel, src: Pixel, amount: u8, blend: bool, erase: 
     }
     output[3] = (alpha * 255.0).round() as u8;
     output
+}
+
+fn scale_byte(a: u8, b: u8) -> u8 {
+    ((u16::from(a) * u16::from(b) + 127) / 255) as u8
+}
+
+/// Extend a color region by one pixel using neighboring coverage and color distance.
+fn recolor_coverage(
+    source: &[Pixel],
+    dimensions: (u32, u32),
+    point: (u32, u32),
+    alpha: crate::selection::AlphaMatch,
+    basis: (Pixel, Pixel),
+    tolerance: u8,
+    antialias: bool,
+) -> u8 {
+    let (width, height) = dimensions;
+    let (x, y) = point;
+    let distance = alpha.distance(source[(y * width + x) as usize], basis.0);
+    if distance <= tolerance {
+        return 255;
+    }
+    if !antialias {
+        return 0;
+    }
+    // Four outer corner sectors and four inner corner sectors. Orthogonal
+    // neighbors cover both sectors on their side; diagonal neighbors only one.
+    let neighbors = [
+        (-1, -1, 0x01),
+        (0, -1, 0x33),
+        (1, -1, 0x02),
+        (-1, 0, 0x55),
+        (1, 0, 0xaa),
+        (-1, 1, 0x04),
+        (0, 1, 0xcc),
+        (1, 1, 0x08),
+    ];
+    let mut sectors = 0_u8;
+    for (dx, dy, bits) in neighbors {
+        let (nx, ny) = (i64::from(x) + dx, i64::from(y) + dy);
+        if nx >= 0
+            && ny >= 0
+            && nx < i64::from(width)
+            && ny < i64::from(height)
+            && alpha.matches(
+                source[ny as usize * width as usize + nx as usize],
+                basis.0,
+                tolerance,
+            )
+        {
+            sectors |= bits;
+        }
+    }
+    if sectors == 0 {
+        return 0;
+    }
+    let spatial = (sectors.count_ones() * 255 / 8) as u8;
+    let distance = alpha.distance(source[(y * width + x) as usize], basis.1);
+    let color = (255.0
+        * (1.0
+            - (f32::from(distance.saturating_sub(tolerance)) / f32::from(255 - tolerance)).sqrt()))
+    .round() as u8;
+    scale_byte(
+        255 - scale_byte(255 - spatial, 255 - spatial),
+        255 - scale_byte(255 - color, 255 - color),
+    )
 }
