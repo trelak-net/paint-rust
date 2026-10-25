@@ -261,8 +261,24 @@ pub fn polygon_cancellable(
     raster_selection(width, pixels, (left, top, right, bottom), cancel)
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum AlphaMatch {
+    #[default]
+    Premultiplied,
+    Straight,
+}
+impl AlphaMatch {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Premultiplied => "Premultiplied alpha",
+            Self::Straight => "Straight alpha",
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 pub struct ColorMatch {
+    pub alpha: AlphaMatch,
     pub tolerance: u8,
     pub contiguous: bool,
 }
@@ -284,6 +300,7 @@ pub fn color_cancellable(
         pixels,
         seed,
         ColorMatch {
+            alpha: Default::default(),
             tolerance,
             contiguous,
         },
@@ -303,6 +320,7 @@ pub fn color_region_cancellable(
     cancel: &AtomicBool,
 ) -> Result<Selection, String> {
     let ColorMatch {
+        alpha,
         tolerance,
         contiguous,
     } = options;
@@ -312,6 +330,9 @@ pub fn color_region_cancellable(
         return Err("Invalid color-selection image or seed.".into());
     }
     let premultiply = |p: crate::document::Pixel| -> [u8; 4] {
+        if alpha == AlphaMatch::Straight {
+            return p;
+        }
         [
             ((u16::from(p[0]) * u16::from(p[3]) + 127) / 255) as u8,
             ((u16::from(p[1]) * u16::from(p[3]) + 127) / 255) as u8,

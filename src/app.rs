@@ -146,6 +146,7 @@ pub struct Editor {
     ellipse_selection: bool,
     selection_mode: CombineMode,
     color_tolerance: u8,
+    color_alpha: paint_rust::selection::AlphaMatch,
     color_contiguous: bool,
     color_sample_merged: bool,
     polygon_points: Vec<(f64, f64)>,
@@ -297,6 +298,7 @@ impl Editor {
             ellipse_selection: false,
             selection_mode: CombineMode::Replace,
             color_tolerance: 0,
+            color_alpha: Default::default(),
             color_contiguous: true,
             color_sample_merged: false,
             polygon_points: Vec::new(),
@@ -2025,6 +2027,16 @@ impl Editor {
             ui.small("Right drag reverses colors or transparency");
         }
         if matches!(self.tool, Tool::ColorSelect | Tool::Fill) {
+            egui::ComboBox::from_label("Tolerance alpha")
+                .selected_text(self.color_alpha.label())
+                .show_ui(ui, |ui| {
+                    for mode in [
+                        paint_rust::selection::AlphaMatch::Premultiplied,
+                        paint_rust::selection::AlphaMatch::Straight,
+                    ] {
+                        ui.selectable_value(&mut self.color_alpha, mode, mode.label());
+                    }
+                });
             ui.add(egui::Slider::new(&mut self.color_tolerance, 0..=255).text("Tolerance"));
             ui.checkbox(&mut self.color_contiguous, "Contiguous");
             ui.checkbox(&mut self.color_sample_merged, "Sample merged image");

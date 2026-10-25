@@ -247,6 +247,7 @@ impl Editor {
         let previous = self.document.selection();
         let mode = self.selection_mode;
         let tolerance = self.color_tolerance;
+        let alpha = self.color_alpha;
         let contiguous = self.color_contiguous;
         let merged = self.color_sample_merged;
         self.start_cancellable_file_job("select color", move |cancel| {
@@ -260,13 +261,17 @@ impl Editor {
                 None
             };
             let pixels = composite.as_deref().unwrap_or_else(|| document.pixels());
-            let candidate = paint_rust::selection::color_cancellable(
+            let candidate = paint_rust::selection::color_region_cancellable(
                 document.width,
                 document.height,
                 pixels,
                 (x, y),
-                tolerance,
-                contiguous,
+                paint_rust::selection::ColorMatch {
+                    alpha,
+                    tolerance,
+                    contiguous,
+                },
+                None,
                 cancel,
             )?;
             paint_rust::selection::combine_cancellable(
@@ -285,6 +290,7 @@ impl Editor {
         let mut document = self.document.snapshot();
         document.set_selection(self.document.selection());
         let options = paint_rust::selection::ColorMatch {
+            alpha: self.color_alpha,
             tolerance: self.color_tolerance,
             contiguous: self.color_contiguous,
         };

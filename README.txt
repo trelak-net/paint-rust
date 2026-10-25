@@ -1632,3 +1632,9 @@ so external parent-layout interoperability remains unverified.
 Native Windows 5.1.12 opened and re-saved the inline and chunked legacy fixtures
 on 2026-10-25 with exact layer pixels/properties, including hidden RGB and alpha.
 Normal Save continues to emit the modern deferred-block PDN3 container.
+
+Color selection and sampled fill expose Tolerance alpha. Premultiplied alpha
+(the default) compares alpha-scaled RGB plus alpha, treating hidden colors in
+fully transparent pixels as equal. Straight alpha compares the stored RGBA
+channels, so different hidden RGB can form separate regions. Connectivity,
+selection boundaries, merged sampling, cancellation and paint blending still apply.

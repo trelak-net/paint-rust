@@ -136,6 +136,7 @@ independent tasks; do not silently reduce the required scope.
 [x] Independent clone source-layer identity across reorder/undo and frozen merged sampling.
 [ ] Recolor shading parity.
 [x] Fill tolerance, connected/global modes and active/merged sampling within selection boundaries.
+[x] Premultiplied/straight alpha comparison for color selection and sampled fill.
 [x] Linear, reflected, radial, diamond and conical gradients; blend, replace and transparency modes.
 [x] Eighteen-shape catalogue with combined outline/fill and antialiasing.
 [ ] Editable path curves, remaining shape catalogue and persistent shape handles.

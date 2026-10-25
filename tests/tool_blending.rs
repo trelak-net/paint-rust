@@ -150,6 +150,7 @@ fn pencil_overlap_is_stable_and_sampled_fill_blends_only_matching_selected_pixel
                 (1, 0),
                 src,
                 paint_rust::selection::ColorMatch {
+                    alpha: Default::default(),
                     tolerance: 0,
                     contiguous: false
                 },
