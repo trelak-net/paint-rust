@@ -29,8 +29,9 @@ pub enum Paint {
     Clone {
         offset: (i32, i32),
     },
-    /// Replace matching RGB values while retaining the original alpha.
+    /// Shift matching RGBA values toward the target while preserving shade differences.
     Recolor {
+        alpha: crate::selection::AlphaMatch,
         from: Pixel,
         to: Pixel,
         tolerance: u8,
@@ -152,20 +153,25 @@ pub(crate) fn render(
                     )
                 }
                 Paint::Recolor {
+                    alpha,
                     from,
                     to,
                     tolerance,
                 } => {
-                    if source[i][3] == 0
-                        || (0..3).any(|c| source[i][c].abs_diff(from[c]) > tolerance)
-                    {
+                    if !alpha.matches(source[i], from, tolerance) {
                         continue;
                     }
-                    ([to[0], to[1], to[2], source[i][3]], false, false)
+                    let shifted = std::array::from_fn(|c| {
+                        (i16::from(source[i][c]) + i16::from(to[c]) - i16::from(from[c]))
+                            .clamp(0, 255) as u8
+                    });
+                    (shifted, false, false)
                 }
             };
             coverage[i] = amount;
-            pixels[i] = if blend && !erase && options.blend_mode != BlendMode::Normal {
+            pixels[i] = if matches!(paint, Paint::Recolor { .. }) {
+                crate::document::merge_pixel(source[i], color, amount, BlendMode::Normal)
+            } else if blend && !erase && options.blend_mode != BlendMode::Normal {
                 crate::document::blend_layer(source[i], color, amount, options.blend_mode)
             } else {
                 composite(source[i], color, amount, blend, erase)

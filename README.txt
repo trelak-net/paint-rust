@@ -921,8 +921,9 @@ document in which they were set. Source identity survives reordering, edits and
 undo; deleting the source rejects painting until it is restored or reset. Sample
 merged image freezes the visible layer composite at the start of each stroke.
 Recolor (J): left drag replaces secondary with primary; right drag reverses them.
-Tolerance is the maximum RGB channel distance. Replacement preserves alpha and
-skips transparent pixels. Shading-preserving recoloring remains pending.
+Matching supports premultiplied or straight alpha. Recolor shifts all RGBA
+channels by the source-to-target difference, clamps the result and composites
+it over the original pixel with byte-quantized source-over blending.
 Both tools use brush size, hardness, opacity, antialiasing and selection masks.
 Clone supports source-over blending or replacement, including transparent samples.
 
@@ -1643,5 +1644,15 @@ Recolor can sample the active-layer pixel at the first click of each stroke.
 That source color stays fixed while dragging, and the next stroke samples again.
 Left button replaces with primary; right button replaces with secondary. The
 existing primary/secondary source mode remains available. Selection, tolerance,
-coverage and one-step undo apply in both modes. This does not complete external
-shading or alpha-comparison parity for the recolor algorithm.
+coverage and one-step undo apply in both modes. External tolerance-range and soft-edge parity remain separate acceptance work.
+
+Recolor full-coverage reference
+------------------------------
+The original 350x50 ramp fixture spans seven colors and five alpha levels,
+including hidden RGB. With a 1000 px brush, 100% hardness/tolerance, sampling once
+at (175,24) and opaque black as replacement, the native Windows 5.1.12 output
+matches all 17500 pixels exactly. This validates RGBA shade shifts, clipping and
+byte-quantized source-over composition. It does not establish all tolerance
+thresholds, antialiased region boundaries or soft brush coverage.
+Reproduce the source with examples/recolor_probe.rs; source/output fixtures and
+provenance are stored under tests/fixtures/pdn.

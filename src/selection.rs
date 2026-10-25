@@ -268,6 +268,28 @@ pub enum AlphaMatch {
     Straight,
 }
 impl AlphaMatch {
+    pub(crate) fn components(self, p: crate::document::Pixel) -> [u8; 4] {
+        if self == Self::Straight {
+            return p;
+        }
+        [
+            ((u16::from(p[0]) * u16::from(p[3]) + 127) / 255) as u8,
+            ((u16::from(p[1]) * u16::from(p[3]) + 127) / 255) as u8,
+            ((u16::from(p[2]) * u16::from(p[3]) + 127) / 255) as u8,
+            p[3],
+        ]
+    }
+    pub fn matches(
+        self,
+        a: crate::document::Pixel,
+        b: crate::document::Pixel,
+        tolerance: u8,
+    ) -> bool {
+        self.components(a)
+            .into_iter()
+            .zip(self.components(b))
+            .all(|(a, b)| a.abs_diff(b) <= tolerance)
+    }
     pub fn label(self) -> &'static str {
         match self {
             Self::Premultiplied => "Premultiplied alpha",
@@ -329,26 +351,16 @@ pub fn color_region_cancellable(
     if pixels.len() != width as usize * height as usize || seed.0 >= width || seed.1 >= height {
         return Err("Invalid color-selection image or seed.".into());
     }
-    let premultiply = |p: crate::document::Pixel| -> [u8; 4] {
-        if alpha == AlphaMatch::Straight {
-            return p;
-        }
-        [
-            ((u16::from(p[0]) * u16::from(p[3]) + 127) / 255) as u8,
-            ((u16::from(p[1]) * u16::from(p[3]) + 127) / 255) as u8,
-            ((u16::from(p[2]) * u16::from(p[3]) + 127) / 255) as u8,
-            p[3],
-        ]
-    };
     let start = seed.1 as usize * width as usize + seed.0 as usize;
     if domain.is_some_and(|selection| !selection.contains(seed.0 as usize, seed.1 as usize)) {
         return raster_selection(width, vec![0; pixels.len()], (width, height, 0, 0), cancel);
     }
-    let reference = premultiply(pixels[start]);
+    let reference = alpha.components(pixels[start]);
     let matches = |index: usize| {
         domain.is_none_or(|selection| {
             selection.contains(index % width as usize, index / width as usize)
-        }) && premultiply(pixels[index])
+        }) && alpha
+            .components(pixels[index])
             .iter()
             .zip(reference)
             .all(|(a, b)| a.abs_diff(b) <= tolerance)

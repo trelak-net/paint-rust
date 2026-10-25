@@ -1942,7 +1942,7 @@ pub(crate) fn blend(dst: Pixel, src: Pixel, opacity: u8) -> Pixel {
 
 // Destructive layer merging quantizes alpha and mixed channels before normalization.
 // Keep this separate from the continuous-precision display compositor.
-fn merge_pixel(dst: Pixel, src: Pixel, opacity: u8, mode: BlendMode) -> Pixel {
+pub(crate) fn merge_pixel(dst: Pixel, src: Pixel, opacity: u8, mode: BlendMode) -> Pixel {
     let scale = |a: u32, b: u32| (a * b + 127) / 255;
     let source_alpha = scale(u32::from(src[3]), u32::from(opacity));
     if source_alpha == 0 {

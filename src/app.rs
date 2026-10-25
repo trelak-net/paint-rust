@@ -1768,6 +1768,7 @@ impl Editor {
                                 self.secondary_color
                             };
                             paint_rust::brush::Paint::Recolor {
+                                alpha: self.color_alpha,
                                 from: if self.recolor_once {
                                     self.recolor_sample
                                         .unwrap_or_else(|| from.to_srgba_unmultiplied())
@@ -2067,7 +2068,7 @@ impl Editor {
                 });
             ui.small("Right drag reverses colors or transparency");
         }
-        if matches!(self.tool, Tool::ColorSelect | Tool::Fill) {
+        if matches!(self.tool, Tool::ColorSelect | Tool::Fill | Tool::Recolor) {
             egui::ComboBox::from_label("Tolerance alpha")
                 .selected_text(self.color_alpha.label())
                 .show_ui(ui, |ui| {
@@ -2078,6 +2079,8 @@ impl Editor {
                         ui.selectable_value(&mut self.color_alpha, mode, mode.label());
                     }
                 });
+        }
+        if matches!(self.tool, Tool::ColorSelect | Tool::Fill) {
             ui.add(egui::Slider::new(&mut self.color_tolerance, 0..=255).text("Tolerance"));
             ui.checkbox(&mut self.color_contiguous, "Contiguous");
             ui.checkbox(&mut self.color_sample_merged, "Sample merged image");

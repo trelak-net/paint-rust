@@ -49,3 +49,10 @@ headerless gzip/chunk arrays respectively. LegacyInlineNativeResaved.pdn and
 LegacyChunksNativeResaved.pdn: corresponding native Windows 5.1.12 GUI re-saves
 on CASTOR, 2026-10-25. Every layer pixel and property is unchanged. Project
 license: MIT OR Apache-2.0. No third-party artwork is included.
+
+RecolorRampInput.pdn: original 350x50 color/alpha grid from examples/recolor_probe.rs.
+RecolorRampNative.pdn: native Windows 5.1.12 recolor operation on CASTOR,
+2026-10-25: Sampling Once, opaque black replacement, 1000 px diameter,
+100% hardness/tolerance, single click at document pixel (175,24). All 17500
+output pixels match the Rust full-coverage operation exactly. Both fixtures
+use MIT OR Apache-2.0 and contain no external artwork.
