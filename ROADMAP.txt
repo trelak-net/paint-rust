@@ -133,3 +133,13 @@ Blockers
 --------
 No new program blocker recorded yet. The isolated desktop portal limitation in
 first-release accessibility validation remains documented above.
+
+PDN progress (2026-10-25)
+-------------------------
+[x] Bounded PDN3 reader/writer, fourteen blend modes and application file dialogs.
+[x] Preserve string metadata and layer background flags through project/recovery saves.
+[x] Independent older and modern file fixtures plus Windows metadata-constructor probe.
+[x] Open/re-save Rust-produced two-layer and fourteen-blend-mode files in the native Windows application.
+Resolved: the interactive session is available again; native re-save preserves all
+layer pixels and properties. Expanded edit/multi-layer scenarios remain required.
+[ ] Expand PDN compatibility beyond the documented deferred-BGRA8 PDN3 subset.

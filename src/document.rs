@@ -95,6 +95,8 @@ impl BlendMode {
 
 #[derive(Clone, PartialEq)]
 pub struct Layer {
+    pub metadata: std::collections::BTreeMap<String, String>,
+    pub is_background: bool,
     pub name: String,
     pub visible: bool,
     pub opacity: u8,
@@ -106,6 +108,8 @@ impl Layer {
     pub fn new(name: String, pixels: Vec<Pixel>) -> Self {
         Self {
             name,
+            metadata: Default::default(),
+            is_background: false,
             visible: true,
             opacity: 255,
             blend_mode: BlendMode::Normal,
@@ -130,6 +134,7 @@ struct Snapshot {
 
 #[derive(Clone)]
 pub struct Document {
+    pub metadata: std::collections::BTreeMap<String, String>,
     pub width: u32,
     pub height: u32,
     selection: Option<Selection>,
@@ -195,6 +200,7 @@ impl Document {
             return Err("Invalid layer data or document memory limit exceeded.".into());
         }
         Ok(Self {
+            metadata: Default::default(),
             width,
             height,
             selection: None,
@@ -590,6 +596,7 @@ impl Document {
         let mut snapshot =
             Self::from_layers(self.width, self.height, self.layers.clone(), self.active)
                 .expect("valid document snapshot");
+        snapshot.metadata = self.metadata.clone();
         snapshot.deferred_history = true;
         snapshot
     }
@@ -635,6 +642,8 @@ impl Document {
         } else {
             Layer {
                 name: format!("Layer {}", self.layers.len() + 1),
+                metadata: Default::default(),
+                is_background: false,
                 visible: true,
                 opacity: 255,
                 blend_mode: BlendMode::Normal,

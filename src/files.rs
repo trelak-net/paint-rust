@@ -21,6 +21,16 @@ pub fn open_cancellable(path: &Path, cancel: &AtomicBool) -> Result<Document, St
     let mut header = [0; 8];
     let mut file = File::open(path).map_err(|e| e.to_string())?;
     let read = file.read(&mut header).map_err(|e| e.to_string())?;
+    if (read >= 3 && &header[..3] == b"PDN")
+        || path
+            .extension()
+            .is_some_and(|e| e.eq_ignore_ascii_case("pdn"))
+    {
+        return crate::pdn::read_document(
+            BufReader::new(File::open(path).map_err(|e| e.to_string())?),
+            cancel,
+        );
+    }
     if (read >= 5 && &header[..5] == b"PRUST")
         || path
             .extension()
@@ -249,12 +259,29 @@ pub fn save_project_cancellable(
     path: &Path,
     cancel: &AtomicBool,
 ) -> Result<(), String> {
+    if path
+        .extension()
+        .is_some_and(|e| e.eq_ignore_ascii_case("pdn"))
+    {
+        return write_atomic(path, cancel, |file| {
+            crate::pdn::write_document(document, file, cancel)
+        });
+    }
+    let has_metadata = !document.metadata.is_empty()
+        || document
+            .layers()
+            .iter()
+            .any(|l| l.is_background || !l.metadata.is_empty());
     write_atomic(path, cancel, |file| {
         let mut writer = BufWriter::new(CancellableWriter {
             inner: file,
             cancel,
         });
-        writer.write_all(PROJECT_MAGIC).map_err(|e| e.to_string())?;
+        let mut magic = *PROJECT_MAGIC;
+        if has_metadata {
+            magic[6] = 3;
+        }
+        writer.write_all(&magic).map_err(|e| e.to_string())?;
         for value in [
             document.width,
             document.height,
@@ -293,6 +320,16 @@ pub fn save_project_cancellable(
                 .map_err(|e| e.to_string())?;
             writer.write_all(&png).map_err(|e| e.to_string())?;
         }
+        if has_metadata {
+            let mut budget = 16 * 1024 * 1024;
+            write_metadata(&mut writer, &document.metadata, &mut budget)?;
+            for layer in document.layers() {
+                writer
+                    .write_all(&[u8::from(layer.is_background)])
+                    .map_err(|e| e.to_string())?;
+                write_metadata(&mut writer, &layer.metadata, &mut budget)?;
+            }
+        }
         writer.flush().map_err(|e| e.to_string())
     })
 }
@@ -314,7 +351,7 @@ pub fn open_project_cancellable(path: &Path, cancel: &AtomicBool) -> Result<Docu
         cancel,
     });
     let magic = read_array::<8>(&mut reader)?;
-    if magic[..6] != PROJECT_MAGIC[..6] || magic[7] != 0 || !matches!(magic[6], 1 | 2) {
+    if magic[..6] != PROJECT_MAGIC[..6] || magic[7] != 0 || !matches!(magic[6], 1..=3) {
         return Err("Unsupported project signature or version.".into());
     }
     let width = u32::from_le_bytes(read_array(&mut reader)?);
@@ -386,11 +423,89 @@ pub fn open_project_cancellable(path: &Path, cancel: &AtomicBool) -> Result<Docu
         layer.blend_mode = mode;
         layers.push(layer);
     }
+    let metadata = if magic[6] == 3 {
+        let mut budget = 16 * 1024 * 1024;
+        let metadata = read_metadata(&mut reader, &mut budget)?;
+        for layer in &mut layers {
+            layer.is_background = match read_array::<1>(&mut reader)?[0] {
+                0 => false,
+                1 => true,
+                _ => return Err("Invalid background flag".into()),
+            };
+            layer.metadata = read_metadata(&mut reader, &mut budget)?;
+        }
+        metadata
+    } else {
+        Default::default()
+    };
     if reader.read(&mut [0; 1]).map_err(|e| e.to_string())? != 0 {
         return Err("Unexpected data after the project.".into());
     }
     check_cancel(cancel)?;
-    Document::from_layers(width, height, layers, active)
+    let mut document = Document::from_layers(width, height, layers, active)?;
+    document.metadata = metadata;
+    Ok(document)
+}
+
+fn write_metadata(
+    writer: &mut impl Write,
+    metadata: &std::collections::BTreeMap<String, String>,
+    budget: &mut usize,
+) -> Result<(), String> {
+    if metadata.len() > 4096 {
+        return Err("Too many metadata entries".into());
+    }
+    writer
+        .write_all(&(metadata.len() as u32).to_le_bytes())
+        .map_err(|e| e.to_string())?;
+    for (key, value) in metadata {
+        for text in [key, value] {
+            if text.len() > 1024 * 1024 {
+                return Err("Metadata string too long".into());
+            }
+            *budget = budget
+                .checked_sub(text.len() + 4)
+                .ok_or("Metadata exceeds limit")?;
+            writer
+                .write_all(&(text.len() as u32).to_le_bytes())
+                .map_err(|e| e.to_string())?;
+            writer
+                .write_all(text.as_bytes())
+                .map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
+}
+fn read_metadata(
+    reader: &mut impl Read,
+    budget: &mut usize,
+) -> Result<std::collections::BTreeMap<String, String>, String> {
+    let count = u32::from_le_bytes(read_array(reader)?) as usize;
+    if count > 4096 {
+        return Err("Too many metadata entries".into());
+    }
+    let mut result = std::collections::BTreeMap::new();
+    for _ in 0..count {
+        let mut pair = Vec::new();
+        for _ in 0..2 {
+            let len = u32::from_le_bytes(read_array(reader)?) as usize;
+            if len > 1024 * 1024 {
+                return Err("Metadata string too long".into());
+            }
+            *budget = budget
+                .checked_sub(len + 4)
+                .ok_or("Metadata exceeds limit")?;
+            let mut bytes = vec![0; len];
+            reader.read_exact(&mut bytes).map_err(|e| e.to_string())?;
+            pair.push(String::from_utf8(bytes).map_err(|e| e.to_string())?);
+        }
+        let value = pair.pop().unwrap();
+        let key = pair.pop().unwrap();
+        if result.insert(key, value).is_some() {
+            return Err("Duplicate metadata key".into());
+        }
+    }
+    Ok(result)
 }
 
 #[cfg(test)]

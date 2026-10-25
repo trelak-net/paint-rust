@@ -1,0 +1,15 @@
+PDN interoperability fixtures
+============================
+Untitled2.pdn, oldPDN3510.pdn and FlattenBlendTest.pdn:
+Source: https://github.com/addisonElliott/pypdn/tree/3481b08b3579daf8ab50ecbd03f14619b9c76c8c/tests/data
+Author: Addison Elliott. License: MIT; see PYpdn-LICENSE.txt.
+Files are unmodified upstream interoperability inputs.
+Native5112Resaved.pdn is a Windows application re-save of Untitled2.pdn,
+created on 2026-10-24. The original fixture's license applies.
+These binary inputs test the PDN interchange format; they are not application artwork.
+
+RustNativeResaved.pdn: Untitled2.pdn decoded/encoded by this Rust codec, then
+opened and re-saved by the Windows GUI on 2026-10-25. Same upstream MIT license.
+
+RustAllBlendsResaved.pdn: FlattenBlendTest.pdn decoded/encoded by this Rust codec,
+then opened and re-saved by the Windows GUI on 2026-10-25. Same upstream MIT license.

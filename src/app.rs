@@ -214,13 +214,14 @@ impl Editor {
         self.finish_stroke();
         let existing = self.path.as_ref().filter(|p| {
             p.extension()
-                .is_some_and(|e| e.eq_ignore_ascii_case("prust"))
+                .is_some_and(|e| e.eq_ignore_ascii_case("prust") || e.eq_ignore_ascii_case("pdn"))
         });
         let path = if !save_as && existing.is_some() {
             existing.cloned()
         } else {
             rfd::FileDialog::new()
                 .add_filter("Paint Rust project", &["prust"])
+                .add_filter("PDN layered image", &["pdn"])
                 .set_file_name(
                     self.path
                         .as_ref()
@@ -243,9 +244,10 @@ impl Editor {
         };
         if !path
             .extension()
-            .is_some_and(|e| e.eq_ignore_ascii_case("prust"))
+            .is_some_and(|e| e.eq_ignore_ascii_case("prust") || e.eq_ignore_ascii_case("pdn"))
         {
-            self.status = "Could not save project: choose a filename ending in .prust".into();
+            self.status =
+                "Could not save project: choose a filename ending in .prust or .pdn".into();
             return false;
         }
         self.save_to_path(path)
@@ -436,7 +438,7 @@ impl Editor {
                 if let Some(path) = rfd::FileDialog::new()
                     .add_filter(
                         "Projects and images",
-                        &["prust", "png", "jpg", "jpeg", "bmp", "webp"],
+                        &["prust", "pdn", "png", "jpg", "jpeg", "bmp", "webp"],
                     )
                     .pick_file()
                 {

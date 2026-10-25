@@ -731,3 +731,31 @@ picker updates the corresponding color. Right-dragging a gradient reverses its
 colors. Palette swatches accept left/right clicks for primary/secondary colors.
 Eraser retains left-drag erasing; selection and movement retain left-button gestures.
 Escape cancels a drawing gesture even while its initiating button remains held.
+
+PDN3 interchange
+----------------
+Open and Save As accept .pdn layered documents. The bounded reader supports the
+PDN3 container with a data-only NRBF object graph and deferred BGRA8 buffers,
+including raw or gzip chunks, padded rows and legacy layer properties. Fourteen
+blend modes, layer names, opacity, visibility, background flags and string
+metadata are retained. The writer emits PDN3 with independently compressed chunks.
+No serialized type is instantiated or executed.
+
+Metadata-bearing .prust files use version 3; metadata-free files retain version 2.
+Versions 1 and 2 remain readable. Metadata survives snapshots and recovery saves.
+The codec observes the current 32-layer/256 MiB document limit, additionally
+bounding object depth, record allocations, string sizes and decoded pixel blocks.
+Cancellation is checked during graph I/O, pixel decoding and output writing;
+file replacement remains atomic. Unsupported schemas return an error.
+
+Validation includes independently authored PDN fixtures, an external Windows
+re-save, all fourteen blend modes, metadata round trips, truncation, cancellation
+and trailing-data rejection. A Windows serializer constructor probe accepts the
+Rust writer's metadata arrays. The native Windows GUI opened and re-saved Rust-produced two-layer and fourteen-layer documents;
+every layer pixel and property, including all fourteen blend modes, survived the return trip. This is not a claim of
+complete PDN version compatibility.
+Whole-graph gzip, parent-backed buffers, non-bitmap layers and future signatures
+are not supported yet. ICC interpretation and metadata updates after geometry
+changes remain separate work. Reproduce a codec round trip with:
+
+    cargo run --example pdn_roundtrip -- INPUT OUTPUT.pdn
