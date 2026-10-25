@@ -114,3 +114,44 @@ fn windows_gui_preserves_fourteen_blend_modes_from_rust_output() {
     assert_eq!(native.layers().len(), 14);
     assert!(original.layers() == native.layers());
 }
+
+#[test]
+fn merge_down_matches_external_result_and_retains_lower_properties() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/pdn");
+    for (input, output) in [
+        ("MergeInput.pdn", "MergeNativeOutput.pdn"),
+        ("MergeAllModesInput.pdn", "MergeAllModesNativeOutput.pdn"),
+    ] {
+        let mut expected = paint_rust::files::open(&root.join(input)).unwrap();
+        for top in (1..expected.layers().len()).step_by(2).rev() {
+            expected.select_layer(top);
+            assert_eq!(
+                expected.merge_down_cancellable(&std::sync::atomic::AtomicBool::new(false)),
+                Some(true)
+            );
+        }
+        let actual = paint_rust::files::open(&root.join(output)).unwrap();
+        assert_eq!(actual.layers().len(), expected.layers().len());
+        for (a, b) in actual.layers().iter().zip(expected.layers()) {
+            assert_eq!(a.pixels(), b.pixels(), "{}", a.name);
+            assert_eq!(
+                (
+                    &a.name,
+                    a.visible,
+                    a.opacity,
+                    a.blend_mode,
+                    a.is_background,
+                    &a.metadata
+                ),
+                (
+                    &b.name,
+                    b.visible,
+                    b.opacity,
+                    b.blend_mode,
+                    b.is_background,
+                    &b.metadata
+                )
+            );
+        }
+    }
+}

@@ -845,3 +845,9 @@ blending overlays the existing pixels; Replace writes the gradient RGBA directly
 Transparency preserves RGB while fading existing alpha from its original value
 to zero. Right-button dragging reverses colors or the direction of the alpha fade.
 All modes use the current selection and the cancellable gesture preview.
+
+Destructive merge-down uses 8-bit intermediate alpha and channel values. Its
+rounding is verified against externally saved PDN fixtures for all fourteen blend
+modes, including partially
+transparent pixels and hidden layers. The display compositor retains continuous
+precision until the final output, so a merge can shift a channel by one level.

@@ -718,7 +718,7 @@ impl Document {
                 below
                     .iter()
                     .zip(above)
-                    .map(|(dst, src)| blend_layer(*dst, *src, top.opacity, top.blend_mode)),
+                    .map(|(dst, src)| merge_pixel(*dst, *src, top.opacity, top.blend_mode)),
             );
         }
         if cancel.load(Ordering::Relaxed) {
@@ -1495,6 +1495,70 @@ pub(crate) fn blend(dst: Pixel, src: Pixel, opacity: u8) -> Pixel {
                 / alpha) as u8;
     }
     result[3] = ((alpha + 32512) / 65025) as u8;
+    result
+}
+
+// Destructive layer merging quantizes alpha and mixed channels before normalization.
+// Keep this separate from the continuous-precision display compositor.
+fn merge_pixel(dst: Pixel, src: Pixel, opacity: u8, mode: BlendMode) -> Pixel {
+    let scale = |a: u32, b: u32| (a * b + 127) / 255;
+    let source_alpha = scale(u32::from(src[3]), u32::from(opacity));
+    if source_alpha == 0 {
+        return dst;
+    }
+    let backdrop_alpha = u32::from(dst[3]);
+    let remaining = scale(backdrop_alpha, 255 - source_alpha);
+    let overlap = scale(backdrop_alpha, source_alpha);
+    let uncovered = source_alpha - overlap;
+    let alpha = source_alpha + remaining;
+    let mut result = [0; 4];
+    for c in 0..3 {
+        let (a, b) = (u32::from(dst[c]), u32::from(src[c]));
+        let mixed = match mode {
+            BlendMode::Normal => b,
+            BlendMode::Multiply => scale(a, b),
+            BlendMode::Screen => a + b - scale(a, b),
+            BlendMode::Overlay => {
+                if a < 128 {
+                    scale(2 * a, b)
+                } else {
+                    255 - scale(2 * (255 - a), 255 - b)
+                }
+            }
+            BlendMode::Darken => a.min(b),
+            BlendMode::Lighten => a.max(b),
+            BlendMode::Difference => a.abs_diff(b),
+            BlendMode::Add => (a + b).min(255),
+            BlendMode::ColorBurn => ((255 - a) * 255)
+                .checked_div(b)
+                .map_or(0, |value| 255_u32.saturating_sub(value)),
+            BlendMode::ColorDodge => {
+                if b == 255 {
+                    255
+                } else {
+                    (a * 255 / (255 - b)).min(255)
+                }
+            }
+            BlendMode::Reflect => {
+                if b == 255 {
+                    255
+                } else {
+                    (a * a / (255 - b)).min(255)
+                }
+            }
+            BlendMode::Glow => {
+                if a == 255 {
+                    255
+                } else {
+                    (b * b / (255 - a)).min(255)
+                }
+            }
+            BlendMode::Negation => 255 - 255_u32.abs_diff(a + b),
+            BlendMode::Xor => a ^ b,
+        };
+        result[c] = ((a * remaining + b * uncovered + mixed * overlap) / alpha) as u8;
+    }
+    result[3] = alpha as u8;
     result
 }
 
