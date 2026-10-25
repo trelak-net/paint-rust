@@ -222,6 +222,15 @@ struct Snapshot {
     label: String,
 }
 
+#[derive(Clone, Copy)]
+struct BrushTail {
+    from: (f32, f32),
+    to: (f32, f32),
+    diameter: f32,
+    paint: crate::brush::Paint,
+    options: crate::brush::Options,
+}
+
 #[derive(Clone)]
 pub struct Document {
     pub metadata: std::collections::BTreeMap<String, String>,
@@ -235,6 +244,8 @@ pub struct Document {
     pending: Option<Snapshot>,
     brush_coverage: Option<Vec<u8>>,
     brush_spacing: crate::brush::spacing::Spacing,
+    brush_smoothing: crate::brush::smoothing::Smoothing,
+    brush_tail: Option<BrushTail>,
     clone_pixels: Option<Arc<Vec<Pixel>>>,
     history_error: Option<String>,
     deferred_history: bool,
@@ -304,6 +315,8 @@ impl Document {
             pending: None,
             brush_coverage: None,
             brush_spacing: Default::default(),
+            brush_smoothing: Default::default(),
+            brush_tail: None,
             clone_pixels: None,
             history_error: None,
             deferred_history: false,
@@ -1216,8 +1229,11 @@ impl Document {
     }
 
     pub fn commit(&mut self) -> bool {
+        self.finish_brush_path();
         self.brush_coverage = None;
         self.brush_spacing = Default::default();
+        self.brush_smoothing = Default::default();
+        self.brush_tail = None;
         self.clone_pixels = None;
         let Some(before) = self.pending.take() else {
             return false;
@@ -1366,6 +1382,8 @@ impl Document {
     pub fn cancel(&mut self) {
         self.brush_coverage = None;
         self.brush_spacing = Default::default();
+        self.brush_smoothing = Default::default();
+        self.brush_tail = None;
         self.clone_pixels = None;
         if let Some(before) = self.pending.take() {
             self.width = before.width;
@@ -1529,6 +1547,62 @@ impl Document {
     }
 
     pub fn paint_segment(
+        &mut self,
+        from: (f32, f32),
+        to: (f32, f32),
+        diameter: f32,
+        paint: crate::brush::Paint,
+        options: crate::brush::Options,
+    ) {
+        if [
+            from.0,
+            from.1,
+            to.0,
+            to.1,
+            diameter,
+            options.hardness,
+            options.opacity,
+            options.smoothing,
+            options.spacing,
+        ]
+        .iter()
+        .any(|value| !value.is_finite())
+        {
+            return;
+        }
+        if options.smoothing <= 0.0 {
+            self.finish_brush_path();
+            self.brush_smoothing = Default::default();
+            self.paint_raw_segment(from, to, diameter, paint, options);
+        } else {
+            if !self.brush_smoothing.continues(from) {
+                self.finish_brush_path();
+            }
+            let Some(points) = self.brush_smoothing.visit(from, to, options.smoothing) else {
+                return;
+            };
+            for pair in points.windows(2) {
+                self.paint_raw_segment(pair[0], pair[1], diameter, paint, options);
+            }
+            self.brush_tail = Some(BrushTail {
+                from: *points.last().unwrap(),
+                to,
+                diameter,
+                paint,
+                options,
+            });
+        }
+    }
+
+    fn finish_brush_path(&mut self) {
+        if let Some(tail) = self.brush_tail.take()
+            && self.pending.is_some()
+        {
+            self.paint_raw_segment(tail.from, tail.to, tail.diameter, tail.paint, tail.options);
+        }
+    }
+
+    fn paint_raw_segment(
         &mut self,
         from: (f32, f32),
         to: (f32, f32),

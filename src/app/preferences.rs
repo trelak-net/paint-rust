@@ -37,7 +37,7 @@ impl Preferences {
     }
     fn encode(&self) -> String {
         let mut text = format!(
-            "preferences-v1\n{} {} {} {} {} {} {} {} {} {} {}\n",
+            "preferences-v1\n{} {} {} {} {} {} {} {} {} {} {} {}\n",
             match self.theme {
                 Theme::System => "system",
                 Theme::Light => "light",
@@ -52,7 +52,8 @@ impl Preferences {
             u8::from(self.rulers),
             self.brush.blend_mode as u8,
             self.units as u8,
-            self.brush.spacing
+            self.brush.spacing,
+            self.brush.smoothing
         );
         for path in self.recent.iter().take(16) {
             if let Some(path) = path.to_str()
@@ -80,7 +81,7 @@ impl Preferences {
             .ok_or_else(invalid)?
             .split_whitespace()
             .collect();
-        if !(7..=11).contains(&fields.len()) {
+        if !(7..=12).contains(&fields.len()) {
             return Err(invalid());
         }
         let boolean = |v: &str| match v {
@@ -118,6 +119,11 @@ impl Preferences {
             },
             brush_size: number(fields[2], 1.0, 128.0)?,
             brush: paint_rust::brush::Options {
+                smoothing: if fields.len() >= 12 {
+                    number(fields[11], 0.0, 256.0)?
+                } else {
+                    0.0
+                },
                 spacing: if fields.len() >= 11 {
                     number(fields[10], 0.0, 1000.0)?
                 } else {
@@ -294,6 +300,7 @@ mod tests {
             theme: Theme::Dark,
             brush: paint_rust::brush::Options {
                 spacing: 30.0,
+                smoothing: 12.0,
                 hardness: 0.25,
                 opacity: 0.75,
                 antialias: true,
@@ -315,6 +322,8 @@ mod tests {
             "preferences-v1\ndark 1 NaN 1 1 0 0\n",
             "preferences-v1\ndark 1 12 2 1 0 0\n",
             "preferences-v1\ndark 1 12 1 1 0 0\nZZ\n",
+            "preferences-v1\ndark 1 12 1 1 0 0 0 0 0 30 NaN\n",
+            "preferences-v1\ndark 1 12 1 1 0 0 0 0 0 30 257\n",
         ] {
             assert!(Preferences::decode(invalid).is_err());
         }
@@ -324,6 +333,7 @@ mod tests {
         for line in ["system 0 12 1 1 0 1", "system 0 12 1 1 0 1 0"] {
             let settings = Preferences::decode(&format!("preferences-v1\n{line}\n")).unwrap();
             assert_eq!(settings.brush.blend_mode, BlendMode::Normal);
+            assert_eq!(settings.brush.smoothing, 0.0);
         }
         for mode in BlendMode::ALL {
             let mut settings = Preferences::default();

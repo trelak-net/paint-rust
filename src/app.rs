@@ -1992,6 +1992,7 @@ impl Editor {
                 "Stroke opacity",
             );
             ui.checkbox(&mut self.brush_options.antialias, "Antialias");
+            ui.menu_button("Stroke options", |ui| {
             toolbar::slider(
                 ui,
                 egui::Slider::new(&mut self.brush_options.spacing, 0.0..=1000.0)
@@ -2001,6 +2002,10 @@ impl Editor {
                 "Dab spacing",
             )
             .on_hover_text("Percentage of brush diameter; 0% draws a continuous stroke");
+            toolbar::slider(ui, egui::Slider::new(&mut self.brush_options.smoothing, 0.0..=256.0).suffix(" px").logarithmic(true), "Stabilizer")
+                .on_hover_text("Response distance in image pixels; 0 disables smoothing. The stroke reaches the release point when finished.");
+                ui.small("Settings are saved for future strokes.");
+            }).response.on_hover_text("Dab spacing and stroke stabilization");
             if matches!(self.tool, Tool::Brush | Tool::Clone) {
                 ui.checkbox(&mut self.brush_options.blend, "Blend color");
                 ui.menu_button(

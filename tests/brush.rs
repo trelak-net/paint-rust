@@ -209,3 +209,106 @@ fn spaced_strokes_are_independent_of_pointer_event_frequency_and_reset_on_undo()
         assert!(whole.pixels().iter().all(|p| *p == [20, 100, 180, 200]));
     }
 }
+
+#[test]
+fn stabilized_strokes_finish_at_release_and_undo_as_one_transaction() {
+    for erase in [false, true] {
+        for spacing in [0.0, 150.0] {
+            let background = [20, 100, 180, 200];
+            let mut doc = Document::new(80, 20, background).unwrap();
+            let mut direct = doc.snapshot();
+            let options = Options {
+                smoothing: 12.0,
+                spacing,
+                antialias: true,
+                opacity: 0.6,
+                blend: true,
+                ..Default::default()
+            };
+            doc.begin("Stabilized stroke");
+            direct.begin("Direct stroke");
+            stroke(&mut doc, (4.5, 10.5), (68.5, 10.5), options, erase);
+            assert_eq!(doc.pixels()[10 * 80 + 68], background);
+            stroke(
+                &mut direct,
+                (4.5, 10.5),
+                (68.5, 10.5),
+                Options {
+                    smoothing: 0.0,
+                    ..options
+                },
+                erase,
+            );
+            assert!(doc.commit());
+            direct.commit();
+            assert_eq!(doc.pixels(), direct.pixels());
+            let result = doc.pixels().to_vec();
+            assert_eq!(doc.history().count(), 1);
+            assert!(doc.undo());
+            assert!(doc.pixels().iter().all(|pixel| *pixel == background));
+            assert!(doc.redo());
+            assert_eq!(doc.pixels(), result);
+        }
+    }
+}
+
+#[test]
+fn cancelled_stabilization_does_not_leak_into_the_next_click() {
+    let mut doc = Document::new(80, 40, [0; 4]).unwrap();
+    let options = Options {
+        smoothing: 20.0,
+        ..Default::default()
+    };
+    doc.begin("Cancelled stroke");
+    stroke(&mut doc, (4.5, 10.5), (68.5, 10.5), options, false);
+    doc.cancel();
+    assert!(doc.pixels().iter().all(|pixel| *pixel == [0; 4]));
+    doc.begin("Click");
+    stroke(&mut doc, (40.5, 30.5), (40.5, 30.5), options, false);
+    assert!(doc.commit());
+    assert!(doc.pixels()[30 * 80 + 40][3] > 0);
+    assert!(doc.pixels()[..20 * 80].iter().all(|pixel| *pixel == [0; 4]));
+    assert_eq!(doc.history().count(), 1);
+}
+
+#[test]
+fn stabilizer_retouch_tools_share_release_completion() {
+    use paint_rust::{brush::Paint, selection::AlphaMatch};
+    let options = Options {
+        smoothing: 15.0,
+        ..Default::default()
+    };
+    for paint in [
+        Paint::Clone { offset: (0, -8) },
+        Paint::Recolor {
+            edge_basis: None,
+            alpha: AlphaMatch::Straight,
+            from: [40, 80, 120, 255],
+            to: [120, 40, 80, 255],
+            tolerance: 0,
+        },
+    ] {
+        let mut pixels = vec![[40, 80, 120, 255]; 80 * 24];
+        for pixel in &mut pixels[..8 * 80] {
+            *pixel = [90, 30, 60, 255];
+        }
+        let mut smoothed = Document::from_pixels(80, 24, pixels).unwrap();
+        let mut direct = smoothed.snapshot();
+        smoothed.begin("Retouch");
+        direct.begin("Retouch");
+        smoothed.paint_segment((4.5, 12.5), (68.5, 12.5), 5.0, paint, options);
+        direct.paint_segment(
+            (4.5, 12.5),
+            (68.5, 12.5),
+            5.0,
+            paint,
+            Options {
+                smoothing: 0.0,
+                ..options
+            },
+        );
+        smoothed.commit();
+        direct.commit();
+        assert_eq!(smoothed.pixels(), direct.pixels());
+    }
+}

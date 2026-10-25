@@ -1761,3 +1761,21 @@ libdav1d-devel on Fedora or libdav1d-dev on Debian-family systems). The executab
 also requires the matching system dav1d runtime; the installer does not bundle it.
 Independent libaom fixtures cover pixels, alpha, color profiles and rejected image
 sizes. Synthetic associated-property fixtures cover rotation and mirroring.
+
+Stroke stabilization
+--------------------
+Brush, Eraser, Clone and Recolor offer Stroke options with dab spacing and a
+Stabilizer slider. The stabilizer is off by default. Its value is a response
+length in image pixels (0..256), independent of zoom. Larger values reduce
+pointer jitter and trail farther behind the pointer. The final segment reaches
+the release point when the stroke commits; spaced dabs retain their normal
+spacing phase. Cancellation discards both the pending pixels and filter state.
+
+The filter advances by input path distance, so pausing a stationary pointer does
+not keep moving or depositing paint. Its endpoint state is independent of how a
+straight input segment is split into events. Curves are flattened with subpixel
+error checks and a fixed subdivision bound; very long off-canvas segments do not
+cause unbounded sampling. Coordinate extrema preserve reversal overshoot. Brush
+coverage still accumulates once per stroke, including the finishing segment.
+Smoothing settings persist and older preference files default to zero. Pencil
+and geometric shapes keep their direct paths. Tablet pressure is still pending.

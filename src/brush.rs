@@ -1,9 +1,12 @@
 //! Coverage-based round strokes. Coverage is accumulated once per transaction.
+pub(crate) mod smoothing;
 pub(crate) mod spacing;
 use crate::document::{BlendMode, Pixel, Selection};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Options {
+    /// Stabilization response length in image pixels; zero follows input directly.
+    pub smoothing: f32,
     /// Dab separation as a percentage of diameter; zero draws continuous segments.
     pub spacing: f32,
     pub blend_mode: BlendMode,
@@ -15,6 +18,7 @@ pub struct Options {
 impl Default for Options {
     fn default() -> Self {
         Self {
+            smoothing: 0.0,
             spacing: 0.0,
             blend_mode: BlendMode::Normal,
             hardness: 1.0,
