@@ -120,7 +120,8 @@ independent tasks; do not silently reduce the required scope.
 [x] Explicit primary/secondary selected-area fill with cancellable background publication.
 [x] Polygon-list JSON selection clipboard with five combination modes and native round-trip/inversion fixtures.
 [x] Numeric selection-boundary rotation, scaling, flips and offsets with cancellable coalesced previews.
-[ ] Complete pixel/selection transform options and boundary handles.
+[x] On-canvas selection-boundary move, centered corner scaling and rotation handles with constraints.
+[ ] Complete remaining pixel/selection transform options and external handle behavior audit.
 [ ] Interpolation, constraints and edge-case validation.
 6. Tools
 [x] Active-layer clone stamp and tolerance-based recolor with brush controls.

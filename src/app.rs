@@ -3649,6 +3649,64 @@ impl eframe::App for Editor {
 #[cfg(test)]
 mod tests {
     #[test]
+    fn selection_boundary_handles_move_preview_and_commit_clean_undo() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        let selection = Selection {
+            x: 0,
+            y: 0,
+            width: 800,
+            height: 600,
+            mask: None,
+            ellipse: None,
+        };
+        editor.document.set_selection(Some(selection.clone()));
+        let pixels = editor.document.shared_pixels();
+        editor.begin_selection_transform(&ctx);
+        frame(&mut editor, &ctx, vec![]);
+        frame(&mut editor, &ctx, vec![]);
+        let point = editor.canvas_viewport.min + Vec2::new(60.0, 500.0);
+        frame(
+            &mut editor,
+            &ctx,
+            vec![egui::Event::PointerMoved(point), pointer(point, true)],
+        );
+        assert!(editor.transform_drag.is_some());
+        let end = point + Vec2::new(30.0, 20.0);
+        frame(
+            &mut editor,
+            &ctx,
+            vec![egui::Event::PointerMoved(end), pointer(end, false)],
+        );
+        assert!(editor.transform_drag.is_none());
+        let (_, parameters, _) = editor.selection_transform.as_ref().unwrap().handle_state();
+        assert_eq!((parameters.offset_x, parameters.offset_y), (30.0, 20.0));
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        while editor.document.selection().unwrap().x != 30 {
+            frame(&mut editor, &ctx, vec![]);
+            assert!(std::time::Instant::now() < deadline);
+            std::thread::sleep(std::time::Duration::from_millis(2));
+        }
+        assert!(!editor.document.can_undo());
+        frame(
+            &mut editor,
+            &ctx,
+            vec![egui::Event::Key {
+                key: Key::Enter,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers::NONE,
+            }],
+        );
+        assert!(editor.selection_transform.is_none());
+        assert_eq!(editor.document.pixels(), pixels.as_slice());
+        assert!(!editor.document.dirty());
+        assert_eq!(editor.document.history().count(), 1);
+        editor.undo();
+        assert_eq!(editor.document.selection(), Some(selection));
+    }
+    #[test]
     fn recover_all_keeps_existing_work_and_skips_corrupt_snapshots() {
         use paint_rust::recovery::Recovery;
         let ctx = egui::Context::default();

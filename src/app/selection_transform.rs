@@ -22,6 +22,26 @@ pub(super) struct Dialog {
     error: Option<String>,
 }
 impl Dialog {
+    pub(super) fn handle_state(&self) -> (Selection, paint_rust::affine::FreeTransform, bool) {
+        (
+            self.original.clone(),
+            paint_rust::affine::FreeTransform {
+                scale_x: self.parameters.scale[0],
+                scale_y: self.parameters.scale[1],
+                angle: self.parameters.angle,
+                offset_x: self.parameters.offset[0],
+                offset_y: self.parameters.offset[1],
+                ..Default::default()
+            },
+            self.locked,
+        )
+    }
+    pub(super) fn update_from_handles(&mut self, value: paint_rust::affine::FreeTransform) {
+        self.parameters.scale = [value.scale_x, value.scale_y];
+        self.parameters.offset = [value.offset_x, value.offset_y];
+        self.parameters.angle = value.angle;
+        self.request();
+    }
     fn new(ctx: egui::Context, original: Selection, width: u32, height: u32) -> Self {
         let (requests, receive) = mpsc::channel::<Request>();
         let (send, results) = mpsc::channel();
@@ -148,10 +168,13 @@ impl Editor {
             .resizable(false)
             .collapsible(false)
             .vscroll(true)
-            .max_height((ctx.content_rect().height() - 80.0).max(180.0))
+            .default_pos(ctx.content_rect().min + Vec2::new(16.0, 48.0))
+            .max_height((ctx.content_rect().height() - 120.0).max(180.0))
             .show(ctx, |ui| {
                 let mut changed = false;
+                ui.label("Drag the box to move, corners to scale, or the blue handle to rotate. Shift constrains movement and snaps rotation.");
                 ui.checkbox(&mut dialog.locked, "Keep proportions");
+                ui.horizontal_wrapped(|ui| {
                 for axis in 0..2 {
                     if ui
                         .add(
@@ -168,12 +191,14 @@ impl Editor {
                         changed = true;
                     }
                 }
+                });
                 changed |= ui
                     .add(
                         egui::Slider::new(&mut dialog.parameters.angle, -180.0..=180.0)
                             .text("Angle (degrees)"),
                     )
                     .changed();
+                ui.horizontal_wrapped(|ui| {
                 for axis in 0..2 {
                     changed |= ui
                         .add(
@@ -185,12 +210,15 @@ impl Editor {
                         )
                         .changed();
                 }
+                });
+                ui.horizontal_wrapped(|ui| {
                 changed |= ui
                     .checkbox(&mut dialog.parameters.flip[0], "Flip horizontal")
                     .changed();
                 changed |= ui
                     .checkbox(&mut dialog.parameters.flip[1], "Flip vertical")
                     .changed();
+                });
                 if ui.button("Reset").clicked() {
                     dialog.parameters = Default::default();
                     changed = true;

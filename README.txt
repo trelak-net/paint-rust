@@ -1499,3 +1499,12 @@ https://learn.microsoft.com/en-us/windows/win32/direct3d10/d3d10-graphics-progra
 Undo disk quotas are enforced while compressed bytes are written, before a
 snapshot replaces its RAM state. Tests exercise exhaustion within a multi-state
 history, zero quota, cross-document sharing, full undo/redo and successful retry.
+
+Selection-boundary handles
+--------------------------
+The boundary transform dialog exposes an on-canvas box. Drag inside to move,
+corners to scale about the center, or the blue control to rotate. Keep proportions
+locks corner scaling; Shift constrains movement to one axis and snaps rotation to
+15-degree steps. Numeric controls and handles share coalesced cancellable mask
+previews. Apply records one selection-only undo step; image pixels and the saved
+image revision are unchanged. Escape restores the original boundary.

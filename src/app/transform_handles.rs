@@ -15,6 +15,8 @@ pub(super) struct TransformDrag {
     center: Pos2,
     half_size: Vec2,
     initial: FreeTransform,
+    max_scale: f32,
+    max_offset: f32,
 }
 
 fn rotate(vector: Vec2, angle: f32) -> Vec2 {
@@ -38,23 +40,26 @@ impl TransformDrag {
                         delta.x = 0.0;
                     }
                 }
-                result.offset_x = (result.offset_x + delta.x).clamp(-16384.0, 16384.0);
-                result.offset_y = (result.offset_y + delta.y).clamp(-16384.0, 16384.0);
+                result.offset_x =
+                    (result.offset_x + delta.x).clamp(-self.max_offset, self.max_offset);
+                result.offset_y =
+                    (result.offset_y + delta.y).clamp(-self.max_offset, self.max_offset);
             }
             Handle::Scale(sign) => {
                 let local = rotate(pointer - self.start, -self.initial.angle);
-                result.scale_x =
-                    (self.initial.scale_x + local.x * sign.x / self.half_size.x).clamp(0.01, 4.0);
-                result.scale_y =
-                    (self.initial.scale_y + local.y * sign.y / self.half_size.y).clamp(0.01, 4.0);
+                result.scale_x = (self.initial.scale_x + local.x * sign.x / self.half_size.x)
+                    .clamp(0.01, self.max_scale);
+                result.scale_y = (self.initial.scale_y + local.y * sign.y / self.half_size.y)
+                    .clamp(0.01, self.max_scale);
                 if shift {
                     let minimum = (0.01 / self.initial.scale_x).max(0.01 / self.initial.scale_y);
-                    let maximum = (4.0 / self.initial.scale_x).min(4.0 / self.initial.scale_y);
+                    let maximum = (self.max_scale / self.initial.scale_x)
+                        .min(self.max_scale / self.initial.scale_y);
                     let factor = (result.scale_x / self.initial.scale_x)
                         .max(result.scale_y / self.initial.scale_y)
                         .clamp(minimum, maximum);
-                    result.scale_x = (self.initial.scale_x * factor).clamp(0.01, 4.0);
-                    result.scale_y = (self.initial.scale_y * factor).clamp(0.01, 4.0);
+                    result.scale_x = (self.initial.scale_x * factor).clamp(0.01, self.max_scale);
+                    result.scale_y = (self.initial.scale_y * factor).clamp(0.01, self.max_scale);
                 }
             }
             Handle::Rotate => {
@@ -75,18 +80,29 @@ impl TransformDrag {
 
 impl Editor {
     pub(super) fn transform_handles(&mut self, ui: &egui::Ui, rect: Rect, painter: &egui::Painter) {
-        let Some(parameters) = self
-            .effect_dialog
+        let boundary = self
+            .selection_transform
             .as_ref()
-            .and_then(|dialog| match dialog.effect {
-                Effect::FreeTransform(p) => Some(p),
-                _ => None,
-            })
-        else {
+            .map(|dialog| dialog.handle_state());
+        let parameters = boundary
+            .as_ref()
+            .map(|(_, parameters, _)| *parameters)
+            .or_else(|| {
+                self.effect_dialog
+                    .as_ref()
+                    .and_then(|dialog| match dialog.effect {
+                        Effect::FreeTransform(p) => Some(p),
+                        _ => None,
+                    })
+            });
+        let Some(parameters) = parameters else {
             self.transform_drag = None;
             return;
         };
-        let selection = self.document.selection();
+        let selection = boundary
+            .as_ref()
+            .map(|(selection, _, _)| selection.clone())
+            .or_else(|| self.document.selection());
         let (origin, size) = selection
             .as_ref()
             .map(|s| {
@@ -161,16 +177,23 @@ impl Editor {
                     center,
                     half_size,
                     initial: parameters,
+                    max_scale: if boundary.is_some() { 64.0 } else { 4.0 },
+                    max_offset: if boundary.is_some() { 1e6 } else { 16384.0 },
                 });
             }
         }
         if let Some(drag) = self.transform_drag {
-            let changed = drag.update(image_pointer, ui.input(|i| i.modifiers.shift));
-            if changed != parameters
-                && let Some(dialog) = &mut self.effect_dialog
-            {
-                dialog.effect = Effect::FreeTransform(changed);
-                dialog.preview.request(dialog.effect);
+            let constrained = ui.input(|i| i.modifiers.shift)
+                || (matches!(drag.handle, Handle::Scale(_))
+                    && boundary.as_ref().is_some_and(|(_, _, locked)| *locked));
+            let changed = drag.update(image_pointer, constrained);
+            if changed != parameters {
+                if let Some(dialog) = &mut self.selection_transform {
+                    dialog.update_from_handles(changed);
+                } else if let Some(dialog) = &mut self.effect_dialog {
+                    dialog.effect = Effect::FreeTransform(changed);
+                    dialog.preview.request(dialog.effect);
+                }
             }
             ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
             if !ui.input(|i| i.pointer.primary_down()) {
@@ -190,6 +213,8 @@ mod tests {
             center: egui::pos2(50.0, 50.0),
             half_size: Vec2::splat(20.0),
             initial: FreeTransform::default(),
+            max_scale: 4.0,
+            max_offset: 16384.0,
         }
     }
     #[test]

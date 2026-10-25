@@ -66,3 +66,9 @@ DDS textures
 Open reads the top surface of supported RGB/RGBA and BC1/2/3 textures. Export
 saves a single uncompressed RGBA8 surface. Mipmaps, cube maps and texture arrays
 are not preserved; keep the source file when editing texture assets.
+
+Transform a selection boundary
+Use Selection > Transform boundary (Ctrl+Alt+M). Drag inside its box to move it,
+a corner to scale it, or the blue control to rotate it. Shift constrains movement
+and snaps rotation. Apply keeps the new boundary; Escape cancels it. Pixels do
+not move. Use the pixel transform command when you want to transform image data.
