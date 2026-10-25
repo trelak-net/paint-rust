@@ -145,11 +145,14 @@ impl Editor {
     pub(super) fn start_fill(&mut self, x: i32, y: i32, color: [u8; 4]) {
         let mut document = self.document.snapshot();
         document.set_selection(self.document.selection());
+        let options = paint_rust::selection::ColorMatch {
+            tolerance: self.color_tolerance,
+            contiguous: self.color_contiguous,
+        };
+        let merged = self.color_sample_merged;
         self.start_cancellable_file_job("fill image", move |cancel| {
             document.begin("Flood fill");
-            if !document.fill_cancellable(x, y, color, cancel) {
-                return Err(files::CANCELLED.into());
-            }
+            document.fill_sampled_cancellable((x, y), color, options, merged, cancel)?;
             document.commit();
             Ok(Outcome::Edited(
                 Box::new(document),

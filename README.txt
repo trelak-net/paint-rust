@@ -834,3 +834,8 @@ Lasso select (Q): drag a freehand outline and release to close it. Escape cancel
 the outline; a click retains the existing selection. The same selection combination
 modes apply as for other selection tools. Outlines are limited to 4096 sampled
 points; exceeding the limit cancels the gesture and retains the previous selection.
+
+Flood fill shares tolerance, connectivity and sampling controls with Select color.
+It always writes the active layer, even when sampling the merged image. Selection
+boundaries block connected fills; global matching can fill disconnected selected
+regions. Matching uses the original seed color throughout the operation.

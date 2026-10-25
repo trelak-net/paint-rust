@@ -1572,6 +1572,11 @@ impl Editor {
             ui.checkbox(&mut self.radial_gradient, "Radial gradient");
             ui.small("Right drag reverses colors");
         }
+        if matches!(self.tool, Tool::ColorSelect | Tool::Fill) {
+            ui.add(egui::Slider::new(&mut self.color_tolerance, 0..=255).text("Tolerance"));
+            ui.checkbox(&mut self.color_contiguous, "Contiguous");
+            ui.checkbox(&mut self.color_sample_merged, "Sample merged image");
+        }
         if matches!(
             self.tool,
             Tool::Select | Tool::Polygon | Tool::ColorSelect | Tool::Lasso
@@ -1580,11 +1585,7 @@ impl Editor {
                 ui.checkbox(&mut self.ellipse_selection, "Elliptical selection");
             } else if self.tool == Tool::Lasso {
                 ui.small("Drag to outline an area. Release closes the outline; Escape cancels.");
-            } else if self.tool == Tool::ColorSelect {
-                ui.add(egui::Slider::new(&mut self.color_tolerance, 0..=255).text("Tolerance"));
-                ui.checkbox(&mut self.color_contiguous, "Contiguous");
-                ui.checkbox(&mut self.color_sample_merged, "Sample merged image");
-            } else {
+            } else if self.tool == Tool::Polygon {
                 ui.small("Click points. Enter or double-click finishes. Backspace removes a point; Escape cancels.");
             }
             egui::ComboBox::from_label("Combine")

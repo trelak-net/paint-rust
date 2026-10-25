@@ -257,6 +257,12 @@ pub fn polygon_cancellable(
     raster_selection(width, pixels, (left, top, right, bottom), cancel)
 }
 
+#[derive(Clone, Copy)]
+pub struct ColorMatch {
+    pub tolerance: u8,
+    pub contiguous: bool,
+}
+
 /// Select colors by maximum premultiplied RGBA channel difference (0–255).
 /// Connected mode follows four-neighbor connectivity; global mode samples all pixels.
 pub fn color_cancellable(
@@ -268,6 +274,34 @@ pub fn color_cancellable(
     contiguous: bool,
     cancel: &AtomicBool,
 ) -> Result<Selection, String> {
+    color_region_cancellable(
+        width,
+        height,
+        pixels,
+        seed,
+        ColorMatch {
+            tolerance,
+            contiguous,
+        },
+        None,
+        cancel,
+    )
+}
+
+/// Restrict matching and connectivity to an optional existing selection.
+pub fn color_region_cancellable(
+    width: u32,
+    height: u32,
+    pixels: &[crate::document::Pixel],
+    seed: (u32, u32),
+    options: ColorMatch,
+    domain: Option<&Selection>,
+    cancel: &AtomicBool,
+) -> Result<Selection, String> {
+    let ColorMatch {
+        tolerance,
+        contiguous,
+    } = options;
     check_cancel(cancel)?;
     crate::document::Document::validate_size(width, height)?;
     if pixels.len() != width as usize * height as usize || seed.0 >= width || seed.1 >= height {
@@ -282,9 +316,14 @@ pub fn color_cancellable(
         ]
     };
     let start = seed.1 as usize * width as usize + seed.0 as usize;
+    if domain.is_some_and(|selection| !selection.contains(seed.0 as usize, seed.1 as usize)) {
+        return raster_selection(width, vec![0; pixels.len()], (width, height, 0, 0), cancel);
+    }
     let reference = premultiply(pixels[start]);
     let matches = |index: usize| {
-        premultiply(pixels[index])
+        domain.is_none_or(|selection| {
+            selection.contains(index % width as usize, index / width as usize)
+        }) && premultiply(pixels[index])
             .iter()
             .zip(reference)
             .all(|(a, b)| a.abs_diff(b) <= tolerance)

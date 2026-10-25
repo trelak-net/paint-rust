@@ -1388,6 +1388,64 @@ impl Document {
         !cancel.load(Ordering::Relaxed)
     }
 
+    /// Fill matching pixels on the active layer; cancellation leaves the transaction pending.
+    pub fn fill_sampled_cancellable(
+        &mut self,
+        seed: (i32, i32),
+        color: Pixel,
+        options: crate::selection::ColorMatch,
+        merged: bool,
+        cancel: &std::sync::atomic::AtomicBool,
+    ) -> Result<bool, String> {
+        use std::sync::atomic::Ordering;
+        assert!(self.editing(), "Begin a transaction before filling");
+        if cancel.load(Ordering::Relaxed) {
+            return Err(crate::files::CANCELLED.into());
+        }
+        if self.index(seed.0, seed.1).is_none() {
+            return Ok(false);
+        }
+        let composite = if merged {
+            Some(
+                self.composite_cancellable(cancel)
+                    .ok_or(crate::files::CANCELLED)?,
+            )
+        } else {
+            None
+        };
+        let source = composite.as_deref().unwrap_or_else(|| self.pixels());
+        let region = crate::selection::color_region_cancellable(
+            self.width,
+            self.height,
+            source,
+            (seed.0 as u32, seed.1 as u32),
+            options,
+            self.selection.as_ref(),
+            cancel,
+        )?;
+        if region.width == 0 || region.height == 0 {
+            return Ok(false);
+        }
+        let pixels = Arc::make_mut(&mut self.layers[self.active].pixels);
+        let mut changed = false;
+        for y in region.y..region.y + region.height {
+            for x in region.x..region.x + region.width {
+                if x.is_multiple_of(4096) && cancel.load(Ordering::Relaxed) {
+                    return Err(crate::files::CANCELLED.into());
+                }
+                if region.contains(x as usize, y as usize) {
+                    let pixel = &mut pixels[y as usize * self.width as usize + x as usize];
+                    changed |= *pixel != color;
+                    *pixel = color;
+                }
+            }
+            if cancel.load(Ordering::Relaxed) {
+                return Err(crate::files::CANCELLED.into());
+            }
+        }
+        Ok(changed)
+    }
+
     pub fn invert(&mut self) {
         let _ = self.invert_cancellable(&std::sync::atomic::AtomicBool::new(false));
     }

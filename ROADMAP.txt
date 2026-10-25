@@ -104,7 +104,8 @@ independent tasks; do not silently reduce the required scope.
 [ ] Interpolation, constraints and edge-case validation.
 6. Tools
 [ ] Clone stamp and recolor.
-[ ] Fill tolerance/sampling and complete gradient shapes/transparency modes.
+[x] Fill tolerance, connected/global modes and active/merged sampling within selection boundaries.
+[ ] Complete gradient shapes and transparency modes.
 [ ] Editable curves, shape catalogue and outline/fill options.
 [ ] Font selection, text alignment and complete text controls.
 7. Layers and history
