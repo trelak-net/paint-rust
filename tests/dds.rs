@@ -366,3 +366,127 @@ fn externally_opened_mipmap_fixture_retains_its_base_surface() {
     assert_eq!(u32::from_le_bytes(bytes[28..32].try_into().unwrap()), 6);
     assert_eq!(bytes.len(), 2860);
 }
+
+#[test]
+fn compressed_export_handles_solid_colors_alpha_and_partial_edge_blocks() {
+    for compression in [dds::Compression::Bc1, dds::Compression::Bc3] {
+        for size in [(1, 1), (3, 7), (7, 5), (8, 8)] {
+            for pixel in [
+                [0, 0, 0, 255],
+                [255; 4],
+                [80, 120, 160, 128],
+                [20, 40, 60, 0],
+            ] {
+                let pixels = vec![pixel; (size.0 * size.1) as usize];
+                let bytes = files::encode_raster_bytes(
+                    &pixels,
+                    size,
+                    RasterOptions {
+                        dds_compression: compression,
+                        ..RasterOptions::new(RasterFormat::Dds)
+                    },
+                    &cancel(),
+                )
+                .unwrap();
+                let block_bytes = if compression == dds::Compression::Bc1 {
+                    8
+                } else {
+                    16
+                };
+                assert_eq!(
+                    bytes.len(),
+                    128 + size.0.div_ceil(4) as usize * size.1.div_ceil(4) as usize * block_bytes
+                );
+                let document = dds::decode(Cursor::new(bytes), &cancel()).unwrap();
+                assert_eq!((document.width, document.height), size);
+                for actual in document.pixels() {
+                    let alpha = if compression == dds::Compression::Bc1 {
+                        if pixel[3] < 128 { 0 } else { 255 }
+                    } else {
+                        pixel[3]
+                    };
+                    assert_eq!(actual[3], alpha);
+                    if alpha > 0 {
+                        for c in 0..3 {
+                            assert!(
+                                actual[c].abs_diff(pixel[c]) <= 4,
+                                "{compression:?} {pixel:?} {actual:?}"
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+#[test]
+fn compressed_mipmaps_have_block_aligned_payloads_and_preview_reopens() {
+    for compression in [dds::Compression::Bc1, dds::Compression::Bc3] {
+        let bytes = files::encode_raster_bytes(
+            &[[180, 80, 40, 255]; 35],
+            (7, 5),
+            RasterOptions {
+                dds_compression: compression,
+                dds_mipmaps: true,
+                ..RasterOptions::new(RasterFormat::Dds)
+            },
+            &cancel(),
+        )
+        .unwrap();
+        let length = if compression == dds::Compression::Bc1 {
+            8
+        } else {
+            16
+        };
+        assert_eq!(u32::from_le_bytes(bytes[28..32].try_into().unwrap()), 3);
+        assert_eq!(bytes.len(), 128 + (4 + 1 + 1) * length);
+        let document = files::decode_raster_bytes(&bytes, RasterFormat::Dds, &cancel()).unwrap();
+        assert_eq!((document.width, document.height), (7, 5));
+        assert!(!document.dirty());
+        assert!(dds::decode(Cursor::new(&bytes[..128 + 4 * length - 1]), &cancel()).is_err());
+    }
+}
+
+#[test]
+fn compressed_exports_match_independent_ffmpeg_decode() {
+    for (encoded, expected) in [
+        (
+            include_bytes!("fixtures/dds/export-bc1.dds").as_slice(),
+            include_bytes!("fixtures/dds/export-bc1.rgba").as_slice(),
+        ),
+        (
+            include_bytes!("fixtures/dds/export-bc3.dds").as_slice(),
+            include_bytes!("fixtures/dds/export-bc3.rgba").as_slice(),
+        ),
+    ] {
+        let actual = dds::decode(Cursor::new(encoded), &cancel()).unwrap();
+        assert_eq!(actual.pixels().len() * 4, expected.len());
+        for (actual, expected) in actual.pixels().iter().zip(expected.as_chunks::<4>().0) {
+            assert_eq!(actual[3], expected[3]);
+            for c in 0..3 {
+                assert!(
+                    actual[c].abs_diff(expected[c]) <= 1,
+                    "{actual:?} != {expected:?}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn bc3_export_matches_native_windows_visible_pixels_with_rounding_tolerance() {
+    let actual = dds::decode(
+        Cursor::new(include_bytes!("fixtures/dds/export-bc3.dds")),
+        &cancel(),
+    )
+    .unwrap();
+    let expected = include_bytes!("fixtures/dds/export-bc3-native.rgba");
+    for (actual, expected) in actual.pixels().iter().zip(expected.as_chunks::<4>().0) {
+        assert!(actual[3].abs_diff(expected[3]) <= 1);
+        if actual[3] > 0 && expected[3] > 0 {
+            for c in 0..3 {
+                assert!(actual[c].abs_diff(expected[c]) <= 2);
+            }
+        }
+    }
+}

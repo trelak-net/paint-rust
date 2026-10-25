@@ -1,4 +1,22 @@
-//! Bounded top-surface DDS import and RGBA8 export with optional mipmaps.
+//! Bounded DDS import and RGBA8/BC1/BC3 export with optional mipmaps.
+mod compress;
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Compression {
+    #[default]
+    Rgba8,
+    Bc1,
+    Bc3,
+}
+impl Compression {
+    pub const ALL: [Self; 3] = [Self::Rgba8, Self::Bc1, Self::Bc3];
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Rgba8 => "RGBA8 (uncompressed)",
+            Self::Bc1 => "BC1 (DXT1, binary alpha)",
+            Self::Bc3 => "BC3 (DXT5, interpolated alpha)",
+        }
+    }
+}
 use crate::{document::Document, files::CANCELLED};
 use std::io::{Read, Seek, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -166,8 +184,19 @@ pub fn encode(
 pub fn encode_with_mipmaps(
     pixels: &[[u8; 4]],
     size: (u32, u32),
+    writer: impl Write,
+    mipmaps: bool,
+    cancel: &AtomicBool,
+) -> Result<(), String> {
+    encode_with_options(pixels, size, writer, mipmaps, Compression::Rgba8, cancel)
+}
+
+pub fn encode_with_options(
+    pixels: &[[u8; 4]],
+    size: (u32, u32),
     mut writer: impl Write,
     mipmaps: bool,
+    compression: Compression,
     cancel: &AtomicBool,
 ) -> Result<(), String> {
     check(cancel)?;
@@ -200,14 +229,38 @@ pub fn encode_with_mipmaps(
     ] {
         header[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
     }
+    if compression != Compression::Rgba8 {
+        let flags = 0x81007u32 | if levels > 1 { 0x20000 } else { 0 };
+        header[8..12].copy_from_slice(&flags.to_le_bytes());
+        let size = size.0.div_ceil(4)
+            * size.1.div_ceil(4)
+            * if compression == Compression::Bc1 {
+                8
+            } else {
+                16
+            };
+        header[20..24].copy_from_slice(&size.to_le_bytes());
+        header[80..108].fill(0);
+        header[80..84].copy_from_slice(&4u32.to_le_bytes());
+        header[84..88].copy_from_slice(if compression == Compression::Bc1 {
+            b"DXT1"
+        } else {
+            b"DXT5"
+        });
+    }
     writer.write_all(&header).map_err(|e| e.to_string())?;
     let mut dimensions = size;
     let mut level_pixels = std::borrow::Cow::Borrowed(pixels);
     for level in 0..levels {
-        for row in level_pixels.chunks(dimensions.0 as usize) {
-            check(cancel)?;
-            let bytes: Vec<_> = row.iter().flatten().copied().collect();
-            writer.write_all(&bytes).map_err(|e| e.to_string())?;
+        if compression == Compression::Rgba8 {
+            for row in level_pixels.chunks(dimensions.0 as usize) {
+                check(cancel)?;
+                writer
+                    .write_all(row.as_flattened())
+                    .map_err(|e| e.to_string())?;
+            }
+        } else {
+            compress::write(&level_pixels, dimensions, &mut writer, compression, cancel)?;
         }
         if level + 1 < levels {
             let next_size = ((dimensions.0 / 2).max(1), (dimensions.1 / 2).max(1));

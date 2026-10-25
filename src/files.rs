@@ -391,7 +391,7 @@ impl RasterFormat {
             Self::Avif => "AVIF",
             Self::JpegXl => "JPEG XL (lossless)",
             Self::Gif => "GIF (single frame)",
-            Self::Dds => "DDS (RGBA8)",
+            Self::Dds => "DDS",
             Self::Tiff => "TIFF",
             Self::Tga => "TGA",
             Self::Jpeg => "JPEG",
@@ -413,6 +413,7 @@ pub fn writable_path(path: &Path) -> bool {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct RasterOptions {
     pub dds_mipmaps: bool,
+    pub dds_compression: crate::dds::Compression,
     pub gif_dither: bool,
     pub dpi: crate::resolution::Dpi,
     pub format: RasterFormat,
@@ -427,6 +428,7 @@ impl RasterOptions {
             quality: 90,
             gif_dither: false,
             dds_mipmaps: false,
+            dds_compression: Default::default(),
             matte: [255; 3],
         }
     }
@@ -539,7 +541,7 @@ fn encode_raster_options(
         return Err("Invalid raster export pixels or quality.".into());
     }
     if options.format == RasterFormat::Dds {
-        return crate::dds::encode_with_mipmaps(
+        return crate::dds::encode_with_options(
             pixels,
             size,
             CancellableWriter {
@@ -547,6 +549,7 @@ fn encode_raster_options(
                 cancel,
             },
             options.dds_mipmaps,
+            options.dds_compression,
             cancel,
         );
     }

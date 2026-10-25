@@ -13,6 +13,7 @@ fn single_frame_export_has_binary_alpha_and_selected_matte() {
         quality: 90,
         gif_dither: false,
         dds_mipmaps: false,
+        dds_compression: Default::default(),
         dpi: Default::default(),
         matte: [20, 60, 100],
     };

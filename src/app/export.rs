@@ -100,8 +100,11 @@ impl Editor {
                 ui.small("Transparency is composited onto this color before encoding.");
             }
             if dialog.options.format==files::RasterFormat::Dds {
+                egui::ComboBox::from_label("Compression").selected_text(dialog.options.dds_compression.label()).show_ui(ui,|ui| {
+                    for compression in paint_rust::dds::Compression::ALL { changed |= ui.selectable_value(&mut dialog.options.dds_compression,compression,compression.label()).changed(); }
+                });
                 changed |= ui.checkbox(&mut dialog.options.dds_mipmaps, "Generate mipmaps down to 1 × 1").changed();
-                ui.small("DDS saves uncompressed RGBA8. Mipmaps use alpha-aware, linear-light area filtering. The preview shows the full-size image. Texture arrays and cube maps are not written.");
+                ui.small("RGBA8 is lossless. BC1/BC3 use fast lossy block compression; BC1 makes alpha below 128 transparent and other pixels opaque. Inspect the decoded preview. Mipmaps use alpha-aware, linear-light area filtering. The preview shows the full-size image. Texture arrays and cube maps are not written.");
             }
             if dialog.options.format==files::RasterFormat::Gif {
                 changed |= ui.checkbox(&mut dialog.options.gif_dither, "Dither colors (Floyd–Steinberg)").changed();

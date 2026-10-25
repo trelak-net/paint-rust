@@ -139,3 +139,10 @@ Select Line and enable Edit after drawing. Draw the initial segment, then enable
 Cubic curve in Edit shape. Drag either control handle, or enter its X/Y position,
 to bend the curve. The center handle moves the complete curve. Apply creates one
 undo step; Cancel removes the draft. Curves are stroked rather than filled.
+
+DDS compression
+In DDS export, RGBA8 preserves exact pixel channels. BC1 and BC3 produce smaller,
+lossy block-compressed textures. BC1 makes alpha below 128 transparent and other
+pixels opaque; BC3 keeps an interpolated alpha channel. Review the decoded preview
+before saving. Generate mipmaps includes every level down to 1x1 in the chosen
+compression format; the preview shows the largest level.

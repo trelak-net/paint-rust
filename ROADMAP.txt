@@ -209,6 +209,7 @@ independent tasks; do not silently reduce the required scope.
 [x] DDS top-surface RGB/RGBA and BC1/2/3 import, lossless RGBA8 export and independent fixtures.
 [x] DDS BC4/BC5 UNORM import through legacy and DX10 headers with partial-block clipping.
 [x] Full RGBA8 DDS mipmap-chain export with alpha-aware linear-light area filtering and decoded base-level preview.
+[x] BC1/BC3 DDS encoding with partial edge blocks, per-level mip compression and independent FFmpeg pixel checks.
 [x] JPEG XL first-frame import, raw/container sniffing, orientation, RGB/grayscale ICC conversion and independent libjxl fixtures.
 [x] Lossless JPEG XL RGBA8 export with decoded preview, single-pixel dimensions and independent libjxl checks.
 [x] JPEG XL minimal density metadata, orientation-aware axes and trailing still-image EXIF import.

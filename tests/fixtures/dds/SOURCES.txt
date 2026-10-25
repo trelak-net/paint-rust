@@ -17,3 +17,18 @@ ImageMagick identifies this file as DDS 32x16, 2860 bytes. The native Windows
 editor 5.1.12 opened the same file on CASTOR on 2026-10-25 and displayed its
 32x16 base surface without an import error. This checks base-level acceptance;
 there is no claim of native mip-filter equivalence.
+
+export-bc1.dds and export-bc3.dds: original 64x64 color/alpha grid, encoded by
+examples/dds_compression.rs with a complete mip chain. Independent base-surface
+reference bytes generated with FFmpeg 8.1.3:
+ffmpeg -v error -i export-bc1.dds -f rawvideo -pix_fmt rgba export-bc1.rgba
+ffmpeg -v error -i export-bc3.dds -f rawvideo -pix_fmt rgba export-bc3.rgba
+
+Both exported files opened in the native Windows editor 5.1.12 on CASTOR
+on 2026-10-25. export-bc3-native.rgba was captured via its clipboard PNG format
+and converted to raw RGBA with ImageMagick. Compared with FFmpeg, native alpha
+and visible RGB differ by at most one level (interpolation rounding). Hidden RGB
+at zero alpha is not required to survive the native clipboard.
+
+A second clipboard-PNG capture of the BC1 export preserved alpha exactly and
+matched FFmpeg visible RGB within one level.

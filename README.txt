@@ -1512,11 +1512,18 @@ and red/green respectively, with blue zero and opaque alpha. Signed variants
 remain unsupported. Channel masks, row pitch, dimensions,
 alpha conventions and input bounds are validated. BC1 transparent indices and
 partial edge blocks are preserved. Cube maps, arrays, volumes, premultiplied alpha
-and other block formats are rejected. Mipmap editing and regeneration are pending.
-DDS Save/Export writes one uncompressed RGBA8 surface with exact channel bytes,
-including hidden RGB. Decoded export preview and undoable raster Save apply.
+and other block formats are rejected. Mip-level import selection remains pending.
+DDS Save/Export offers exact RGBA8, BC1/DXT1 and BC3/DXT5, with optional mipmaps.
+BC1 thresholds alpha at 128; BC3 uses an eight-entry alpha palette. Both compressed
+choices are lossy and use fast farthest-color endpoint fitting and RGB565 palettes.
+Hidden RGB is not preserved by compression. Inspect the decoded preview for color
+and transparency changes. Partial edge blocks repeat the last image pixel.
+Decoded export preview and undoable raster Save apply.
 No embedded ICC or source descriptive metadata is written. Synthetic independent
 ImageMagick fixtures verify BC1/BC3 decoding with exact alpha and RGB error <= 1.
+Application-produced compressed mip chains are checked with FFmpeg and both
+open in the native Windows editor 5.1.12. Its BC3 clipboard-PNG capture differs
+from FFmpeg by at most one visible RGB/alpha level.
 Format references:
 https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dds-header
 https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dds-pixelformat
@@ -1709,14 +1716,15 @@ is still a single frame with at most 256 colors.
 
 DDS mipmaps
 -----------
-DDS export can include every mip level down to 1x1. The base level preserves
-all RGBA bytes exactly; subsequent levels use area filtering in linear light
+DDS export can include every mip level down to 1x1. Uncompressed RGBA8 preserves
+base-level bytes exactly; BC1/BC3 compress each level separately. Subsequent levels
+use area filtering in linear light
 with premultiplied-alpha averaging. Odd dimensions shrink by floor division,
 with each dimension clamped to one. Levels are generated sequentially, retaining
 only the current source and next level, and generation observes cancellation.
 The decoded preview shows the base level; its byte count includes all mipmaps.
-Import still opens the top surface. Compressed export and arrays/cube maps remain
-pending. Header flags/layout follow the published DDS specification:
+Import still opens the top surface. Additional block encoders and arrays/cube maps
+remain pending. Header flags/layout follow the published DDS specification:
 https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dds-header
 https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dds-file-layout-for-textures
 
