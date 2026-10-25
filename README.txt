@@ -1389,3 +1389,14 @@ an off-canvas result remains an explicit empty selection. Tests cover geometry,
 ellipses and irregular masks, clipping, cancellation, stale results, tab guards,
 Apply and pixel/history/path preservation. On-canvas handles and antialiased
 selection coverage remain pending.
+
+Layer orientation and selected-area fill
+----------------------------------------
+Layers includes exact horizontal/vertical flips and a 180-degree rotation for the
+active layer. Other layers, properties, canvas dimensions and selection geometry
+remain unchanged; these commands act on the entire active layer. F4 opens layer
+properties. Edit provides primary/secondary Fill selection commands, replacing
+RGBA in the mask (or the entire layer when no selection is active).
+All raster work runs in cancellable background jobs and publishes as one undoable
+edit. Tests cover exact pixel permutations including hidden RGB, inactive layers,
+properties, selection retention, no-op history, cancellation and saved revisions.

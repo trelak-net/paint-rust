@@ -952,6 +952,8 @@ impl Editor {
                 Some(19)
             } else if i.consume_key(egui::Modifiers::COMMAND, Key::F) {
                 Some(18)
+            } else if i.consume_key(egui::Modifiers::NONE, Key::F4) {
+                Some(26)
             } else if i.consume_key(egui::Modifiers::COMMAND | egui::Modifiers::ALT, Key::M) {
                 Some(25)
             } else if i.consume_key(egui::Modifiers::COMMAND, Key::M) {
@@ -1033,6 +1035,10 @@ impl Editor {
             }
         });
         match command {
+            Some(26) => {
+                let layer = &self.document.layers()[self.document.active_layer()];
+                self.layer_properties = Some((layer.name.clone(), layer.opacity, layer.blend_mode));
+            }
             Some(25) => self.begin_selection_transform(ctx),
             Some(23) => self.fit_canvas = true,
             Some(24) => self.zoom_to_selection(),
@@ -3042,6 +3048,9 @@ impl Editor {
                         self.paste();
                         ui.close();
                     }
+                    ui.separator();
+                    if ui.button("Fill selection with primary").clicked() {self.start_document_edit(DocumentEdit::Fill(self.color.to_srgba_unmultiplied()));ui.close();}
+                    if ui.button("Fill selection with secondary").clicked() {self.start_document_edit(DocumentEdit::Fill(self.secondary_color.to_srgba_unmultiplied()));ui.close();}
                 });
                 ui.menu_button("Image", |ui| {
                     for (label, canvas) in [("Resize image…", false), ("Canvas size…", true)] {
@@ -5443,6 +5452,35 @@ mod tests {
         assert_eq!(editor.document.selection(), previous);
         assert!(!editor.document.can_undo());
     }
+    #[test]
+    fn layer_and_fill_commands_publish_in_background_with_single_undo() {
+        let ctx = egui::Context::default();
+        for edit in [
+            DocumentEdit::OrientLayer(Orientation::FlipHorizontal),
+            DocumentEdit::OrientLayer(Orientation::FlipVertical),
+            DocumentEdit::OrientLayer(Orientation::HalfTurn),
+            DocumentEdit::Fill([10, 20, 30, 37]),
+        ] {
+            let mut editor = Editor::blank(&ctx);
+            let pixels: Vec<_> = (1..=6).map(|i| [i * 20, i * 10, i, 255]).collect();
+            editor.document = Document::from_pixels(3, 2, pixels.clone()).unwrap();
+            let selection = Selection::elliptical(0, 0, 1, 1);
+            editor.document.set_selection(Some(selection.clone()));
+            editor.start_document_edit(edit);
+            assert!(editor.file_job.is_some());
+            assert_eq!(editor.document.pixels(), pixels);
+            assert!(!editor.document.can_undo());
+            wait_for_files(&mut editor, &ctx);
+            assert_ne!(editor.document.pixels(), pixels);
+            assert_eq!(editor.document.history().count(), 1);
+            assert_eq!(editor.document.selection(), Some(selection.clone()));
+            editor.undo();
+            assert_eq!(editor.document.pixels(), pixels);
+            assert_eq!(editor.document.selection(), Some(selection));
+            assert!(!editor.document.dirty());
+        }
+    }
+
     #[test]
     fn generated_textures_preview_cancel_apply_undo_and_repeat() {
         let ctx = egui::Context::default();

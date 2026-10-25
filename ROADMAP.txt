@@ -113,6 +113,7 @@ independent tasks; do not silently reduce the required scope.
 [x] Color-based selection with tolerance, connected/global modes and active/merged sampling.
 [x] Freehand lasso with closing preview, selection combination and Escape cancellation.
 [x] Replace/add/subtract/intersect/exclusive-or selection combination and inversion.
+[x] Explicit primary/secondary selected-area fill with cancellable background publication.
 [x] Numeric selection-boundary rotation, scaling, flips and offsets with cancellable coalesced previews.
 [ ] Complete pixel/selection transform options and boundary handles.
 [ ] Interpolation, constraints and edge-case validation.
@@ -133,7 +134,8 @@ independent tasks; do not silently reduce the required scope.
 [x] Cached layer thumbnails with transparency checkerboard.
 [x] Cancellable merge down, retaining lower-layer properties with one-step undo.
 [x] Exact external merge-down pixel/property fixtures for all fourteen blend modes.
-[ ] Complete blend modes and layer transformations.
+[x] Exact active-layer horizontal/vertical flips and half-turn with one-step undo.
+[ ] Complete remaining layer transformations and acceptance comparisons.
 [ ] History action grouping and full state restoration audit.
 8. Adjustments and effects
 [x] Hue, saturation and lightness adjustment with selection and alpha preservation.

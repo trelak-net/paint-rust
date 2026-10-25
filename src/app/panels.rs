@@ -221,7 +221,18 @@ impl Editor {
         }
 
         ui.separator();
-        if ui.button("Layer properties…").clicked() {
+        for (label, operation) in [
+            ("Flip layer horizontal", Orientation::FlipHorizontal),
+            ("Flip layer vertical", Orientation::FlipVertical),
+            ("Rotate layer 180°", Orientation::HalfTurn),
+        ] {
+            if ui.button(label).clicked() {
+                self.start_document_edit(DocumentEdit::OrientLayer(operation));
+                ui.close();
+            }
+        }
+        ui.separator();
+        if ui.button("Layer properties…    F4").clicked() {
             let layer = &self.document.layers()[self.document.active_layer()];
             self.layer_properties = Some((layer.name.clone(), layer.opacity, layer.blend_mode));
             ui.close();
@@ -332,7 +343,7 @@ impl Editor {
             "Opacity: {:.0}%",
             f32::from(layer.opacity) * 100.0 / 255.0
         ));
-        if ui.button("Layer properties…").clicked() {
+        if ui.button("Layer properties…    F4").clicked() {
             self.layer_properties = Some((layer.name.clone(), layer.opacity, layer.blend_mode));
         }
         if !layer.visible {

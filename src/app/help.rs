@@ -27,6 +27,7 @@ impl Editor {
                         ("Ctrl+I / Ctrl+Shift+I","Invert selection / Invert colors"),
                         ("Ctrl+Shift+X / Delete","Crop to selection / Delete pixels"),
                         ("Ctrl+M","Merge layer down"),
+                        ("F4","Layer properties"),
                         ("Ctrl+Alt+M","Transform selection boundary"),
                         ("Ctrl+F / Ctrl+Shift+F","Repeat effect / Last effect settings"),
                         ("Ctrl+B / Ctrl+Shift+B","Fit image / Fit selection"),

@@ -26,7 +26,7 @@ Edit.Exclude	Exclude	partial	-	-	Selection tool combination control
 Edit.Intersect	Intersect	partial	-	-	Selection tool combination control
 Edit.Xor	Xor	partial	-	-	Selection tool combination control
 Edit.EraseSelection	Erase Selection	supported	Delete	Delete	Available; see workflow cases
-Edit.FillSelection	Fill Selection	missing	-	-	Not implemented
+Edit.FillSelection	Fill Selection	supported	-	-	Primary/secondary RGBA replacement within selection on active layer; cancellable one-step undo
 Edit.InvertSelection	Invert Selection	supported	Ctrl+I	Ctrl+I	Available; see workflow cases
 Edit.SelectAll	Select All	supported	Ctrl+A	Ctrl+A	Available; see workflow cases
 Edit.Deselect	Deselect	partial	Ctrl+D	Ctrl+Shift+A	Available as Ctrl+Shift+A; shortcut alignment pending
@@ -56,9 +56,9 @@ Layers.DuplicateLayer	Duplicate Layer	supported	Ctrl+Shift+D	-	Available; see wo
 Layers.MergeLayerDown	Merge Layer Down	supported	Ctrl+M	Ctrl+M	Available; see workflow cases
 Layers.ToggleLayerVisibility	Toggle Layer Visibility	supported	Ctrl+,	-	Available; see workflow cases
 Layers.ImportFromFile	Import From File...	partial	-	-	Imports flattened composite; multi-layer import pending
-Layers.FlipHorizontal	Flip Horizontal	missing	-	-	Not implemented
-Layers.FlipVertical	Flip Vertical	missing	-	-	Not implemented
-Layers.Rotate180	Rotate 180°	missing	-	-	Not implemented
+Layers.FlipHorizontal	Flip Horizontal	supported	-	-	Exact active-layer operation in background; fixed canvas/selection, one-step undo
+Layers.FlipVertical	Flip Vertical	supported	-	-	Exact active-layer operation in background; fixed canvas/selection, one-step undo
+Layers.Rotate180	Rotate 180°	supported	-	-	Exact active-layer operation in background; fixed canvas/selection, one-step undo
 Layers.RotateZoom	RotateZoom	partial	-	-	Selection free transform; layer-specific tilt/zoom dialog pending
 Layers.GoToTopLayer	Go to Top Layer	partial	Ctrl+Alt+PageUp	-	Click target layer; keyboard command pending
 Layers.GoToLayerAbove	Go to Layer Above	partial	Alt+PageUp	-	Click target layer; keyboard command pending
@@ -68,7 +68,7 @@ Layers.MoveLayerToTop	Move Layer to Top	partial	-	-	Drag reordering; dedicated a
 Layers.MoveLayerUp	Move Layer Up	supported	-	-	Available; see workflow cases
 Layers.MoveLayerDown	Move Layer Down	supported	-	-	Available; see workflow cases
 Layers.MoveLayerToBottom	Move Layer to Bottom	partial	-	-	Drag reordering; dedicated action pending
-Layers.LayerProperties	Layer Properties...	supported	F4	-	Available; see workflow cases
+Layers.LayerProperties	Layer Properties...	supported	F4	F4	Available; see workflow cases
 Help.HelpTopics	Documentation	supported	F1	F1	Embedded English guide and shortcut reference
 Help.ProjectWebsite	Project website	different	-	-	Project-specific destination or deferred extension integration; external product services are out of scope
 Help.ProjectSearch	Project search	different	-	-	Project-specific destination or deferred extension integration; external product services are out of scope

@@ -534,6 +534,72 @@ impl Document {
         })
     }
 
+    /// Flip or half-turn only the active layer; canvas and selection remain fixed.
+    pub fn reorient_active_cancellable(
+        &mut self,
+        operation: crate::transform::Orientation,
+        cancel: &std::sync::atomic::AtomicBool,
+    ) -> Result<bool, String> {
+        use crate::transform::Orientation;
+        if self.editing() {
+            return Err("Finish the current edit first.".into());
+        }
+        let label = match operation {
+            Orientation::FlipHorizontal => "Flip layer horizontal",
+            Orientation::FlipVertical => "Flip layer vertical",
+            Orientation::HalfTurn => "Rotate layer 180 degrees",
+            _ => return Err("This layer operation requires a flip or half-turn.".into()),
+        };
+        let pixels = crate::transform::orient_cancellable(
+            self.pixels(),
+            self.width,
+            self.height,
+            operation,
+            cancel,
+        )
+        .ok_or(crate::files::CANCELLED)?;
+        if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+            return Err(crate::files::CANCELLED.into());
+        }
+        self.begin(label);
+        self.layers[self.active].pixels = Arc::new(pixels);
+        Ok(self.commit())
+    }
+
+    pub fn fill_selection_cancellable(
+        &mut self,
+        color: Pixel,
+        cancel: &std::sync::atomic::AtomicBool,
+    ) -> Result<bool, String> {
+        use std::sync::atomic::Ordering;
+        if self.editing() {
+            return Err("Finish the current edit first.".into());
+        }
+        if cancel.load(Ordering::Relaxed) {
+            return Err(crate::files::CANCELLED.into());
+        }
+        self.begin("Fill selection");
+        let width = self.width as usize;
+        let selection = self.selection.clone();
+        for (i, pixel) in Arc::make_mut(&mut self.layers[self.active].pixels)
+            .iter_mut()
+            .enumerate()
+        {
+            if i.is_multiple_of(4096) && cancel.load(Ordering::Relaxed) {
+                self.cancel();
+                return Err(crate::files::CANCELLED.into());
+            }
+            if selected(selection.as_ref(), i % width, i / width) {
+                *pixel = color;
+            }
+        }
+        if cancel.load(Ordering::Relaxed) {
+            self.cancel();
+            return Err(crate::files::CANCELLED.into());
+        }
+        Ok(self.commit())
+    }
+
     pub fn copy_pixels(&self, merged: bool) -> (u32, u32, Vec<Pixel>) {
         self.copy_pixels_cancellable(merged, &std::sync::atomic::AtomicBool::new(false))
             .expect("Uncancelled copy")

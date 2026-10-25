@@ -3,6 +3,8 @@ use std::sync::mpsc::{self, Receiver, TryRecvError};
 
 #[derive(Clone, Copy, PartialEq)]
 pub(super) enum DocumentEdit {
+    OrientLayer(Orientation),
+    Fill([u8; 4]),
     Flatten,
     MergeDown,
     Invert,
@@ -99,6 +101,12 @@ impl Editor {
         let mut document = self.document.snapshot();
         document.set_selection(self.document.selection());
         let label = match edit {
+            DocumentEdit::Fill(_) => "Fill selection",
+            DocumentEdit::OrientLayer(operation) => match operation {
+                Orientation::FlipHorizontal => "Flip layer horizontal",
+                Orientation::FlipVertical => "Flip layer vertical",
+                _ => "Rotate layer 180 degrees",
+            },
             DocumentEdit::Flatten => "Flatten image",
             DocumentEdit::MergeDown => "Merge layer down",
             DocumentEdit::Invert => "Invert colors",
@@ -106,6 +114,14 @@ impl Editor {
         };
         self.start_cancellable_file_job(label, move |cancel| {
             let completed = match edit {
+                DocumentEdit::Fill(color) => {
+                    document.fill_selection_cancellable(color, cancel)?;
+                    true
+                }
+                DocumentEdit::OrientLayer(operation) => {
+                    document.reorient_active_cancellable(operation, cancel)?;
+                    true
+                }
                 DocumentEdit::Flatten => document.flatten_cancellable(cancel).is_some(),
                 DocumentEdit::MergeDown => document.merge_down_cancellable(cancel).is_some(),
                 DocumentEdit::Invert => document.invert_cancellable(cancel),
