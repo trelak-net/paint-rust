@@ -912,12 +912,14 @@ use the existing effect workflow. Luminance mode and reusable presets are pendin
 
 Retouch tools
 -------------
-Clone stamp (C): Ctrl+click to set a source, then drag to clone from the active
-layer. Aligned source keeps the source/destination offset between strokes; turn
+Clone stamp (C): Ctrl+click to bind a source to the current layer, then drag
+to clone. Switching the destination layer does not change the source layer. Aligned source keeps the source/destination offset between strokes; turn
 it off to restart at the source anchor for each stroke. A cross marks the source.
 Source pixels are frozen at stroke start, so overlapping edits do not feed back.
 Source coordinates outside the canvas are skipped. Source anchors belong to the
-document in which they were set. Independent source-layer selection is pending.
+document in which they were set. Source identity survives reordering, edits and
+undo; deleting the source rejects painting until it is restored or reset. Sample
+merged image freezes the visible layer composite at the start of each stroke.
 Recolor (J): left drag replaces secondary with primary; right drag reverses them.
 Tolerance is the maximum RGB channel distance. Replacement preserves alpha and
 skips transparent pixels. Shading-preserving recoloring remains pending.

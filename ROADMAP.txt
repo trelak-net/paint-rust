@@ -124,7 +124,8 @@ independent tasks; do not silently reduce the required scope.
 [ ] Interpolation, constraints and edge-case validation.
 6. Tools
 [x] Active-layer clone stamp and tolerance-based recolor with brush controls.
-[ ] Independent clone source-layer identity, merged sampling and recolor shading parity.
+[x] Independent clone source-layer identity across reorder/undo and frozen merged sampling.
+[ ] Recolor shading parity.
 [x] Fill tolerance, connected/global modes and active/merged sampling within selection boundaries.
 [x] Linear, reflected, radial, diamond and conical gradients; blend, replace and transparency modes.
 [x] Eighteen-shape catalogue with combined outline/fill and antialiasing.

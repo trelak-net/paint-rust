@@ -127,6 +127,8 @@ pub struct Editor {
     clone_anchor: Option<(u64, (i32, i32))>,
     clone_offset: Option<(i32, i32)>,
     clone_aligned: bool,
+    clone_layer: Option<u64>,
+    clone_merged: bool,
     shape_filled: bool,
     shape_outline: bool,
     shape_antialias: bool,
@@ -275,6 +277,8 @@ impl Editor {
             clone_anchor: None,
             clone_offset: None,
             clone_aligned: true,
+            clone_layer: None,
+            clone_merged: false,
             shape_filled: false,
             shape_outline: false,
             shape_antialias: false,
@@ -1617,6 +1621,14 @@ impl Editor {
                                         anchor.1 - origin.y.floor() as i32,
                                     ));
                                 }
+                                if let Err(error) = self.document.prepare_clone_source(
+                                    self.clone_layer.unwrap_or(0),
+                                    self.clone_merged,
+                                ) {
+                                    self.status = error;
+                                    self.shape_origin = None;
+                                    return;
+                                }
                                 self.document.begin("Clone stamp");
                             }
                             Tool::Recolor => self.document.begin("Recolor"),
@@ -1941,7 +1953,16 @@ impl Editor {
             {
                 self.clone_offset = None;
             }
-            ui.small("Ctrl+click: set source on active layer · Drag: clone");
+            ui.checkbox(&mut self.clone_merged, "Sample merged image");
+            if let Some(layer) = self
+                .document
+                .layers()
+                .iter()
+                .find(|layer| Some(layer.session_id()) == self.clone_layer)
+            {
+                ui.small(format!("Source layer: {}", layer.name));
+            }
+            ui.small("Ctrl+click: set source · Switch layer and drag to clone");
             if !self
                 .clone_anchor
                 .is_some_and(|(id, _)| id == self.active_document_id)

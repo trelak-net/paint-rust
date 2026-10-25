@@ -48,3 +48,9 @@ Keep canvas to clip them, or Cancel. Expansion and paste undo together.
 
 Zoom in with Ctrl++ (or Ctrl+=), out with Ctrl+-, and return to actual size
 with Ctrl+0. The View menu offers the same commands.
+
+Clone across layers
+Ctrl+click sets the source layer and position. Select another layer to paint there
+without changing the source. Sample merged image reads the visible composite.
+Source samples stay frozen during each stroke. Deleting the source layer requires
+undoing its deletion or choosing another source.

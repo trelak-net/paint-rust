@@ -24,6 +24,8 @@ impl Editor {
                 self.active_document_id,
                 (point.x.floor() as i32, point.y.floor() as i32),
             ));
+            self.clone_layer =
+                Some(self.document.layers()[self.document.active_layer()].session_id());
             self.clone_offset = None;
         }
         if let Some((id, anchor)) = self.clone_anchor

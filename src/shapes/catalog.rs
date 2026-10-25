@@ -103,6 +103,7 @@ pub(super) fn render(
             dimensions,
             selection,
             crate::brush::Segment {
+                clone_source: None,
                 from,
                 to,
                 diameter: style.width,

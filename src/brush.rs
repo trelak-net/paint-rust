@@ -25,7 +25,7 @@ impl Default for Options {
 pub enum Paint {
     Color(Pixel),
     Erase,
-    /// Sample the active layer as it was before the current stroke.
+    /// Sample the frozen clone source, or the destination before the stroke.
     Clone {
         offset: (i32, i32),
     },
@@ -37,7 +37,8 @@ pub enum Paint {
     },
 }
 
-pub(crate) struct Segment {
+pub(crate) struct Segment<'a> {
+    pub clone_source: Option<&'a [Pixel]>,
     pub from: (f32, f32),
     pub to: (f32, f32),
     pub diameter: f32,
@@ -51,10 +52,11 @@ pub(crate) fn render(
     coverage: &mut [u8],
     dimensions: (u32, u32),
     selection: Option<&Selection>,
-    segment: Segment,
+    segment: Segment<'_>,
     cancel: &std::sync::atomic::AtomicBool,
 ) {
     let Segment {
+        clone_source,
         from,
         to,
         diameter,
@@ -144,7 +146,7 @@ pub(crate) fn render(
                         continue;
                     }
                     (
-                        source[sy as usize * width as usize + sx as usize],
+                        clone_source.unwrap_or(source)[sy as usize * width as usize + sx as usize],
                         options.blend,
                         false,
                     )

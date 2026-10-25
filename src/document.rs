@@ -155,8 +155,9 @@ impl BlendMode {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone)]
 pub struct Layer {
+    session_id: u64,
     pub metadata: std::collections::BTreeMap<String, String>,
     pub is_background: bool,
     pub name: String,
@@ -166,9 +167,29 @@ pub struct Layer {
     pixels: Arc<Vec<Pixel>>,
 }
 
+impl PartialEq for Layer {
+    fn eq(&self, other: &Self) -> bool {
+        self.metadata == other.metadata
+            && self.is_background == other.is_background
+            && self.name == other.name
+            && self.visible == other.visible
+            && self.opacity == other.opacity
+            && self.blend_mode == other.blend_mode
+            && self.pixels == other.pixels
+    }
+}
+fn next_layer_id() -> u64 {
+    static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+    NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+}
 impl Layer {
+    /// Session identity survives edits, reordering and history restoration.
+    pub fn session_id(&self) -> u64 {
+        self.session_id
+    }
     pub fn new(name: String, pixels: Vec<Pixel>) -> Self {
         Self {
+            session_id: next_layer_id(),
             name,
             metadata: Default::default(),
             is_background: false,
@@ -209,6 +230,7 @@ pub struct Document {
     redo: Vec<Entry>,
     pending: Option<Snapshot>,
     brush_coverage: Option<Vec<u8>>,
+    clone_pixels: Option<Arc<Vec<Pixel>>>,
     history_error: Option<String>,
     deferred_history: bool,
     history_pool: history::Pool,
@@ -276,6 +298,7 @@ impl Document {
             redo: Vec::new(),
             pending: None,
             brush_coverage: None,
+            clone_pixels: None,
             history_error: None,
             deferred_history: false,
             history_pool: history::Pool::default(),
@@ -835,6 +858,7 @@ impl Document {
         });
         let layer = if duplicate {
             let mut layer = self.layers[self.active].clone();
+            layer.session_id = next_layer_id();
             while layer.name.len() > 4091 {
                 layer.name.pop();
             }
@@ -842,6 +866,7 @@ impl Document {
             layer
         } else {
             Layer {
+                session_id: next_layer_id(),
                 name: format!("Layer {}", self.layers.len() + 1),
                 metadata: Default::default(),
                 is_background: false,
@@ -1114,6 +1139,7 @@ impl Document {
 
     pub fn commit(&mut self) -> bool {
         self.brush_coverage = None;
+        self.clone_pixels = None;
         let Some(before) = self.pending.take() else {
             return false;
         };
@@ -1237,6 +1263,7 @@ impl Document {
 
     pub fn cancel(&mut self) {
         self.brush_coverage = None;
+        self.clone_pixels = None;
         if let Some(before) = self.pending.take() {
             self.width = before.width;
             self.height = before.height;
@@ -1377,6 +1404,24 @@ impl Document {
         );
     }
 
+    /// Freeze clone sampling separately from the destination at stroke start.
+    pub fn prepare_clone_source(&mut self, layer_id: u64, merged: bool) -> Result<(), String> {
+        if self.editing() {
+            return Err("Finish the current stroke first".into());
+        }
+        let layer = self
+            .layers
+            .iter()
+            .find(|layer| layer.session_id == layer_id)
+            .ok_or("The clone source layer is no longer available")?;
+        self.clone_pixels = Some(if merged {
+            Arc::new(self.composite())
+        } else {
+            layer.shared_pixels()
+        });
+        Ok(())
+    }
+
     pub fn paint_segment(
         &mut self,
         from: (f32, f32),
@@ -1400,6 +1445,7 @@ impl Document {
             (self.width, self.height),
             self.selection.as_ref(),
             crate::brush::Segment {
+                clone_source: self.clone_pixels.as_deref().map(Vec::as_slice),
                 from,
                 to,
                 diameter,
