@@ -53,6 +53,7 @@ impl Editor {
                         ("X","Swap primary and secondary colors"),
                         ("Escape","Cancel preview or active selection gesture"),
                         ("F1","Open help"),
+                        ("Ctrl+F1","Operation error details"),
                     ] {ui.label(keys);ui.label(action);ui.end_row();}
                 });
                 ui.small("Tool shortcuts are shown in tool labels and hover descriptions. Text fields keep their normal editing shortcuts.");

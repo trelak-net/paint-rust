@@ -635,6 +635,10 @@ impl Editor {
                         self.complete_save(path, ctx);
                     }
                     Err(error) => {
+                        self.errors.record(
+                            "Image was written, but the document could not be updated",
+                            &error,
+                        );
                         self.status = format!(
                             "Image was written, but the document could not be updated: {error}"
                         );
@@ -653,6 +657,7 @@ impl Editor {
                 );
             }
             Err(error) => {
+                self.errors.record(operation, &error);
                 if operation == "open image" && error != files::CANCELLED {
                     self.open_errors.push(error.clone());
                 }

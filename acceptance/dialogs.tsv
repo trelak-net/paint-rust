@@ -9,7 +9,7 @@ Color profile	partial	Automatic RGB/grayscale ICC to sRGB on import; tagged expo
 Save palette	partial	Native file picker and project palette format
 Task progress	partial	Cancellation and status; detailed progress reporting pending
 Unsaved changes	supported	Save/discard/cancel across documents
-Error details	partial	Status messages and worker failure handling; detailed error dialog pending
+Error details	partial	Persistent session error details for background operations with selection/copy/clear; remaining synchronous-error coverage pending
 Layer properties	partial	Name, opacity and blend mode; exact presentation pending
 New image	partial	Pixel dimensions and fill; unit/DPI settings pending
 Settings	partial	Theme/grid/brush and recent-file persistence plus panel/palette settings; remaining general preferences pending

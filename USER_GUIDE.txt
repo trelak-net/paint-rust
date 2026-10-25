@@ -104,3 +104,10 @@ Variable fonts
 When the selected font provides variation axes, expand Font variations to adjust
 weight, width or other available properties. Reset font variations restores the
 font defaults. Selecting a different face resets its axis controls.
+
+Operation errors
+Open Help > Operation errors (Ctrl+F1), or click Errors on the status bar, to review recent
+background-operation failures. Details remain available after another operation
+changes the status message. Copy individual entries or all details when reporting
+a problem; review file paths before sharing. Clear removes the session entries.
+Cancelled operations are not recorded, and error details are not saved to disk.

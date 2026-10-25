@@ -2,6 +2,7 @@ mod clone;
 mod colors;
 mod curves;
 mod effect_settings;
+mod errors;
 mod export;
 mod file_operations;
 mod help;
@@ -105,6 +106,7 @@ struct EffectDialog {
 
 pub struct Editor {
     help_open: bool,
+    errors: errors::ErrorLog,
     preferences: preferences::Preferences,
     system_theme: Option<egui::Theme>,
     panel_layout: panels::Layout,
@@ -261,6 +263,7 @@ impl Editor {
         egui_extras::install_image_loaders(ctx);
         Self {
             help_open: false,
+            errors: Default::default(),
             panel_layout: Default::default(),
             color_panel: Default::default(),
             layer_thumbnails: Default::default(),
@@ -919,8 +922,17 @@ impl Editor {
     }
 
     fn shortcuts(&mut self, ctx: &egui::Context) {
+        if self.errors.open && ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::Escape))
+        {
+            self.errors.open = false;
+            return;
+        }
         if self.help_open && ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::Escape)) {
             self.help_open = false;
+            return;
+        }
+        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::CTRL, Key::F1)) {
+            self.errors.open = true;
             return;
         }
         if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::F1)) {
@@ -3681,6 +3693,7 @@ impl Editor {
                 ui.menu_button("Window",|ui| self.document_menu(ui));
                 ui.menu_button("Help",|ui| {
                     if ui.button("Guide and shortcuts    F1").clicked() { self.help_open=true; ui.close(); }
+                    if ui.button("Operation errors…    Ctrl+F1").clicked() { self.errors.open=true; ui.close(); }
                 });
             });
             ui.horizontal_wrapped(|ui| {
@@ -3776,7 +3789,11 @@ impl Editor {
                     ui.spinner().on_hover_text("Updating canvas preview");
                 }
                 ui.separator();
-                ui.label(&self.status);
+                if self.errors.has_entries() && ui.button("Errors…").clicked() {
+                    self.errors.open = true;
+                }
+                ui.add(egui::Label::new(&self.status).truncate())
+                    .on_hover_text(&self.status);
             });
         });
         self.workspace_panels(ctx, enabled);
@@ -3795,6 +3812,7 @@ impl Editor {
         self.show_paste_confirmation(ctx);
         self.show_selection_transform(ctx);
         self.show_help(ctx);
+        self.errors.show(ctx);
         if let Some(recovery) = &mut self.recovery {
             let _ = recovery.set_context(paint_rust::recovery::Context {
                 version: 1,
@@ -4553,6 +4571,7 @@ mod tests {
         assert!(editor.after_save.is_none());
         assert!(editor.pending.is_none());
         assert!(editor.status.starts_with("Could not save project:"));
+        assert!(editor.errors.has_entries());
     }
 
     #[test]
@@ -5848,6 +5867,7 @@ mod tests {
         assert!(matches!(editor.pending, Some(Action::Close)));
         assert_eq!(editor.path, Some(path));
         assert!(editor.status.starts_with("Could not save project:"));
+        assert!(editor.errors.has_entries());
     }
 
     #[test]
