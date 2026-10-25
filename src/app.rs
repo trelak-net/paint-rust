@@ -1,6 +1,7 @@
 mod clone;
 mod colors;
 mod curves;
+mod effect_settings;
 mod export;
 mod file_operations;
 mod histogram;
@@ -193,6 +194,22 @@ impl Editor {
                 editor.preferences = settings;
             }
             Err(error) => editor.status = format!("Using default preferences: {error}"),
+        }
+        match effect_settings::Settings::load() {
+            Ok(settings) => {
+                editor.last_effect = settings.last;
+                editor.effect_parameters = settings
+                    .parameters
+                    .into_iter()
+                    .map(|effect| (std::mem::discriminant(&effect), effect))
+                    .collect();
+                if let Some(last) = editor.last_effect {
+                    editor
+                        .effect_parameters
+                        .insert(std::mem::discriminant(&last), last);
+                }
+            }
+            Err(error) => editor.status = format!("Using default effect settings: {error}"),
         }
         editor.apply_theme(&cc.egui_ctx);
         editor.appearance = Some(crate::appearance::connect(&cc.egui_ctx));
@@ -3150,6 +3167,14 @@ impl Editor {
 
 impl eframe::App for Editor {
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
+        if let Err(error) = effect_settings::Settings::new(
+            self.last_effect,
+            self.effect_parameters.values().copied().collect(),
+        )
+        .save()
+        {
+            eprintln!("Could not save effect settings: {error}");
+        }
         self.preferences.brush_size = self.brush_size;
         self.preferences.brush = self.brush_options;
         self.preferences.pixel_grid = self.pixel_grid;

@@ -1,6 +1,6 @@
 {
   "target": "x86_64-unknown-linux-gnu",
-  "cargo_lock_sha256": "d356093763f71195c500b7dc3b94c904af9ab092385c46a7c86b6a82a673146c",
+  "cargo_lock_sha256": "25d2bf1140c7e2cd9a0cbabd026a09d5d328e649a08e6f82a42aa7cffbbee557",
   "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1",
   "rust_library_notice_sha256": "5647be074c8edf7339fd863055923a8fc80bc5610a8d4661ec3b767b9d392c27",
   "packages": [
@@ -1943,6 +1943,21 @@
       }
     },
     {
+      "name": "itoa",
+      "version": "1.0.18",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "David Tolnay <dtolnay@gmail.com>"
+      ],
+      "repository": "https://github.com/dtolnay/itoa",
+      "source": "https://crates.io/crates/itoa/1.0.18",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      }
+    },
+    {
       "name": "khronos_api",
       "version": "3.1.0",
       "license": "Apache-2.0",
@@ -2869,6 +2884,20 @@
       "files": {
         "LICENSE-APACHE": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
         "LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      }
+    },
+    {
+      "name": "serde_json",
+      "version": "1.0.154",
+      "license": "MIT OR Apache-2.0",
+      "authors": [],
+      "repository": "https://github.com/serde-rs/json",
+      "source": "https://crates.io/crates/serde_json/1.0.154",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+        "SOURCE-COPYRIGHTS.txt": "afe7a8889a505ca6b9671ac53882d8ddf7a82bf7f1a0cbe3fe9c6ca3f748153e"
       }
     },
     {
@@ -4131,6 +4160,20 @@
       "upstream_notices": [],
       "files": {
         "LICENSE": "f367c1b8e1aa262435251e442901da4607b4650e0e63a026f5044473ecfb90f2"
+      }
+    },
+    {
+      "name": "zmij",
+      "version": "1.0.23",
+      "license": "MIT",
+      "authors": [
+        "David Tolnay <dtolnay@gmail.com>"
+      ],
+      "repository": "https://github.com/dtolnay/zmij",
+      "source": "https://crates.io/crates/zmij/1.0.23",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
       }
     },
     {

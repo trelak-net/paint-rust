@@ -142,7 +142,8 @@ independent tasks; do not silently reduce the required scope.
 [x] Bulge, twist, frosted glass, crystalize, vignette and red-eye correction.
 [ ] Complete remaining blur, distortion, noise and stylization inventory.
 [x] Repeat last effect and restore last-applied parameters within the session.
-[ ] Persist effect parameters across restarts and complete preview/cancel parity audit.
+[x] Persist validated effect parameters and the last effect across restarts.
+[ ] Complete external preview/cancel parity audit.
 9. Files and color management
 [ ] Mandatory PDN import/export with real external interoperability fixtures.
 [ ] Preserve layer names, visibility, opacity, blend modes and metadata.
@@ -158,7 +159,7 @@ independent tasks; do not silently reduce the required scope.
 [ ] Session recovery across multiple documents.
 11. Distribution and preferences
 [x] Persistent theme/grid/brush preferences, recent-file menu and file-drop queue.
-[ ] Remaining preferences and full cross-session effect parameter persistence.
+[ ] Remaining general preferences.
 [ ] English/Polish localization and user documentation.
 [ ] Installation/update validation across Linux desktop environments.
 12. Final acceptance

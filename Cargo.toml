@@ -12,6 +12,8 @@ identifier = "net.trelak.PaintRust"
 icon = ["assets/app-icon.png"]
 
 [dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 flate2 = "1.1"
 fs2 = "0.4"
 ab_glyph = "0.2"

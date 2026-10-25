@@ -1072,3 +1072,12 @@ HSV controls share that retained hue. Popup color pickers also retain transient
 HSV state without quantizing stored RGBA during idle frames. Pointer tests verify
 hue selection on black, subsequent saturation/value editing and alpha retention.
 Numeric RGB/HSV/HEX controls remain available for keyboard input.
+
+Persistent effect settings
+--------------------------
+Applied filter parameters and the last effect are restored from effects.json in
+the configuration directory. Settings include curve points, levels and random
+seeds. Version, size, numeric ranges and curve topology are validated before use;
+invalid settings fall back to defaults. Writes replace the file atomically.
+Geometry gestures are excluded. Tests cover malformed settings and round trips;
+two isolated native launches verify persistence across clean application exits.

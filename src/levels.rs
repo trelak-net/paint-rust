@@ -1,7 +1,7 @@
 use crate::document::{Pixel, Selection};
 use std::sync::atomic::{AtomicBool, Ordering};
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Channel {
     pub input_black: u8,
     pub input_white: u8,
@@ -37,7 +37,7 @@ impl Channel {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Levels {
     /// Master RGB followed by independent red, green and blue channel settings.
     pub channels: [Channel; 4],

@@ -1,8 +1,31 @@
 //! Bounded control-point curves with shape-preserving cubic interpolation.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize)]
 pub struct Curve {
     points: [(u8, u8); 16],
     len: usize,
+}
+impl<'de> serde::Deserialize<'de> for Curve {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        #[derive(serde::Deserialize)]
+        struct RawCurve {
+            points: [(u8, u8); 16],
+            len: usize,
+        }
+        let raw = RawCurve::deserialize(deserializer)?;
+        if !(2..=16).contains(&raw.len)
+            || raw.points[0].0 != 0
+            || raw.points[raw.len - 1].0 != 255
+            || raw.points[..raw.len]
+                .windows(2)
+                .any(|pair| pair[0].0 >= pair[1].0)
+        {
+            return Err(serde::de::Error::custom("Invalid curve control points"));
+        }
+        Ok(Self {
+            points: raw.points,
+            len: raw.len,
+        })
+    }
 }
 impl Default for Curve {
     fn default() -> Self {
@@ -87,7 +110,7 @@ impl Curve {
         table
     }
 }
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Curves {
     /// Master RGB followed by red, green and blue.
     pub channels: [Curve; 4],

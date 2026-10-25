@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Launch isolated editor sessions and verify native floating-layout persistence."""
 import argparse
+import json
 import os
 from pathlib import Path
 import shutil
@@ -43,6 +44,9 @@ def main():
         preferences.write_text(f"preferences-v1\n{args.theme} 1 12 1 1 0 0 {int(args.rulers)}\n")
         saved = []
         saved_preferences = []
+        effects = settings.with_name("effects.json")
+        effects.write_text(json.dumps({"version": 1, "last": {"GaussianBlur": 3}, "parameters": [{"GaussianBlur": 3}]}))
+        saved_effects = []
         with (args.output / "editor.log").open("w") as log:
             for attempt in range(2):
                 app = subprocess.Popen(
@@ -66,6 +70,9 @@ def main():
                                 raise RuntimeError("Editor failed during shutdown")
                             saved.append(settings.read_text())
                             saved_preferences.append(preferences.read_text())
+                            saved_effects.append(effects.read_text())
+                            if json.loads(saved_effects[-1])["last"] != {"GaussianBlur": 3}:
+                                raise RuntimeError("Last effect settings were not preserved")
                             if not saved_preferences[-1].splitlines()[1].startswith(args.theme + " "):
                                 raise RuntimeError("Theme preference was not preserved")
                             if len(saved[-1].splitlines()[2].split()) != 5:
@@ -84,6 +91,9 @@ def main():
             raise RuntimeError("Panel layout changed after restart")
         if saved_preferences[0] != saved_preferences[1]:
             raise RuntimeError("Preferences or recent files changed after restart")
+        if saved_effects[0] != saved_effects[1]:
+            raise RuntimeError("Effect settings changed after restart")
+        (args.output / "effects.json").write_text(saved_effects[0])
         (args.output / "preferences.txt").write_text(saved_preferences[0])
         (args.output / "workspace.txt").write_text(saved[0])
     print(f"Two native launches and clean exits; layout, preferences and recent files stable. Artifacts: {args.output}")

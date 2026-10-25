@@ -4,7 +4,7 @@ mod stylize;
 use crate::document::{Pixel, Selection};
 use std::sync::atomic::{AtomicBool, Ordering};
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum Effect {
     Bulge(f32),
     Twist(f32),
@@ -51,9 +51,13 @@ pub enum Effect {
     Curves(crate::curves::Curves),
     Levels(crate::levels::Levels),
     AutoLevels(f32),
+    #[serde(skip)]
     Move(crate::movement::Parameters),
+    #[serde(skip)]
     Shape(crate::shapes::Parameters),
+    #[serde(skip)]
     Gradient(crate::gradient::Gradient),
+    #[serde(skip)]
     FreeTransform(crate::affine::FreeTransform),
     BrightnessContrast {
         brightness: i16,
@@ -73,6 +77,62 @@ pub enum Effect {
     Sharpen(f32),
 }
 impl Effect {
+    pub fn valid_settings(self) -> bool {
+        let range = |v: f32, min: f32, max: f32| v.is_finite() && (min..=max).contains(&v);
+        match self {
+            Self::Move(_) | Self::Shape(_) | Self::Gradient(_) | Self::FreeTransform(_) => false,
+            Self::Levels(levels) => levels.tables().is_some(),
+            Self::Curves(_)
+            | Self::InvertAlpha
+            | Self::Grayscale
+            | Self::Sepia
+            | Self::EdgeDetect => true,
+            Self::AutoLevels(v) => range(v, 0.0, 5.0),
+            Self::BrightnessContrast {
+                brightness,
+                contrast,
+            } => (-100..=100).contains(&brightness) && (-100..=100).contains(&contrast),
+            Self::TemperatureTint {
+                temperature: a,
+                tint: b,
+            }
+            | Self::HighlightsShadows {
+                highlights: a,
+                shadows: b,
+            } => (-100..=100).contains(&a) && (-100..=100).contains(&b),
+            Self::Saturation(v) => range(v, 0.0, 2.0),
+            Self::HueSaturation {
+                hue,
+                saturation,
+                lightness,
+            } => {
+                (-180..=180).contains(&hue)
+                    && range(saturation, 0.0, 2.0)
+                    && (-100..=100).contains(&lightness)
+            }
+            Self::BoxBlur(r) | Self::GaussianBlur(r) => r <= 64,
+            Self::MotionBlur {
+                distance, angle, ..
+            } => distance <= 200 && range(angle, -180.0, 180.0),
+            Self::Pixelate(size) => (1..=128).contains(&size),
+            Self::Posterize(levels) => (2..=32).contains(&levels),
+            Self::Sharpen(v) => range(v, 0.0, 3.0),
+            Self::AddNoise {
+                amount, coverage, ..
+            } => amount <= 100 && coverage <= 100,
+            Self::Median { radius, percentile } => radius <= 10 && percentile <= 100,
+            Self::Emboss(v) => range(v, -180.0, 180.0),
+            Self::Bulge(v) => range(v, -100.0, 100.0),
+            Self::Twist(v) => range(v, -720.0, 720.0),
+            Self::FrostedGlass { radius, .. } => radius <= 100,
+            Self::Crystalize { size, .. } => (1..=200).contains(&size),
+            Self::Vignette { amount, roundness } => {
+                range(amount, 0.0, 1.0) && range(roundness, 0.0, 1.0)
+            }
+            Self::RedEye(v) => range(v, 1.0, 3.0),
+        }
+    }
+
     pub fn category(self) -> &'static str {
         match self {
             Self::GaussianBlur(_)
