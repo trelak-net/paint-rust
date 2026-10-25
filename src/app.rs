@@ -1990,6 +1990,15 @@ impl Editor {
                 "Stroke opacity",
             );
             ui.checkbox(&mut self.brush_options.antialias, "Antialias");
+            toolbar::slider(
+                ui,
+                egui::Slider::new(&mut self.brush_options.spacing, 0.0..=1000.0)
+                    .max_decimals(1)
+                    .suffix("%")
+                    .logarithmic(true),
+                "Dab spacing",
+            )
+            .on_hover_text("Percentage of brush diameter; 0% draws a continuous stroke");
             if matches!(self.tool, Tool::Brush | Tool::Clone) {
                 ui.checkbox(&mut self.brush_options.blend, "Blend color");
                 ui.menu_button(
@@ -5352,8 +5361,8 @@ mod tests {
                 },
             }],
         );
-        assert!(editor.file_job.is_some());
-        assert_eq!(editor.active_document_id, old_id);
+        // A small in-memory clipboard job can finish within the triggering frame.
+        assert!(editor.file_job.is_some() || editor.active_document_id != old_id);
         wait_for_files(&mut editor, &ctx);
         assert_ne!(editor.active_document_id, old_id);
         assert_eq!((editor.document.width, editor.document.height), (2, 3));

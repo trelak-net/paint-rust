@@ -234,6 +234,7 @@ pub struct Document {
     redo: Vec<Entry>,
     pending: Option<Snapshot>,
     brush_coverage: Option<Vec<u8>>,
+    brush_spacing: crate::brush::spacing::Spacing,
     clone_pixels: Option<Arc<Vec<Pixel>>>,
     history_error: Option<String>,
     deferred_history: bool,
@@ -302,6 +303,7 @@ impl Document {
             redo: Vec::new(),
             pending: None,
             brush_coverage: None,
+            brush_spacing: Default::default(),
             clone_pixels: None,
             history_error: None,
             deferred_history: false,
@@ -1215,6 +1217,7 @@ impl Document {
 
     pub fn commit(&mut self) -> bool {
         self.brush_coverage = None;
+        self.brush_spacing = Default::default();
         self.clone_pixels = None;
         let Some(before) = self.pending.take() else {
             return false;
@@ -1362,6 +1365,7 @@ impl Document {
 
     pub fn cancel(&mut self) {
         self.brush_coverage = None;
+        self.brush_spacing = Default::default();
         self.clone_pixels = None;
         if let Some(before) = self.pending.take() {
             self.width = before.width;
@@ -1532,6 +1536,9 @@ impl Document {
         paint: crate::brush::Paint,
         options: crate::brush::Options,
     ) {
+        if !options.spacing.is_finite() {
+            return;
+        }
         let before = self
             .pending
             .as_ref()
@@ -1540,22 +1547,36 @@ impl Document {
         let coverage = self
             .brush_coverage
             .get_or_insert_with(|| vec![0; source.len()]);
-        crate::brush::render(
-            Arc::make_mut(&mut self.layers[self.active].pixels).as_mut_slice(),
-            source,
-            coverage,
-            (self.width, self.height),
-            self.selection.as_ref(),
-            crate::brush::Segment {
-                clone_source: self.clone_pixels.as_deref().map(Vec::as_slice),
+        let mut render = |from, to| {
+            crate::brush::render(
+                Arc::make_mut(&mut self.layers[self.active].pixels).as_mut_slice(),
+                source,
+                coverage,
+                (self.width, self.height),
+                self.selection.as_ref(),
+                crate::brush::Segment {
+                    clone_source: self.clone_pixels.as_deref().map(Vec::as_slice),
+                    from,
+                    to,
+                    diameter,
+                    paint,
+                    options,
+                },
+                &std::sync::atomic::AtomicBool::new(false),
+            )
+        };
+        if options.spacing > 0.0 {
+            self.brush_spacing.visit(
                 from,
                 to,
                 diameter,
-                paint,
-                options,
-            },
-            &std::sync::atomic::AtomicBool::new(false),
-        );
+                options.spacing,
+                (self.width, self.height),
+                |point| render(point, point),
+            );
+        } else {
+            render(from, to);
+        }
     }
 
     /// Draw a single-pixel path between pointer samples without antialiasing.

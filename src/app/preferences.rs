@@ -37,7 +37,7 @@ impl Preferences {
     }
     fn encode(&self) -> String {
         let mut text = format!(
-            "preferences-v1\n{} {} {} {} {} {} {} {} {} {}\n",
+            "preferences-v1\n{} {} {} {} {} {} {} {} {} {} {}\n",
             match self.theme {
                 Theme::System => "system",
                 Theme::Light => "light",
@@ -51,7 +51,8 @@ impl Preferences {
             u8::from(self.brush.blend),
             u8::from(self.rulers),
             self.brush.blend_mode as u8,
-            self.units as u8
+            self.units as u8,
+            self.brush.spacing
         );
         for path in self.recent.iter().take(16) {
             if let Some(path) = path.to_str()
@@ -79,7 +80,7 @@ impl Preferences {
             .ok_or_else(invalid)?
             .split_whitespace()
             .collect();
-        if !(7..=10).contains(&fields.len()) {
+        if !(7..=11).contains(&fields.len()) {
             return Err(invalid());
         }
         let boolean = |v: &str| match v {
@@ -108,7 +109,7 @@ impl Preferences {
             } else {
                 false
             },
-            units: if fields.len() == 10 {
+            units: if fields.len() >= 10 {
                 *paint_rust::resolution::Unit::ALL
                     .get(fields[9].parse::<usize>().map_err(|_| invalid())?)
                     .ok_or_else(invalid)?
@@ -117,6 +118,11 @@ impl Preferences {
             },
             brush_size: number(fields[2], 1.0, 128.0)?,
             brush: paint_rust::brush::Options {
+                spacing: if fields.len() >= 11 {
+                    number(fields[10], 0.0, 1000.0)?
+                } else {
+                    0.0
+                },
                 blend_mode: if fields.len() >= 9 {
                     *BlendMode::ALL
                         .get(fields[8].parse::<usize>().map_err(|_| invalid())?)
@@ -287,6 +293,7 @@ mod tests {
             units: paint_rust::resolution::Unit::Centimeters,
             theme: Theme::Dark,
             brush: paint_rust::brush::Options {
+                spacing: 30.0,
                 hardness: 0.25,
                 opacity: 0.75,
                 antialias: true,

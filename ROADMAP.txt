@@ -139,6 +139,8 @@ independent tasks; do not silently reduce the required scope.
 [x] Shared Euclidean RGBA matching and percentage tolerance; native 50% ramp validated.
 [x] Recolor region-edge feathering with exact full-ramp native comparison at 50% tolerance.
 [ ] Recolor soft-brush comparison parity.
+[x] Diameter-relative brush/eraser/clone/recolor dab spacing, persistent controls and off-canvas sampling bounds.
+[ ] Input path smoothing and tablet pressure controls.
 [x] Fill tolerance, connected/global modes and active/merged sampling within selection boundaries.
 [x] Premultiplied/straight alpha comparison for color selection and sampled fill.
 [x] Linear, reflected, radial, diamond and conical gradients; blend, replace and transparency modes.

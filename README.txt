@@ -1656,3 +1656,13 @@ byte-quantized source-over composition. It does not establish all tolerance
 thresholds, antialiased region boundaries or soft brush coverage.
 Reproduce the source with examples/recolor_probe.rs; source/output fixtures and
 provenance are stored under tests/fixtures/pdn.
+
+Brush dab spacing
+-----------------
+Brush, Eraser, Clone and Recolor provide a saved Dab spacing percentage. Zero
+keeps continuous coverage; positive values place round dabs at intervals relative
+to the brush diameter (minimum 0.25 image pixels). Sampling follows path length
+across pointer events and bends, so event frequency does not change the spacing.
+Off-canvas dabs are skipped before rasterization. Every stroke remains one undo
+transaction; overlapping dabs retain the stroke's maximum coverage. Path smoothing
+and tablet pressure remain pending.

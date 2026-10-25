@@ -171,3 +171,41 @@ fn aliased_strokes_ignore_hardness_but_keep_opacity_and_selection() {
         assert_eq!(results[1], results[2]);
     }
 }
+
+#[test]
+fn spaced_strokes_are_independent_of_pointer_event_frequency_and_reset_on_undo() {
+    let options = Options {
+        spacing: 150.0,
+        antialias: true,
+        hardness: 0.5,
+        opacity: 0.6,
+        ..Options::default()
+    };
+    for erase in [false, true] {
+        let mut whole = Document::new(64, 16, [20, 100, 180, 200]).unwrap();
+        let mut split = whole.snapshot();
+        whole.begin("Spaced stroke");
+        split.begin("Spaced stroke");
+        stroke(&mut whole, (3.5, 8.5), (59.5, 8.5), options, erase);
+        stroke(&mut split, (3.5, 8.5), (3.5, 8.5), options, erase);
+        for x in 3..59 {
+            stroke(
+                &mut split,
+                (x as f32 + 0.5, 8.5),
+                (x as f32 + 1.5, 8.5),
+                options,
+                erase,
+            );
+        }
+        assert_eq!(whole.pixels(), split.pixels());
+        assert_eq!(whole.pixels()[8 * 64 + 9], [20, 100, 180, 200]);
+        let result = whole.pixels().to_vec();
+        whole.commit();
+        whole.undo();
+        whole.begin("Spaced stroke");
+        stroke(&mut whole, (3.5, 8.5), (59.5, 8.5), options, erase);
+        assert_eq!(whole.pixels(), result);
+        whole.cancel();
+        assert!(whole.pixels().iter().all(|p| *p == [20, 100, 180, 200]));
+    }
+}
