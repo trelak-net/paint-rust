@@ -8,6 +8,7 @@ mod help;
 mod histogram;
 mod lasso;
 mod panels;
+mod paste;
 mod preferences;
 mod render_controls;
 mod rulers;
@@ -165,6 +166,7 @@ pub struct Editor {
     text_font: Option<(ab_glyph::FontArc, String)>,
     effect_dialog: Option<EffectDialog>,
     selection_transform: Option<selection_transform::Dialog>,
+    paste_confirmation: Option<paste::Image>,
     last_effect: Option<Effect>,
     levels_channel: usize,
     effect_parameters: std::collections::HashMap<std::mem::Discriminant<Effect>, Effect>,
@@ -312,6 +314,7 @@ impl Editor {
             text_font: None,
             effect_dialog: None,
             selection_transform: None,
+            paste_confirmation: None,
             last_effect: None,
             levels_channel: 0,
             effect_parameters: Default::default(),
@@ -567,36 +570,30 @@ impl Editor {
     }
     fn paste_with_mode(&mut self, new_layer: bool) {
         self.finish_stroke();
+        if new_layer && !self.document.can_add_layer() {
+            self.status = "Cannot add another layer to this document".into();
+            return;
+        }
         let clipboard = self.clipboard.clone();
-        let mut document = self.document.snapshot();
-        document.set_selection(self.document.selection());
-        self.start_cancellable_file_job("paste image", move |cancel| {
+        self.start_cancellable_file_job("read clipboard image", move |cancel| {
             if cancel.load(std::sync::atomic::Ordering::Relaxed) {
                 return Err(files::CANCELLED.into());
             }
             let (width, height, pixels) =
                 crate::clipboard::with_backend(&clipboard, |backend| backend.read())?;
-            if cancel.load(std::sync::atomic::Ordering::Relaxed) {
-                return Err(files::CANCELLED.into());
-            }
-            if new_layer {
-                document.paste_layer(width, height, &pixels)?;
-            } else {
-                document.paste_active_cancellable(width, height, &pixels, cancel)?;
+            Document::validate_size(width, height)?;
+            if pixels.len() != width as usize * height as usize {
+                return Err("Invalid clipboard pixel buffer".into());
             }
             if cancel.load(std::sync::atomic::Ordering::Relaxed) {
                 return Err(files::CANCELLED.into());
             }
-            let label = match (
+            Ok(Outcome::ClipboardImage(paste::Image {
+                width,
+                height,
+                pixels,
                 new_layer,
-                width > document.width || height > document.height,
-            ) {
-                (true, true) => "Paste layer (image clipped to canvas)",
-                (true, false) => "Paste layer",
-                (false, true) => "Paste pixels (image clipped to canvas)",
-                (false, false) => "Paste pixels",
-            };
-            Ok(Outcome::Edited(Box::new(document), label.into(), true))
+            }))
         });
     }
 
@@ -687,6 +684,7 @@ impl Editor {
         if self.text_dialog.is_some()
             || self.effect_dialog.is_some()
             || self.selection_transform.is_some()
+            || self.paste_confirmation.is_some()
         {
             return;
         }
@@ -769,6 +767,7 @@ impl Editor {
             || self.text_dialog.is_some()
             || self.effect_dialog.is_some()
             || self.selection_transform.is_some()
+            || self.paste_confirmation.is_some()
         {
             return;
         }
@@ -2928,6 +2927,7 @@ impl Editor {
             && self.text_dialog.is_none()
             && self.effect_dialog.is_none()
             && self.selection_transform.is_none()
+            && self.paste_confirmation.is_none()
             && self.resize_dialog.is_none()
             && self.layer_properties.is_none()
             && !self.document.editing()
@@ -2945,6 +2945,7 @@ impl Editor {
         }
         if ctx.input(|i| i.viewport().close_requested()) {
             self.cancel_selection_transform();
+            self.paste_confirmation = None;
         }
         if ctx.input(|i| i.viewport().close_requested()) && self.effect_dialog.is_some() {
             self.effect_dialog = None;
@@ -2991,6 +2992,7 @@ impl Editor {
             && self.text_dialog.is_none()
             && self.effect_dialog.is_none()
             && self.selection_transform.is_none()
+            && self.paste_confirmation.is_none()
             && !self.recovery_prompt;
 
         if enabled {
@@ -3005,6 +3007,7 @@ impl Editor {
             && self.text_dialog.is_none()
             && self.effect_dialog.is_none()
             && self.selection_transform.is_none()
+            && self.paste_confirmation.is_none()
             && !self.recovery_prompt;
         let name = self
             .path
@@ -3533,6 +3536,7 @@ impl Editor {
                 self.canvas(ui);
             });
         self.dialogs(ctx);
+        self.show_paste_confirmation(ctx);
         self.show_selection_transform(ctx);
         self.show_help(ctx);
         if let Some(recovery) = &mut self.recovery {
@@ -3551,6 +3555,7 @@ impl Editor {
             && !self.allow_close
             && !self.document.editing()
             && self.selection_transform.is_none()
+            && self.paste_confirmation.is_none()
             && self.workspace_history_needs_storage(workspace::HISTORY_RAM_BUDGET)
         {
             self.store_workspace_history_async(workspace::HISTORY_RAM_BUDGET, false);
@@ -3600,6 +3605,91 @@ impl eframe::App for Editor {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn oversized_paste_waits_for_choice_and_expands_in_one_undo_step() {
+        let ctx = egui::Context::default();
+        for new_layer in [false, true] {
+            let mut editor = Editor::blank(&ctx);
+            editor.document = Document::new(3, 2, [10, 20, 30, 255]).unwrap();
+            let original = editor.document.pixels().to_vec();
+            let selection = Some(Selection {
+                x: 2,
+                y: 1,
+                width: 1,
+                height: 1,
+                mask: None,
+                ellipse: None,
+            });
+            editor.document.set_selection(selection.clone());
+            editor.receive_paste_image(paste::Image {
+                width: 2,
+                height: 2,
+                pixels: vec![[100, 50, 25, 128]; 4],
+                new_layer,
+            });
+            assert!(editor.paste_confirmation.is_some());
+            assert!(editor.file_job.is_none());
+            assert_eq!(editor.document.pixels(), original);
+            assert!(!editor.document.dirty());
+            let image = editor.paste_confirmation.take().unwrap();
+            editor.apply_paste_image(image, true);
+            wait_for_files(&mut editor, &ctx);
+            assert_eq!((editor.document.width, editor.document.height), (4, 3));
+            assert_eq!(
+                editor.document.layers().len(),
+                if new_layer { 2 } else { 1 }
+            );
+            assert_eq!(editor.document.pixels()[6], [100, 50, 25, 128]);
+            assert_eq!(editor.document.pixels()[11], [100, 50, 25, 128]);
+            assert_eq!(editor.document.history().count(), 1);
+            assert!(editor.document.undo());
+            assert_eq!((editor.document.width, editor.document.height), (3, 2));
+            assert_eq!(editor.document.pixels(), original);
+            assert_eq!(editor.document.selection(), selection);
+            assert!(!editor.document.dirty());
+        }
+    }
+    #[test]
+    fn oversized_paste_can_clip_or_cancel_without_expanding() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.document = Document::new(2, 2, [255; 4]).unwrap();
+        editor.receive_paste_image(paste::Image {
+            width: 3,
+            height: 3,
+            pixels: vec![[12, 34, 56, 78]; 9],
+            new_layer: false,
+        });
+        frame(
+            &mut editor,
+            &ctx,
+            vec![egui::Event::Key {
+                key: Key::Escape,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers::NONE,
+            }],
+        );
+        assert!(editor.paste_confirmation.is_none());
+        assert!(!editor.document.dirty());
+        assert!(!editor.document.can_undo());
+        editor.apply_paste_image(
+            paste::Image {
+                width: 3,
+                height: 3,
+                pixels: vec![[12, 34, 56, 78]; 9],
+                new_layer: false,
+            },
+            false,
+        );
+        wait_for_files(&mut editor, &ctx);
+        assert_eq!((editor.document.width, editor.document.height), (2, 2));
+        assert_eq!(editor.document.pixels(), &[[12, 34, 56, 78]; 4]);
+        assert!(editor.status.contains("clipped"));
+        assert!(editor.document.undo());
+        assert_eq!(editor.document.pixels(), &[[255; 4]; 4]);
+    }
     #[test]
     fn clone_requires_source_and_recolor_uses_secondary_color() {
         let ctx = egui::Context::default();

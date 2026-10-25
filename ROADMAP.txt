@@ -86,6 +86,7 @@ independent tasks; do not silently reduce the required scope.
 [x] Thumbnail tabs, switching, reordering, individual close and close all.
 [x] Save/discard/cancel flows across multiple dirty documents.
 [x] Paste clipboard image into a new unsaved document with exact dimensions and preserved existing tabs.
+[x] Oversized clipboard confirmation with transparent canvas expansion, clipping or cancellation.
 [x] Distinct active-layer/new-layer paste commands and shortcuts with selected output and Move activation.
 [x] Sequential Save All with raster confirmation and cancellation/error guards.
 2. Workspace

@@ -1448,8 +1448,9 @@ Ctrl+V now replaces RGBA on the active layer. Ctrl+Shift+V creates a new layer;
 Ctrl+Alt+V creates a new image. The pasted rectangle becomes selected and Move
 pixels activates. Clipboard pixels, including transparent RGB, are copied exactly.
 Existing selection geometry determines placement but does not clip the pasted
-rectangle. Without a selection, placement is centered. Oversized data is currently
-clipped with an explicit completion label; a canvas-size choice is still pending.
+rectangle. Without a selection, placement is centered. When pasted pixels extend beyond the canvas, a confirmation offers expansion,
+explicit clipping, or cancellation. Expansion preserves existing layer positions
+and publishes the resize and paste as one undoable operation.
 Paste is one undoable operation that restores both pixels and the prior selection.
 Backspace fills with primary color; Shift+Backspace uses secondary. Polygon point
 editing and text fields retain their own Backspace behavior. Tests cover each

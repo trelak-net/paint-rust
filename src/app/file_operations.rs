@@ -12,6 +12,7 @@ pub(super) enum DocumentEdit {
 }
 
 pub(super) enum Outcome {
+    ClipboardImage(paste::Image),
     SelectionCopied,
     PastedImage(Box<Document>),
     TextFont(ab_glyph::FontArc, String),
@@ -391,6 +392,7 @@ impl Editor {
         let operation = job.operation;
         self.file_job = None;
         match result {
+            Ok(Outcome::ClipboardImage(image)) => self.receive_paste_image(image),
             Ok(Outcome::SelectionCopied) => {
                 self.status = "Copied selection geometry as JSON text".into()
             }

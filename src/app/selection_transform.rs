@@ -111,6 +111,7 @@ impl Editor {
             || self.effect_dialog.is_some()
             || self.text_dialog.is_some()
             || self.selection_transform.is_some()
+            || self.paste_confirmation.is_some()
         {
             return;
         }

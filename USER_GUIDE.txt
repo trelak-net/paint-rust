@@ -42,3 +42,6 @@ Ctrl+V pastes into the active layer. Ctrl+Shift+V creates a new layer, and
 Ctrl+Alt+V creates a new image sized to the clipboard. Pasted pixels are selected
 and the Move tool activates. Backspace fills the selection with primary color;
 Shift+Backspace uses secondary color.
+
+If pasted pixels extend beyond the canvas, choose Expand canvas to keep them all,
+Keep canvas to clip them, or Cancel. Expansion and paste undo together.
