@@ -45,7 +45,7 @@ fn connected_color_selection_does_not_cross_diagonals_or_row_boundaries() {
 #[test]
 fn tolerance_is_inclusive_and_transparent_hidden_color_is_ignored() {
     let cancel = AtomicBool::new(false);
-    let pixels = [[20, 40, 60, 255], [25, 40, 60, 255], [26, 40, 60, 255]];
+    let pixels = [[20, 40, 60, 255], [30, 40, 60, 255], [32, 40, 60, 255]];
     let selection = color_cancellable(3, 1, &pixels, (0, 0), 5, true, &cancel).unwrap();
     assert!(selected(&selection, 1, 0));
     assert!(!selected(&selection, 2, 0));
@@ -68,4 +68,25 @@ fn invalid_images_seeds_and_cancellation_are_rejected() {
         color_cancellable(1, 1, &[[0; 4]], (0, 0), 0, true, &AtomicBool::new(true)).unwrap_err(),
         paint_rust::files::CANCELLED
     );
+}
+
+#[test]
+fn color_distance_uses_all_channels_and_preserves_exact_zero() {
+    use paint_rust::selection::{AlphaMatch, tolerance_threshold};
+    let straight = AlphaMatch::Straight;
+    assert_eq!(straight.distance([0; 4], [255; 4]), 255);
+    assert_eq!(straight.distance([0, 0, 0, 255], [20, 0, 0, 255]), 10);
+    assert!(straight.distance([0, 0, 0, 255], [20, 20, 20, 255]) > 10);
+    assert_eq!(straight.distance([1, 0, 0, 0], [0; 4]), 1);
+    assert_eq!(
+        AlphaMatch::Premultiplied.distance([255, 0, 0, 0], [0, 255, 0, 0]),
+        0
+    );
+    assert_eq!(
+        [0, 25, 50, 75, 100].map(tolerance_threshold),
+        [0, 16, 64, 143, 255]
+    );
+    for percent in 0..100 {
+        assert!(tolerance_threshold(percent) <= tolerance_threshold(percent + 1));
+    }
 }

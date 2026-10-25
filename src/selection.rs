@@ -268,27 +268,38 @@ pub enum AlphaMatch {
     Straight,
 }
 impl AlphaMatch {
-    pub(crate) fn components(self, p: crate::document::Pixel) -> [u8; 4] {
-        if self == Self::Straight {
-            return p;
+    fn components(self, p: crate::document::Pixel) -> [f32; 4] {
+        let mut values = p.map(|value| f32::from(value) / 255.0);
+        if self == Self::Premultiplied {
+            let alpha = values[3];
+            for value in &mut values[..3] {
+                *value = *value * alpha + (1.0 - alpha) * 0.5;
+            }
         }
-        [
-            ((u16::from(p[0]) * u16::from(p[3]) + 127) / 255) as u8,
-            ((u16::from(p[1]) * u16::from(p[3]) + 127) / 255) as u8,
-            ((u16::from(p[2]) * u16::from(p[3]) + 127) / 255) as u8,
-            p[3],
-        ]
+        values
     }
+
+    /// Normalized Euclidean RGBA distance, with transparent RGB ignored when requested.
+    pub fn distance(self, a: crate::document::Pixel, b: crate::document::Pixel) -> u8 {
+        if a == b || (self == Self::Premultiplied && a[3] == 0 && b[3] == 0) {
+            return 0;
+        }
+        let squared: f32 = self
+            .components(a)
+            .into_iter()
+            .zip(self.components(b))
+            .map(|(a, b)| (a - b) * (a - b))
+            .sum();
+        (squared.sqrt() * 127.5).round().clamp(1.0, 255.0) as u8
+    }
+
     pub fn matches(
         self,
         a: crate::document::Pixel,
         b: crate::document::Pixel,
         tolerance: u8,
     ) -> bool {
-        self.components(a)
-            .into_iter()
-            .zip(self.components(b))
-            .all(|(a, b)| a.abs_diff(b) <= tolerance)
+        self.distance(a, b) <= tolerance
     }
     pub fn label(self) -> &'static str {
         match self {
@@ -305,7 +316,13 @@ pub struct ColorMatch {
     pub contiguous: bool,
 }
 
-/// Select colors by maximum premultiplied RGBA channel difference (0–255).
+/// Convert a displayed percentage to a quadratic color-distance threshold.
+pub fn tolerance_threshold(percent: u8) -> u8 {
+    let value = (f32::from(percent.min(100)) * 2.55).round() as u16;
+    ((value * value + 127) / 255) as u8
+}
+
+/// Select colors by normalized Euclidean premultiplied RGBA distance (0–255).
 /// Connected mode follows four-neighbor connectivity; global mode samples all pixels.
 pub fn color_cancellable(
     width: u32,
@@ -355,15 +372,11 @@ pub fn color_region_cancellable(
     if domain.is_some_and(|selection| !selection.contains(seed.0 as usize, seed.1 as usize)) {
         return raster_selection(width, vec![0; pixels.len()], (width, height, 0, 0), cancel);
     }
-    let reference = alpha.components(pixels[start]);
+    let reference = pixels[start];
     let matches = |index: usize| {
         domain.is_none_or(|selection| {
             selection.contains(index % width as usize, index / width as usize)
-        }) && alpha
-            .components(pixels[index])
-            .iter()
-            .zip(reference)
-            .all(|(a, b)| a.abs_diff(b) <= tolerance)
+        }) && alpha.matches(pixels[index], reference, tolerance)
     };
     let mut mask = vec![0_u8; pixels.len()];
     if contiguous {

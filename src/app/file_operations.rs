@@ -246,7 +246,7 @@ impl Editor {
         let document = self.document.snapshot();
         let previous = self.document.selection();
         let mode = self.selection_mode;
-        let tolerance = self.color_tolerance;
+        let tolerance = paint_rust::selection::tolerance_threshold(self.color_tolerance);
         let alpha = self.color_alpha;
         let contiguous = self.color_contiguous;
         let merged = self.color_sample_merged;
@@ -291,7 +291,7 @@ impl Editor {
         document.set_selection(self.document.selection());
         let options = paint_rust::selection::ColorMatch {
             alpha: self.color_alpha,
-            tolerance: self.color_tolerance,
+            tolerance: paint_rust::selection::tolerance_threshold(self.color_tolerance),
             contiguous: self.color_contiguous,
         };
         let merged = self.color_sample_merged;

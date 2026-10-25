@@ -56,3 +56,9 @@ RecolorRampNative.pdn: native Windows 5.1.12 recolor operation on CASTOR,
 100% hardness/tolerance, single click at document pixel (175,24). All 17500
 output pixels match the Rust full-coverage operation exactly. Both fixtures
 use MIT OR Apache-2.0 and contain no external artwork.
+
+RecolorRampTolerance50Native.pdn: the same original ramp, restored with Undo,
+then recolored using the same settings at 50% tolerance on CASTOR (native
+Windows editor 5.1.12, 2026-10-25). Cell interiors match exactly. Native region
+boundary feathering is not yet reproduced; tests explicitly exclude a two-pixel
+cell border for this fixture only. MIT OR Apache-2.0, no external artwork.

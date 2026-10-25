@@ -1776,7 +1776,9 @@ impl Editor {
                                     from.to_srgba_unmultiplied()
                                 },
                                 to: drawing_color.to_srgba_unmultiplied(),
-                                tolerance: self.color_tolerance,
+                                tolerance: paint_rust::selection::tolerance_threshold(
+                                    self.color_tolerance,
+                                ),
                             }
                         };
                         self.document.paint_segment(
@@ -2041,7 +2043,11 @@ impl Editor {
                     ui.selectable_value(&mut self.recolor_once, true, "Sample once per stroke");
                     ui.selectable_value(&mut self.recolor_once, false, "Primary/secondary color");
                 });
-            ui.add(egui::Slider::new(&mut self.color_tolerance, 0..=255).text("Color tolerance"));
+            ui.add(
+                egui::Slider::new(&mut self.color_tolerance, 0..=100)
+                    .suffix("%")
+                    .text("Color tolerance"),
+            );
             ui.small(if self.recolor_once {
                 "First clicked color → primary; right button uses secondary."
             } else {
@@ -2081,7 +2087,11 @@ impl Editor {
                 });
         }
         if matches!(self.tool, Tool::ColorSelect | Tool::Fill) {
-            ui.add(egui::Slider::new(&mut self.color_tolerance, 0..=255).text("Tolerance"));
+            ui.add(
+                egui::Slider::new(&mut self.color_tolerance, 0..=100)
+                    .suffix("%")
+                    .text("Tolerance"),
+            );
             ui.checkbox(&mut self.color_contiguous, "Contiguous");
             ui.checkbox(&mut self.color_sample_merged, "Sample merged image");
         }

@@ -136,7 +136,8 @@ independent tasks; do not silently reduce the required scope.
 [x] Independent clone source-layer identity across reorder/undo and frozen merged sampling.
 [x] Recolor sampling once per stroke with independent left/right replacement colors.
 [x] Recolor RGBA shade shifts and quantized source-over, with exact native color/alpha ramp fixture.
-[ ] Recolor tolerance-range and soft-edge comparison parity.
+[x] Shared Euclidean RGBA matching and percentage tolerance; native 50% ramp cell interiors validated.
+[ ] Recolor region-edge feathering and soft-brush comparison parity.
 [x] Fill tolerance, connected/global modes and active/merged sampling within selection boundaries.
 [x] Premultiplied/straight alpha comparison for color selection and sampled fill.
 [x] Linear, reflected, radial, diamond and conical gradients; blend, replace and transparency modes.

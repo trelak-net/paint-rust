@@ -75,8 +75,8 @@ fn merged_sampling_changes_only_active_pixels_and_tolerance_is_fixed_to_seed() {
         "Lower".into(),
         vec![
             [100, 100, 100, 255],
-            [105, 100, 100, 255],
             [110, 100, 100, 255],
+            [120, 100, 100, 255],
         ],
     );
     let upper = Layer::new("Upper".into(), vec![[0; 4]; 3]);
