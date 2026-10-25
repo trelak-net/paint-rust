@@ -49,9 +49,15 @@ pub enum BlendMode {
     Lighten,
     Difference,
     Add,
+    ColorBurn,
+    ColorDodge,
+    Reflect,
+    Glow,
+    Negation,
+    Xor,
 }
 impl BlendMode {
-    pub const ALL: [Self; 8] = [
+    pub const ALL: [Self; 14] = [
         Self::Normal,
         Self::Multiply,
         Self::Screen,
@@ -60,6 +66,12 @@ impl BlendMode {
         Self::Lighten,
         Self::Difference,
         Self::Add,
+        Self::ColorBurn,
+        Self::ColorDodge,
+        Self::Reflect,
+        Self::Glow,
+        Self::Negation,
+        Self::Xor,
     ];
     pub fn name(self) -> &'static str {
         match self {
@@ -71,6 +83,12 @@ impl BlendMode {
             Self::Lighten => "Lighten",
             Self::Difference => "Difference",
             Self::Add => "Add",
+            Self::ColorBurn => "Color burn",
+            Self::ColorDodge => "Color dodge",
+            Self::Reflect => "Reflect",
+            Self::Glow => "Glow",
+            Self::Negation => "Negation",
+            Self::Xor => "XOR",
         }
     }
 }
@@ -1379,6 +1397,36 @@ fn blend_layer(dst: Pixel, src: Pixel, opacity: u8, mode: BlendMode) -> Pixel {
             BlendMode::Lighten => a.max(b),
             BlendMode::Difference => (a - b).abs(),
             BlendMode::Add => (a + b).min(1.0),
+            BlendMode::ColorBurn => {
+                if b == 0.0 {
+                    0.0
+                } else {
+                    (1.0 - (1.0 - a) / b).max(0.0)
+                }
+            }
+            BlendMode::ColorDodge => {
+                if b == 1.0 {
+                    1.0
+                } else {
+                    (a / (1.0 - b)).min(1.0)
+                }
+            }
+            BlendMode::Reflect => {
+                if b == 1.0 {
+                    1.0
+                } else {
+                    (a * a / (1.0 - b)).min(1.0)
+                }
+            }
+            BlendMode::Glow => {
+                if a == 1.0 {
+                    1.0
+                } else {
+                    (b * b / (1.0 - a)).min(1.0)
+                }
+            }
+            BlendMode::Negation => 1.0 - (1.0 - a - b).abs(),
+            BlendMode::Xor => f64::from(dst[c] ^ src[c]) / 255.0,
             BlendMode::Normal => b,
         };
         result[c] = (((1.0 - sa) * da * a + (1.0 - da) * sa * b + sa * da * mixed) / alpha * 255.0)

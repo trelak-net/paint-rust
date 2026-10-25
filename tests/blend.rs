@@ -75,3 +75,19 @@ fn project_v2_preserves_modes_and_v1_remains_readable() {
     assert_eq!(loaded.layers()[0].blend_mode, BlendMode::Normal);
     assert_eq!(loaded.pixels(), single.pixels());
 }
+
+#[test]
+fn additional_blend_modes_match_opaque_reference_values() {
+    let mut doc = layered();
+    for (mode, expected) in [
+        (BlendMode::ColorBurn, [57, 0, 0, 255]),
+        (BlendMode::ColorDodge, [255, 247, 249, 255]),
+        (BlendMode::Reflect, [182, 145, 195, 255]),
+        (BlendMode::Glow, [255, 95, 45, 255]),
+        (BlendMode::Negation, [210, 250, 250, 255]),
+        (BlendMode::Xor, [172, 242, 250, 255]),
+    ] {
+        doc.set_layer_style("Top".into(), 255, mode);
+        assert_eq!(doc.composite()[0], expected, "{mode:?}");
+    }
+}
