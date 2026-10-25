@@ -312,7 +312,7 @@ impl Editor {
         });
     }
 
-    fn begin_text(&mut self, ctx: &egui::Context, origin: (f32, f32)) {
+    fn begin_text(&mut self, ctx: &egui::Context, origin: (f32, f32), color: Color32) {
         let data = ctx.fonts(|fonts| {
             let definitions = fonts.definitions();
             definitions
@@ -340,7 +340,7 @@ impl Editor {
                     content: String::new(),
                     origin,
                     size: 32.0,
-                    color: self.color.to_srgba_unmultiplied(),
+                    color: color.to_srgba_unmultiplied(),
                 },
             );
             self.text_dialog = Some(TextDialog {
@@ -349,7 +349,7 @@ impl Editor {
                 font,
                 origin,
                 size: 32.0,
-                color: self.color,
+                color,
                 focus: true,
             });
         } else {
@@ -1101,26 +1101,21 @@ impl Editor {
                         );
                     }
                 }
-                if ui.is_enabled()
-                    && self.tool == Tool::Fill
-                    && ui.input(|i| i.focused)
-                    && !self.suppress_stroke
-                    && !self.panning
-                    && response.clicked_by(egui::PointerButton::Secondary)
-                    && let Some(pos) = response.interact_pointer_pos()
-                {
-                    let local = (pos - rect.min) / self.zoom;
-                    self.start_fill(
-                        local.x.floor() as i32,
-                        local.y.floor() as i32,
-                        self.secondary_color.to_srgba_unmultiplied(),
-                    );
-                }
                 let drawing_button = if self.last_point.is_some() {
                     self.stroke_button
-                } else if self.tool == Tool::Pencil
-                    && (ui.input(|i| i.pointer.secondary_down())
-                        || response.clicked_by(egui::PointerButton::Secondary))
+                } else if matches!(
+                    self.tool,
+                    Tool::Brush
+                        | Tool::Pencil
+                        | Tool::Fill
+                        | Tool::Picker
+                        | Tool::Line
+                        | Tool::Rectangle
+                        | Tool::Ellipse
+                        | Tool::Gradient
+                        | Tool::Text
+                ) && (ui.input(|i| i.pointer.secondary_down())
+                    || response.clicked_by(egui::PointerButton::Secondary))
                 {
                     egui::PointerButton::Secondary
                 } else {
@@ -1142,6 +1137,12 @@ impl Editor {
                 {
                     let local = (pos - rect.min) / self.zoom;
                     let point = (local.x, local.y);
+                    let drawing_color = if drawing_button == egui::PointerButton::Secondary {
+                        self.secondary_color
+                    } else {
+                        self.color
+                    };
+
                     if self.last_point.is_none() {
                         self.stroke_button = drawing_button;
                         let origin = ui.input(|i| i.pointer.press_origin()).unwrap_or(pos);
@@ -1155,7 +1156,7 @@ impl Editor {
                             } else {
                                 "Move pixels"
                             }),
-                            Tool::Text => self.begin_text(ui.ctx(), point),
+                            Tool::Text => self.begin_text(ui.ctx(), point, drawing_color),
                             Tool::Select => {
                                 self.selection_before = Some(self.document.selection());
                             }
@@ -1165,16 +1166,21 @@ impl Editor {
                                     .document
                                     .sample(local.x.floor() as i32, local.y.floor() as i32)
                                 {
-                                    self.color = Color32::from_rgba_unmultiplied(
+                                    let sampled = Color32::from_rgba_unmultiplied(
                                         pixel[0], pixel[1], pixel[2], pixel[3],
                                     );
+                                    if drawing_button == egui::PointerButton::Secondary {
+                                        self.secondary_color = sampled;
+                                    } else {
+                                        self.color = sampled;
+                                    }
                                 }
                             }
                             Tool::Fill => {
                                 self.start_fill(
                                     local.x.floor() as i32,
                                     local.y.floor() as i32,
-                                    self.color.to_srgba_unmultiplied(),
+                                    drawing_color.to_srgba_unmultiplied(),
                                 );
                             }
                             Tool::Line => self.document.begin("Line"),
@@ -1205,7 +1211,7 @@ impl Editor {
                             self.last_point.or(self.shape_origin).unwrap_or(point),
                             point,
                             self.brush_size,
-                            self.color.to_srgba_unmultiplied(),
+                            drawing_color.to_srgba_unmultiplied(),
                             self.tool == Tool::Eraser,
                         );
                         self.texture_dirty = true;
@@ -1242,7 +1248,7 @@ impl Editor {
                                 from: origin,
                                 to: end,
                                 style: ShapeStyle {
-                                    color: self.color.to_srgba_unmultiplied(),
+                                    color: drawing_color.to_srgba_unmultiplied(),
                                     width: self.brush_size,
                                     filled: self.shape_filled,
                                 },
@@ -1254,8 +1260,13 @@ impl Editor {
                             from: self.shape_origin.unwrap_or(point),
                             to: point,
                             style: GradientStyle {
-                                start: self.color.to_srgba_unmultiplied(),
-                                end: self.secondary_color.to_srgba_unmultiplied(),
+                                start: drawing_color.to_srgba_unmultiplied(),
+                                end: if drawing_button == egui::PointerButton::Secondary {
+                                    self.color
+                                } else {
+                                    self.secondary_color
+                                }
+                                .to_srgba_unmultiplied(),
                                 radial: self.radial_gradient,
                             },
                         });
@@ -1352,6 +1363,7 @@ impl Editor {
         }
         if self.tool == Tool::Gradient {
             ui.checkbox(&mut self.radial_gradient, "Radial gradient");
+            ui.small("Right drag reverses colors");
         }
         if matches!(self.tool, Tool::Select | Tool::Polygon) {
             if self.tool == Tool::Select {
@@ -1394,13 +1406,13 @@ impl Editor {
                 | Tool::Ellipse
                 | Tool::Picker
         ) {
-            ui.small("X swaps primary and secondary colors");
+            ui.small("Left: primary · Right: secondary · X: swap");
         }
         if self.tool == Tool::Eraser {
             ui.small("Drag to erase · Escape cancels");
         }
         if self.tool == Tool::Text {
-            ui.small("Click to place text");
+            ui.small("Left: primary text · Right: secondary text");
         }
     }
 
@@ -2284,8 +2296,13 @@ impl Editor {
                                         &label,
                                     )
                                 });
-                                if response.on_hover_text(label).clicked() {
+                                let response = response.on_hover_text(format!(
+                                    "{label} (left click); set secondary with right click"
+                                ));
+                                if response.clicked() {
                                     self.color = color;
+                                } else if response.clicked_by(egui::PointerButton::Secondary) {
+                                    self.secondary_color = color;
                                 }
                             }
                         });
@@ -2652,6 +2669,103 @@ mod tests {
             editor.undo();
             assert!(editor.document.layers() == before.layers());
             assert_eq!(editor.document.selection(), Some(selection));
+        }
+    }
+
+    #[test]
+    fn secondary_drawing_tools_commit_once_and_escape_restores_pixels() {
+        for tool in [
+            Tool::Brush,
+            Tool::Pencil,
+            Tool::Line,
+            Tool::Rectangle,
+            Tool::Ellipse,
+            Tool::Gradient,
+        ] {
+            for cancel in [false, true] {
+                let ctx = egui::Context::default();
+                let mut editor = Editor::blank(&ctx);
+                editor.tool = tool;
+                editor.color = Color32::BLACK;
+                editor.secondary_color = Color32::RED;
+                frame(&mut editor, &ctx, vec![]);
+                let start = Pos2::new(350.0, 250.0);
+                let end = Pos2::new(390.0, 280.0);
+                let button = |pos, pressed| egui::Event::PointerButton {
+                    pos,
+                    pressed,
+                    button: egui::PointerButton::Secondary,
+                    modifiers: egui::Modifiers::NONE,
+                };
+                frame(
+                    &mut editor,
+                    &ctx,
+                    vec![egui::Event::PointerMoved(start), button(start, true)],
+                );
+                frame(&mut editor, &ctx, vec![egui::Event::PointerMoved(end)]);
+                if cancel {
+                    frame(
+                        &mut editor,
+                        &ctx,
+                        vec![egui::Event::Key {
+                            key: Key::Escape,
+                            physical_key: None,
+                            pressed: true,
+                            repeat: false,
+                            modifiers: egui::Modifiers::NONE,
+                        }],
+                    );
+                    // Continuing to hold the button must not restart a cancelled gesture.
+                    frame(&mut editor, &ctx, vec![egui::Event::PointerMoved(start)]);
+                }
+                frame(&mut editor, &ctx, vec![button(end, false)]);
+                wait_for_files(&mut editor, &ctx);
+                if cancel {
+                    assert_eq!(editor.document.history().count(), 0);
+                } else {
+                    assert_eq!(editor.document.history().count(), 1);
+                    assert!(editor.document.pixels().iter().any(|p| p[0] > p[1]));
+                    editor.undo();
+                }
+                assert!(editor.document.pixels().iter().all(|p| *p == [255; 4]));
+                assert_eq!(editor.color, Color32::BLACK);
+                assert_eq!(editor.secondary_color, Color32::RED);
+            }
+        }
+    }
+
+    #[test]
+    fn secondary_picker_updates_only_secondary_and_text_uses_secondary() {
+        for tool in [Tool::Picker, Tool::Text] {
+            let ctx = egui::Context::default();
+            let mut editor = Editor::blank(&ctx);
+            editor.tool = tool;
+            editor.color = Color32::BLACK;
+            editor.secondary_color = Color32::RED;
+            frame(&mut editor, &ctx, vec![]);
+            let pos = Pos2::new(350.0, 250.0);
+            for pressed in [true, false] {
+                frame(
+                    &mut editor,
+                    &ctx,
+                    vec![
+                        egui::Event::PointerMoved(pos),
+                        egui::Event::PointerButton {
+                            pos,
+                            pressed,
+                            button: egui::PointerButton::Secondary,
+                            modifiers: egui::Modifiers::NONE,
+                        },
+                    ],
+                );
+            }
+            assert_eq!(editor.color, Color32::BLACK);
+            if tool == Tool::Picker {
+                assert_eq!(editor.secondary_color, Color32::WHITE);
+            } else {
+                assert_eq!(editor.text_dialog.as_ref().unwrap().color, Color32::RED);
+            }
+            assert!(!editor.document.dirty());
         }
     }
 
@@ -3132,7 +3246,7 @@ mod tests {
         let ctx = egui::Context::default();
         let mut editor = Editor::blank(&ctx);
         frame(&mut editor, &ctx, vec![]);
-        editor.begin_text(&ctx, (10.0, 10.0));
+        editor.begin_text(&ctx, (10.0, 10.0), editor.color);
         editor.text_dialog.as_mut().unwrap().content = "Keep this draft".into();
         let mut input = egui::RawInput::default();
         input

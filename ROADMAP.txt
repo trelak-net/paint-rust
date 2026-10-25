@@ -56,8 +56,8 @@ source and artwork self-contained; preserve project files and unsaved user edits
 Next iteration: workspace and tool consistency
 ----------------------------------------------
 [x] Compact labelled tools, contextual options and one interactive history panel.
-[ ] Consistent primary/secondary gestures for drawing, shapes, gradients and sampling.
-[ ] Regression checks for right-button cancellation and single-step undo.
+[x] Consistent primary/secondary gestures for drawing, shapes, gradients and sampling.
+[x] Regression checks for right-button cancellation and single-step undo.
 
 Later iterations
 ----------------

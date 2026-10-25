@@ -720,3 +720,14 @@ The Pencil tool (N) draws a continuous one-pixel path without antialiasing,
 independent of brush size. Left drag uses the primary color; right drag uses the
 secondary color. It replaces RGBA pixels on the active layer, respects selections,
 and records each gesture as one undo step. Escape cancels the current gesture.
+
+Workspace and pointer conventions
+---------------------------------
+The tool panel uses compact labelled buttons and can be resized. Contextual options
+appear above the canvas; the interactive history is shown once, below the layers.
+Brush, Pencil, flood fill, lines, rectangles, ellipses and text use the primary
+color with the left button and the secondary color with the right button. The
+picker updates the corresponding color. Right-dragging a gradient reverses its
+colors. Palette swatches accept left/right clicks for primary/secondary colors.
+Eraser retains left-drag erasing; selection and movement retain left-button gestures.
+Escape cancels a drawing gesture even while its initiating button remains held.
