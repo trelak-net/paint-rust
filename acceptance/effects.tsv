@@ -45,7 +45,7 @@ Sharpen	Photo	partial	Unsharp-style detail boost	Exact transfer function, ranges
 Sketch Blur	Blurs	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
 Soften Portrait	Photo	partial	Gaussian detail softening with strength and warm/cool channel balance; source alpha retained	External reference algorithm/ranges and color-space audit
 Square Blur	Blurs	partial	Box blur with replicated edges	Exact transfer function, ranges, color space and reference output audit
-Straighten	Photo	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Straighten	Photo	partial	Canvas-center rotation with optional frame-filling zoom, fixed dimensions and alpha-aware sampling	Interactive horizon guide, external reference ranges and interpolation audit
 Surface Blur	Blurs	partial	Spatial and color-distance weighted smoothing; source alpha retained	External reference kernel/ranges and large-image performance audit
 Temperature / Tint	Adjustment	partial	Warm/cool and green/magenta channel controls; alpha retained	External reference output, ranges and color-space audit
 Tile Reflection	Distort	partial	Rotated periodic XY displacement with tile size and signed strength	External reference kernels/ranges, edge modes and large-image performance audit

@@ -18,7 +18,7 @@ fn random(x: i64, y: i64, seed: u32) -> f64 {
     n ^= n >> 16;
     f64::from(n) / f64::from(u32::MAX)
 }
-fn sample(source: &[Pixel], width: u32, height: u32, x: f64, y: f64) -> Pixel {
+pub(super) fn sample(source: &[Pixel], width: u32, height: u32, x: f64, y: f64) -> Pixel {
     let x = x.clamp(0.0, f64::from(width - 1));
     let y = y.clamp(0.0, f64::from(height - 1));
     let (x0, y0) = (x.floor() as u32, y.floor() as u32);

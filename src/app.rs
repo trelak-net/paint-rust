@@ -2531,6 +2531,11 @@ impl Editor {
                                 changed |= ui.add(egui::Slider::new(shadows,-100..=100).text("Shadows")).changed();
                                 changed |= ui.add(egui::Slider::new(highlights,-100..=100).text("Highlights")).changed();
                             }
+                            Effect::Straighten {angle,auto_crop} => {
+                                changed |= ui.add(egui::Slider::new(angle,-45.0..=45.0).text("Angle (degrees)")).changed();
+                                changed |= ui.checkbox(auto_crop,"Fill frame after rotation").changed();
+                                ui.small("Rotates around the canvas center; image dimensions stay unchanged.");
+                            }
                             Effect::BokehBlur {radius,gamma,quality} => {
                                 changed |= ui.add(egui::Slider::new(radius,0.0..=100.0).text("Radius (px)")).changed();
                                 changed |= ui.add(egui::Slider::new(gamma,0.1..=5.0).text("Gamma boost")).changed();
@@ -3177,6 +3182,7 @@ impl Editor {
                                 softness: 0.5,
                                 warmth: 0.1,
                             },
+                            Effect::Straighten {angle:0.0,auto_crop:true},
                             Effect::BokehBlur {radius:4.0,gamma:1.0,quality:2},
                             Effect::Quantize(16),
                             Effect::OilPainting {radius:3,bins:16},

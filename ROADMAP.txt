@@ -149,6 +149,7 @@ independent tasks; do not silently reduce the required scope.
 [x] Surface blur with radius and color threshold controls.
 [x] Colored drop shadow with blur, opacity, offset and object-effect menu.
 [x] Glow and portrait softening with blur, strength and warm/cool controls.
+[x] Straighten with optional frame-filling zoom and fixed canvas dimensions.
 [x] Seeded noise, median/percentile blur, edge detection and directional emboss.
 [x] Median noise reduction, local-extrema outlines and color-preserving directional relief.
 [x] Oil painting, pencil sketch and ink sketch with dedicated artistic menu and persistent controls.

@@ -16,6 +16,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 #[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum Effect {
+    Straighten {
+        angle: f32,
+        auto_crop: bool,
+    },
     BokehBlur {
         radius: f32,
         gamma: f32,
@@ -179,6 +183,7 @@ impl Effect {
         let range = |v: f32, min: f32, max: f32| v.is_finite() && (min..=max).contains(&v);
         match self {
             Self::Move(_) | Self::Shape(_) | Self::Gradient(_) | Self::FreeTransform(_) => false,
+            Self::Straighten { angle, .. } => range(angle, -45.0, 45.0),
             Self::BokehBlur {
                 radius,
                 gamma,
@@ -326,7 +331,8 @@ impl Effect {
             | Self::Pixelate(_) => "Distort",
             Self::DropShadow { .. } => "Object",
             Self::AddNoise { .. } | Self::ReduceNoise { .. } => "Noise",
-            Self::Glow { .. }
+            Self::Straighten { .. }
+            | Self::Glow { .. }
             | Self::SoftenPortrait { .. }
             | Self::RedEye(_)
             | Self::Vignette { .. }
@@ -349,6 +355,7 @@ impl Effect {
     }
     pub fn name(self) -> &'static str {
         match self {
+            Self::Straighten { .. } => "Straighten",
             Self::BokehBlur { .. } => "Bokeh blur",
             Self::Quantize(_) => "Quantize",
             Self::OilPainting { .. } => "Oil painting",
@@ -533,6 +540,9 @@ pub fn render(
         return None;
     }
     let mut output = match effect {
+        Effect::Straighten { angle, auto_crop } => {
+            photo::straighten(source, width, height, angle, auto_crop, cancel)?
+        }
         Effect::BokehBlur {
             radius,
             gamma,
@@ -789,7 +799,8 @@ pub fn render(
                         let steps = f64::from(levels.clamp(2, 32) - 1);
                         (f64::from(*channel) * steps / 255.0).round() * 255.0 / steps
                     }
-                    Effect::BokehBlur { .. }
+                    Effect::Straighten { .. }
+                    | Effect::BokehBlur { .. }
                     | Effect::Quantize(_)
                     | Effect::OilPainting { .. }
                     | Effect::PencilSketch { .. }

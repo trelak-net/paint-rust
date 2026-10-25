@@ -1349,3 +1349,14 @@ cancellation every 16 pixels. Tests cover constant images, point symmetry, hidde
 colors, gamma brightness, selected-area publication and invalid values. Native
 sampling parity, alternate edge modes and high-quality large-image performance
 remain pending.
+
+Straighten
+-----------
+Effects > Photo > Straighten rotates the active layer around the canvas center
+from -45 to +45 degrees. Fill frame after rotation computes the zoom needed to
+keep the frame filled; canvas dimensions stay unchanged. Without this option,
+newly exposed corners are transparent. Sampling uses premultiplied bilinear
+interpolation. Zero angle preserves exact bytes, and selection limits output.
+Tests cover opaque corners in landscape/portrait/thin images, rotation direction,
+center stability, selection, cancellation and bounds. An interactive horizon
+line and external interpolation/range comparisons remain pending.
