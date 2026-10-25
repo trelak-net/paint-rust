@@ -1,6 +1,6 @@
 {
   "target": "x86_64-unknown-linux-gnu",
-  "cargo_lock_sha256": "7e113083b18cb2c177a8a74df5249b0e95f94382db21094e3dcb629056dbcdec",
+  "cargo_lock_sha256": "020b5df570366476eb6d1b617dc9ab0559a96833513306ba4780984a0c6a4adc",
   "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1",
   "rust_library_notice_sha256": "5647be074c8edf7339fd863055923a8fc80bc5610a8d4661ec3b767b9d392c27",
   "packages": [
@@ -231,6 +231,33 @@
       }
     },
     {
+      "name": "aligned",
+      "version": "0.4.3",
+      "license": "MIT OR Apache-2.0",
+      "authors": [],
+      "repository": "https://github.com/rust-embedded-community/aligned",
+      "source": "https://crates.io/crates/aligned/0.4.3",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "LICENSE-MIT": "035e70219855119df4273b3c5b97543ae82e0dd60c520416e759107c602f651b"
+      }
+    },
+    {
+      "name": "aligned-vec",
+      "version": "0.6.4",
+      "license": "MIT",
+      "authors": [
+        "sarah <>"
+      ],
+      "repository": "https://github.com/sarah-ek/aligned-vec/",
+      "source": "https://crates.io/crates/aligned-vec/0.6.4",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE": "bf5a93d1014429b43e01c57d45bea928748fbf37d059306145a1a0a91aec2014"
+      }
+    },
+    {
       "name": "alloc-no-stdlib",
       "version": "2.0.4",
       "license": "BSD-3-Clause",
@@ -265,6 +292,21 @@
       }
     },
     {
+      "name": "anyhow",
+      "version": "1.0.104",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "David Tolnay <dtolnay@gmail.com>"
+      ],
+      "repository": "https://github.com/dtolnay/anyhow",
+      "source": "https://crates.io/crates/anyhow/1.0.104",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      }
+    },
+    {
       "name": "arboard",
       "version": "3.7.0",
       "license": "MIT OR Apache-2.0",
@@ -276,6 +318,20 @@
         "LICENSE-APACHE.txt": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
         "LICENSE-MIT.txt": "f35468024534e0f4f16bb94cd0e88c87fbd1314f919c2645a07d350fb77b40c0",
         "SOURCE-COPYRIGHTS.txt": "4d075a9e9cc8a1abcc3bc416e24e20b2a54e932f9a5e9ca40a25a9ea57c823bc"
+      }
+    },
+    {
+      "name": "arg_enum_proc_macro",
+      "version": "0.3.4",
+      "license": "MIT",
+      "authors": [
+        "Luca Barbato <lu_zero@gentoo.org>"
+      ],
+      "repository": "https://github.com/lu-zero/arg_enum_proc_macro",
+      "source": "https://crates.io/crates/arg_enum_proc_macro/0.3.4",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE": "8eb4fb5a6505da473ee195f326007c8c7e28357e3e6a11e293ce2a480384030c"
       }
     },
     {
@@ -319,6 +375,22 @@
       "files": {
         "LICENSE-APACHE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
         "LICENSE-MIT": "9520ccef8aacc5e40e5158676a6c98c7bd8f8ffe8474a64ac0d213024be0bcd5"
+      }
+    },
+    {
+      "name": "as-slice",
+      "version": "0.2.1",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "Jorge Aparicio <jorge@japaric.io>",
+        "Emil Fresk <emil.fresk@gmail.com>"
+      ],
+      "repository": "https://github.com/japaric/as-slice",
+      "source": "https://crates.io/crates/as-slice/0.2.1",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "LICENSE-MIT": "c986bcdb83103d4ddf58aeb7b5302359782e54dc4eea14a0cc27c62dcbd50729"
       }
     },
     {
@@ -621,6 +693,61 @@
       }
     },
     {
+      "name": "av-data",
+      "version": "0.4.4",
+      "license": "MIT",
+      "authors": [
+        "Luca Barbato <lu_zero@gentoo.org>"
+      ],
+      "repository": null,
+      "source": "https://crates.io/crates/av-data/0.4.4",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE": "0ffd79084929c4913ea1223796dccfb1d86abfb359e86ef7c0137d9805bfaacd"
+      }
+    },
+    {
+      "name": "av-scenechange",
+      "version": "0.14.1",
+      "license": "MIT",
+      "authors": [
+        "Josh Holmer <jholmer.in@gmail.com>"
+      ],
+      "repository": "https://github.com/rust-av/av-scenechange",
+      "source": "https://crates.io/crates/av-scenechange/0.14.1",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE": "1e27e28eafbc439fd153d0cca093fcb9ca83f269d93393e641ce5664181fd41b"
+      }
+    },
+    {
+      "name": "av1-grain",
+      "version": "0.2.5",
+      "license": "BSD-2-Clause",
+      "authors": [],
+      "repository": "https://github.com/rust-av/av1-grain",
+      "source": "https://crates.io/crates/av1-grain/0.2.5",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE": "acc9e236b0011c638714a16f5634fa5bcd3be111182e237c3049db700c3521e2",
+        "SOURCE-COPYRIGHTS.txt": "e14d7fe52dca858382ee6e7ab5904db4cfbe8ab5c459b98222789118761dc4f8"
+      }
+    },
+    {
+      "name": "avif-serialize",
+      "version": "0.8.9",
+      "license": "BSD-3-Clause",
+      "authors": [
+        "Kornel Lesiński <kornel@geekhood.net>"
+      ],
+      "repository": "https://github.com/kornelski/avif-serialize",
+      "source": "https://crates.io/crates/avif-serialize/0.8.9",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE": "04556ac17ea72a59b51986f9ce00ed6508b714fcdb432e4e76d8bb311c858b69"
+      }
+    },
+    {
       "name": "base64",
       "version": "0.22.1",
       "license": "MIT OR Apache-2.0",
@@ -668,6 +795,38 @@
       }
     },
     {
+      "name": "bitreader",
+      "version": "0.3.11",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "Ilkka Rauta <ilkka.rauta@gmail.com>"
+      ],
+      "repository": "https://github.com/irauta/bitreader",
+      "source": "https://crates.io/crates/bitreader/0.3.11",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+        "LICENSE-MIT": "8583712ee2b062ff3d4d6d3e16f19ff0f92bc3a0a4beeec11a81ef00146fbd4f",
+        "SOURCE-COPYRIGHTS.txt": "b85e64ece535f06c7df62e636bb8cf65a1e6dba224109c7bd522ef8234294f94"
+      }
+    },
+    {
+      "name": "bitstream-io",
+      "version": "4.10.0",
+      "license": "MIT/Apache-2.0",
+      "authors": [
+        "Brian Langenberger <bjl@usa.net>"
+      ],
+      "repository": "https://github.com/tuffy/bitstream-io",
+      "source": "https://crates.io/crates/bitstream-io/4.10.0",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "LICENSE-MIT": "7a65c85c057a5538fdd8215b7aa2f3e0353f3b07c3e00bb409070b2b81375895",
+        "SOURCE-COPYRIGHTS.txt": "92ddac6d3f45d180f30cd7668bdfcb9587306d02eab2cc03eb50b7361530a689"
+      }
+    },
+    {
       "name": "blocking",
       "version": "1.7.0",
       "license": "Apache-2.0 OR MIT",
@@ -694,6 +853,36 @@
       "files": {
         "LICENSE": "c0c56f26d9c051cac4d200c34c84e7ae9aaa853e01a982a1df08b09931e518ae",
         "SOURCE-COPYRIGHTS.txt": "1a9c63f31001e9b2f69c96f0e77c452046d08d8654ef3f6e3b4f4d585895a52d"
+      }
+    },
+    {
+      "name": "built",
+      "version": "0.8.1",
+      "license": "MIT",
+      "authors": [
+        "Lukas Lueg <lukas.lueg@gmail.com>"
+      ],
+      "repository": "https://github.com/lukaslueg/built",
+      "source": "https://crates.io/crates/built/0.8.1",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE": "09ae9a35173439c76fdbc953b5988d815715dc9bdc6191b88e9a393190bb62c4",
+        "SOURCE-COPYRIGHTS.txt": "4baab537becabc3d97cd7efedf58b4b418c796d7a8e07da0b4766491a41bd615"
+      }
+    },
+    {
+      "name": "byte-slice-cast",
+      "version": "1.2.3",
+      "license": "MIT",
+      "authors": [
+        "Sebastian Dröge <sebastian@centricular.com>"
+      ],
+      "repository": "https://github.com/sdroege/bytes-num-slice-cast",
+      "source": "https://crates.io/crates/byte-slice-cast/1.2.3",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE": "c524732311819f888ce57b1b56148feaa6e9b1705fcb158e7e5d71554ccf39ed",
+        "SOURCE-COPYRIGHTS.txt": "65ed624bdfac21d1f2271fb133c8fc53347123a35f7763025700ea8ad62f4f0a"
       }
     },
     {
@@ -729,6 +918,21 @@
       }
     },
     {
+      "name": "byteorder",
+      "version": "1.5.0",
+      "license": "Unlicense OR MIT",
+      "authors": [
+        "Andrew Gallant <jamslam@gmail.com>"
+      ],
+      "repository": "https://github.com/BurntSushi/byteorder",
+      "source": "https://crates.io/crates/byteorder/1.5.0",
+      "upstream_notices": [],
+      "files": {
+        "COPYING": "01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f",
+        "LICENSE-MIT": "0f96a83840e146e43c0ec96a22ec1f392e0680e6c1226e6f3ba87e0740af850f"
+      }
+    },
+    {
       "name": "byteorder-lite",
       "version": "0.1.0",
       "license": "Unlicense OR MIT",
@@ -738,6 +942,21 @@
       "upstream_notices": [],
       "files": {
         "LICENSE-MIT": "0f96a83840e146e43c0ec96a22ec1f392e0680e6c1226e6f3ba87e0740af850f"
+      }
+    },
+    {
+      "name": "bytes",
+      "version": "1.12.1",
+      "license": "MIT",
+      "authors": [
+        "Carl Lerche <me@carllerche.com>",
+        "Sean McArthur <sean@seanmonstar.com>"
+      ],
+      "repository": "https://github.com/tokio-rs/bytes",
+      "source": "https://crates.io/crates/bytes/1.12.1",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE": "45f522cacecb1023856e46df79ca625dfc550c94910078bd8aec6e02880b3d42"
       }
     },
     {
@@ -807,6 +1026,22 @@
       "files": {
         "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
         "LICENSE-MIT": "378f5840b258e2779c39418f3f2d7b2ba96f1c7917dd6be0713f88305dbda397"
+      }
+    },
+    {
+      "name": "cfg-expr",
+      "version": "0.20.10",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "Embark <opensource@embark-studios.com>",
+        "Jake Shadle <jake.shadle@embark-studios.com>"
+      ],
+      "repository": "https://github.com/EmbarkStudios/cfg-expr",
+      "source": "https://crates.io/crates/cfg-expr/0.20.10",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "8173d5c29b4f956d532781d2b86e4e30f83e6b7878dce18c919451d6ba707c90",
+        "LICENSE-MIT": "090a294a492ab2f41388252312a65cf2f0e423330b721a68c6665ac64766753b"
       }
     },
     {
@@ -901,6 +1136,32 @@
       }
     },
     {
+      "name": "crossbeam-deque",
+      "version": "0.8.8",
+      "license": "MIT OR Apache-2.0",
+      "authors": [],
+      "repository": "https://github.com/crossbeam-rs/crossbeam",
+      "source": "https://crates.io/crates/crossbeam-deque/0.8.8",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "LICENSE-MIT": "5734ed989dfca1f625b40281ee9f4530f91b2411ec01cb748223e7eb87e201ab"
+      }
+    },
+    {
+      "name": "crossbeam-epoch",
+      "version": "0.9.21",
+      "license": "MIT OR Apache-2.0",
+      "authors": [],
+      "repository": "https://github.com/crossbeam-rs/crossbeam",
+      "source": "https://crates.io/crates/crossbeam-epoch/0.9.21",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "LICENSE-MIT": "5734ed989dfca1f625b40281ee9f4530f91b2411ec01cb748223e7eb87e201ab"
+      }
+    },
+    {
       "name": "crossbeam-utils",
       "version": "0.8.23",
       "license": "MIT OR Apache-2.0",
@@ -943,6 +1204,34 @@
       "files": {
         "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
         "LICENSE-MIT": "b38f11f6096706e6de553dabe2a7ed142d59b6fa8c97e290c67496154745cdd5"
+      }
+    },
+    {
+      "name": "dav1d",
+      "version": "0.11.1",
+      "license": "MIT",
+      "authors": [
+        "Luca Barbato <lu_zero@gentoo.org>"
+      ],
+      "repository": "https://github.com/rust-av/dav1d-rs",
+      "source": "https://crates.io/crates/dav1d/0.11.1",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE": "8eb4fb5a6505da473ee195f326007c8c7e28357e3e6a11e293ce2a480384030c"
+      }
+    },
+    {
+      "name": "dav1d-sys",
+      "version": "0.8.3",
+      "license": "MIT",
+      "authors": [
+        "Luca Barbato <lu_zero@gentoo.org>"
+      ],
+      "repository": "https://github.com/rust-av/dav1d-rs",
+      "source": "https://crates.io/crates/dav1d-sys/0.8.3",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE": "8eb4fb5a6505da473ee195f326007c8c7e28357e3e6a11e293ce2a480384030c"
       }
     },
     {
@@ -1194,6 +1483,19 @@
       }
     },
     {
+      "name": "either",
+      "version": "1.19.0",
+      "license": "MIT OR Apache-2.0",
+      "authors": [],
+      "repository": "https://github.com/rayon-rs/either",
+      "source": "https://crates.io/crates/either/1.19.0",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "LICENSE-MIT": "7576269ea71f767b99297934c0b2367532690f8c4badc695edf8e04ab6a1e545"
+      }
+    },
+    {
       "name": "emath",
       "version": "0.33.3",
       "license": "MIT OR Apache-2.0",
@@ -1356,6 +1658,34 @@
       }
     },
     {
+      "name": "equator",
+      "version": "0.4.2",
+      "license": "MIT",
+      "authors": [
+        "sarah <>"
+      ],
+      "repository": "https://github.com/sarah-ek/equator/",
+      "source": "https://crates.io/crates/equator/0.4.2",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE": "97d3424e347e8fa236806725ce9837bb453d4dfc9ce1d4733fd6023a8038000a"
+      }
+    },
+    {
+      "name": "equator-macro",
+      "version": "0.4.2",
+      "license": "MIT",
+      "authors": [
+        "sarah <>"
+      ],
+      "repository": "https://github.com/sarah-ek/equator/",
+      "source": "https://crates.io/crates/equator-macro/0.4.2",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE": "97d3424e347e8fa236806725ce9837bb453d4dfc9ce1d4733fd6023a8038000a"
+      }
+    },
+    {
       "name": "equivalent",
       "version": "1.0.3",
       "license": "Apache-2.0 OR MIT",
@@ -1414,6 +1744,21 @@
       "files": {
         "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
         "LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      }
+    },
+    {
+      "name": "fallible_collections",
+      "version": "0.4.9",
+      "license": "MIT/Apache-2.0",
+      "authors": [
+        "vcombey <vcombey@student.42.fr>"
+      ],
+      "repository": "https://github.com/vcombey/fallible_collections.git",
+      "source": "https://crates.io/crates/fallible_collections/0.4.9",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "LICENSE-MIT": "0621878e61f0d0fda054bcbe02df75192c28bde1ecc8289cbd86aeba2dd72720"
       }
     },
     {
@@ -1865,6 +2210,21 @@
     },
     {
       "name": "hashbrown",
+      "version": "0.13.2",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "Amanieu d'Antras <amanieu@gmail.com>"
+      ],
+      "repository": "https://github.com/rust-lang/hashbrown",
+      "source": "https://crates.io/crates/hashbrown/0.13.2",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "LICENSE-MIT": "ff8f68cb076caf8cefe7a6430d4ac086ce6af2ca8ce2c4e5a2004d4552ef52a2"
+      }
+    },
+    {
+      "name": "hashbrown",
       "version": "0.15.5",
       "license": "MIT OR Apache-2.0",
       "authors": [
@@ -1889,6 +2249,19 @@
       "files": {
         "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
         "LICENSE-MIT": "ff8f68cb076caf8cefe7a6430d4ac086ce6af2ca8ce2c4e5a2004d4552ef52a2"
+      }
+    },
+    {
+      "name": "heck",
+      "version": "0.5.0",
+      "license": "MIT OR Apache-2.0",
+      "authors": [],
+      "repository": "https://github.com/withoutboats/heck",
+      "source": "https://crates.io/crates/heck/0.5.0",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "LICENSE-MIT": "7b63ecd5f1902af1b63729947373683c32745c16a10e8e6292e2e2dcd7e90ae0"
       }
     },
     {
@@ -2083,6 +2456,21 @@
       }
     },
     {
+      "name": "imgref",
+      "version": "1.12.3",
+      "license": "CC0-1.0 OR Apache-2.0",
+      "authors": [
+        "Kornel Lesiński <kornel@geekhood.net>"
+      ],
+      "repository": "https://github.com/kornelski/imgref",
+      "source": "https://crates.io/crates/imgref/1.12.3",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+        "LICENSE-CC0": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499"
+      }
+    },
+    {
       "name": "indexmap",
       "version": "2.14.2",
       "license": "Apache-2.0 OR MIT",
@@ -2093,6 +2481,21 @@
       "files": {
         "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
         "LICENSE-MIT": "ecc269ef87fd38a1d98e30bfac9ba964a9dbd9315c3770fed98d4d7cb5882055"
+      }
+    },
+    {
+      "name": "itertools",
+      "version": "0.14.0",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "bluss"
+      ],
+      "repository": "https://github.com/rust-itertools/itertools",
+      "source": "https://crates.io/crates/itertools/0.14.0",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "LICENSE-MIT": "7576269ea71f767b99297934c0b2367532690f8c4badc695edf8e04ab6a1e545"
       }
     },
     {
@@ -2530,6 +2933,32 @@
       }
     },
     {
+      "name": "loop9",
+      "version": "0.1.5",
+      "license": "MIT",
+      "authors": [
+        "Kornel <kornel@geekhood.net>"
+      ],
+      "repository": "https://gitlab.com/kornelski/loop9.git",
+      "source": "https://crates.io/crates/loop9/0.1.5",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE": "af8a1cdcbe552c0378784bdb3e2d427bdfd6fca5d3af58df875c5cafa7c5a58b"
+      }
+    },
+    {
+      "name": "maybe-rayon",
+      "version": "0.1.1",
+      "license": "MIT",
+      "authors": [],
+      "repository": "https://github.com/shssoichiro/maybe-rayon",
+      "source": "https://crates.io/crates/maybe-rayon/0.1.1",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE": "3b2dbf86845042813be71eecfea49de557bb4ea908b9b15f5b285259714fa183"
+      }
+    },
+    {
       "name": "memchr",
       "version": "2.8.3",
       "license": "Unlicense OR MIT",
@@ -2633,6 +3062,53 @@
       }
     },
     {
+      "name": "mp4parse",
+      "version": "0.17.0",
+      "license": "MPL-2.0",
+      "authors": [
+        "Ralph Giles <giles@mozilla.com>",
+        "Matthew Gregan <kinetik@flim.org>",
+        "Alfredo Yang <ayang@mozilla.com>",
+        "Jon Bauman <jbauman@mozilla.com>",
+        "Bryce Seager van Dyk <bvandyk@mozilla.com>"
+      ],
+      "repository": "https://github.com/mozilla/mp4parse-rust",
+      "source": "https://crates.io/crates/mp4parse/0.17.0",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE": "fab3dd6bdab226f1c08630b1dd917e11fcb4ec5e1e020e2c16f83a0a13863e85",
+        "SOURCE-COPYRIGHTS.txt": "797d2f0dbed98306b90516b2892ca3f75b2f2a60629d9eb57ddd891e953b735b"
+      }
+    },
+    {
+      "name": "new_debug_unreachable",
+      "version": "1.0.6",
+      "license": "MIT",
+      "authors": [
+        "Matt Brubeck <mbrubeck@limpet.net>",
+        "Jonathan Reem <jonathan.reem@gmail.com>"
+      ],
+      "repository": "https://github.com/mbrubeck/rust-debug-unreachable",
+      "source": "https://crates.io/crates/new_debug_unreachable/1.0.6",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-MIT": "f7715d38a3fa1b4ac97c5729740752505a39cb92ee83ab5b102aeb5eaa7cdea4"
+      }
+    },
+    {
+      "name": "no_std_io2",
+      "version": "0.9.4",
+      "license": "Apache-2.0 OR MIT",
+      "authors": [],
+      "repository": "https://github.com/wcampbell0x2a/no-std-io2",
+      "source": "https://crates.io/crates/no_std_io2/0.9.4",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "c6596eb7be8581c18be736c846fb9173b69eccf6ef94c5135893ec56bd92ba08",
+        "LICENSE-MIT": "f21c3bfdc47749b5912eb55f0661b2b8fd9696b3e09e7d97a1fc78fb52c3eb1b"
+      }
+    },
+    {
       "name": "nohash-hasher",
       "version": "0.2.0",
       "license": "Apache-2.0 OR MIT",
@@ -2646,6 +3122,98 @@
         "LICENSE-APACHE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
         "LICENSE-MIT": "ec353d4fecf7963b4c054384557e5dbc3c7a717997eb4a3815b315721a6aa75a",
         "SOURCE-COPYRIGHTS.txt": "cd31dd5531386771d2411489d0c125e78a88a96ef1697dbb6cea89311455c836"
+      }
+    },
+    {
+      "name": "nom",
+      "version": "8.0.0",
+      "license": "MIT",
+      "authors": [
+        "contact@geoffroycouprie.com"
+      ],
+      "repository": "https://github.com/rust-bakery/nom",
+      "source": "https://crates.io/crates/nom/8.0.0",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE": "4dbda04344456f09a7a588140455413a9ac59b6b26a1ef7cdf9c800c012d87f0"
+      }
+    },
+    {
+      "name": "noop_proc_macro",
+      "version": "0.3.0",
+      "license": "MIT",
+      "authors": [
+        "Luca Barbato <lu_zero@gentoo.org>"
+      ],
+      "repository": "https://github.com/lu-zero/noop_proc_macro",
+      "source": "https://crates.io/crates/noop_proc_macro/0.3.0",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE": "d69f24ad84ec2ade64c0b68bdb31b41170e997b158370342056918329cc9af1e"
+      }
+    },
+    {
+      "name": "num-bigint",
+      "version": "0.4.8",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "The Rust Project Developers"
+      ],
+      "repository": "https://github.com/rust-num/num-bigint",
+      "source": "https://crates.io/crates/num-bigint/0.4.8",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "LICENSE-MIT": "6485b8ed310d3f0340bf1ad1f47645069ce4069dcc6bb46c7d5c6faf41de1fdb",
+        "SOURCE-COPYRIGHTS.txt": "16fd090c3324601e4c1a3245b9ed581b4aa09870c3174a0da5ec8b083d64eb5c"
+      }
+    },
+    {
+      "name": "num-derive",
+      "version": "0.4.2",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "The Rust Project Developers"
+      ],
+      "repository": "https://github.com/rust-num/num-derive",
+      "source": "https://crates.io/crates/num-derive/0.4.2",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "LICENSE-MIT": "6485b8ed310d3f0340bf1ad1f47645069ce4069dcc6bb46c7d5c6faf41de1fdb",
+        "SOURCE-COPYRIGHTS.txt": "eedfc753b5d681b367d3243ab921bbb190510f78d521c3ce420564064b27661e"
+      }
+    },
+    {
+      "name": "num-integer",
+      "version": "0.1.47",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "The Rust Project Developers"
+      ],
+      "repository": "https://github.com/rust-num/num-integer",
+      "source": "https://crates.io/crates/num-integer/0.1.47",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "LICENSE-MIT": "6485b8ed310d3f0340bf1ad1f47645069ce4069dcc6bb46c7d5c6faf41de1fdb",
+        "SOURCE-COPYRIGHTS.txt": "02d9f1bd0adf2631b12aae2288b64322893e7242b4c70b363ecf85a7cd0899aa"
+      }
+    },
+    {
+      "name": "num-rational",
+      "version": "0.4.2",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "The Rust Project Developers"
+      ],
+      "repository": "https://github.com/rust-num/num-rational",
+      "source": "https://crates.io/crates/num-rational/0.4.2",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "LICENSE-MIT": "6485b8ed310d3f0340bf1ad1f47645069ce4069dcc6bb46c7d5c6faf41de1fdb",
+        "SOURCE-COPYRIGHTS.txt": "02d9f1bd0adf2631b12aae2288b64322893e7242b4c70b363ecf85a7cd0899aa"
       }
     },
     {
@@ -2756,6 +3324,37 @@
         "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
         "LICENSE-MIT": "c9a75f18b9ab2927829a208fc6aa2cf4e63b8420887ba29cdb265d6619ae82d5",
         "SOURCE-COPYRIGHTS.txt": "c57463616fd7746eead42d905cbc3ce938540672cb5b0ce50962b44a18dda11d"
+      }
+    },
+    {
+      "name": "paste",
+      "version": "1.0.15",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "David Tolnay <dtolnay@gmail.com>"
+      ],
+      "repository": "https://github.com/dtolnay/paste",
+      "source": "https://crates.io/crates/paste/1.0.15",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      }
+    },
+    {
+      "name": "pastey",
+      "version": "0.1.1",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "Aditya Kumar <git@adityais.dev>",
+        "David Tolnay <dtolnay@gmail.com>"
+      ],
+      "repository": "https://github.com/as1100k/pastey",
+      "source": "https://crates.io/crates/pastey/0.1.1",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
       }
     },
     {
@@ -2980,6 +3579,32 @@
       }
     },
     {
+      "name": "profiling-procmacros",
+      "version": "1.0.18",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "Philip Degarmo <aclysma@gmail.com>"
+      ],
+      "repository": "https://github.com/aclysma/profiling",
+      "source": "https://crates.io/crates/profiling-procmacros/1.0.18",
+      "upstream_notices": [
+        {
+          "path": "upstream/profiling-procmacros-1.0.18/LICENSE-APACHE",
+          "source": "https://raw.githubusercontent.com/aclysma/profiling/8271551172eb6fa4cba47369aedd93790c623df9/LICENSE-APACHE",
+          "sha256": "10d30a673cd5e9349bdc02aeb48f14b3386d27d0da32df8f0a555d4aa16aa551"
+        },
+        {
+          "path": "upstream/profiling-procmacros-1.0.18/LICENSE-MIT",
+          "source": "https://raw.githubusercontent.com/aclysma/profiling/8271551172eb6fa4cba47369aedd93790c623df9/LICENSE-MIT",
+          "sha256": "c8167fdeeed46d3f244d3f85c5bf998ce889343691c32be2c61a8bc4b5c08333"
+        }
+      ],
+      "files": {
+        "upstream/LICENSE-APACHE": "10d30a673cd5e9349bdc02aeb48f14b3386d27d0da32df8f0a555d4aa16aa551",
+        "upstream/LICENSE-MIT": "c8167fdeeed46d3f244d3f85c5bf998ce889343691c32be2c61a8bc4b5c08333"
+      }
+    },
+    {
       "name": "pxfm",
       "version": "0.1.30",
       "license": "BSD-3-Clause OR Apache-2.0",
@@ -3094,6 +3719,35 @@
       }
     },
     {
+      "name": "rav1e",
+      "version": "0.8.1",
+      "license": "BSD-2-Clause",
+      "authors": [
+        "Thomas Daede <tdaede@xiph.org>"
+      ],
+      "repository": "https://github.com/xiph/rav1e/",
+      "source": "https://crates.io/crates/rav1e/0.8.1",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE": "2dd0a109751e939dec3f80ddcfbc1ba91553f18c574399e85c159632182a2c0a",
+        "SOURCE-COPYRIGHTS.txt": "a0152c6d4fb639249db4b151484d7c94726c9ab6c5d028bf126fc85594bcfb22"
+      }
+    },
+    {
+      "name": "ravif",
+      "version": "0.13.0",
+      "license": "BSD-3-Clause",
+      "authors": [
+        "Kornel Lesiński <kornel@geekhood.net>"
+      ],
+      "repository": "https://github.com/kornelski/cavif-rs",
+      "source": "https://crates.io/crates/ravif/0.13.0",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE": "f78709143bb9643a3fd32071a371e261e14765cb69425831a4d1c586d2e72d0d"
+      }
+    },
+    {
       "name": "raw-window-handle",
       "version": "0.6.2",
       "license": "MIT OR Apache-2.0 OR Zlib",
@@ -3107,6 +3761,32 @@
         "LICENSE-APACHE.md": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
         "LICENSE-MIT.md": "9c5a80639a57c1c945570e7ebbca0706305849ce3c098021325cca9db2f7acc4",
         "LICENSE-ZLIB.md": "ae895c8576e682f310fb70d93d9f99b1dd82872094c54a8f6cdfe2ca5c2d6ecb"
+      }
+    },
+    {
+      "name": "rayon",
+      "version": "1.12.0",
+      "license": "MIT OR Apache-2.0",
+      "authors": [],
+      "repository": "https://github.com/rayon-rs/rayon",
+      "source": "https://crates.io/crates/rayon/1.12.0",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "LICENSE-MIT": "0621878e61f0d0fda054bcbe02df75192c28bde1ecc8289cbd86aeba2dd72720"
+      }
+    },
+    {
+      "name": "rayon-core",
+      "version": "1.13.0",
+      "license": "MIT OR Apache-2.0",
+      "authors": [],
+      "repository": "https://github.com/rayon-rs/rayon",
+      "source": "https://crates.io/crates/rayon-core/1.13.0",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "LICENSE-MIT": "0621878e61f0d0fda054bcbe02df75192c28bde1ecc8289cbd86aeba2dd72720"
       }
     },
     {
@@ -3344,6 +4024,19 @@
       }
     },
     {
+      "name": "serde_spanned",
+      "version": "1.1.2",
+      "license": "MIT OR Apache-2.0",
+      "authors": [],
+      "repository": "https://github.com/toml-rs/toml",
+      "source": "https://crates.io/crates/serde_spanned/1.1.2",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "249fdb6694467dd615b259f7ddde07be3f8ae5a72cecebb0e24f6629af4215fe",
+        "LICENSE-MIT": "6efb0476a1cc085077ed49357026d8c173bf33017278ef440f222fb9cbcb66e6"
+      }
+    },
+    {
       "name": "shlex",
       "version": "2.0.1",
       "license": "MIT OR Apache-2.0",
@@ -3392,6 +4085,26 @@
       "upstream_notices": [],
       "files": {
         "LICENSE.md": "42a35170233e83e18856792e748de4c1ce4a63b2afce9a370c89ef3fe23f9f2d"
+      }
+    },
+    {
+      "name": "simd_helpers",
+      "version": "0.1.0",
+      "license": "MIT",
+      "authors": [
+        "Luca Barbato <lu_zero@gentoo.org>"
+      ],
+      "repository": "https://github.com/lu-zero/simd_helpers",
+      "source": "https://crates.io/crates/simd_helpers/0.1.0",
+      "upstream_notices": [
+        {
+          "path": "upstream/simd_helpers-0.1.0/LICENSE",
+          "source": "https://raw.githubusercontent.com/lu-zero/simd_helpers/82040194cd05affb060bf94d6f19f82a771d07fb/LICENSE",
+          "sha256": "d69f24ad84ec2ade64c0b68bdb31b41170e997b158370342056918329cc9af1e"
+        }
+      ],
+      "files": {
+        "upstream/LICENSE": "d69f24ad84ec2ade64c0b68bdb31b41170e997b158370342056918329cc9af1e"
       }
     },
     {
@@ -3620,6 +4333,36 @@
       }
     },
     {
+      "name": "system-deps",
+      "version": "7.0.8",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "Guillaume Desmottes <guillaume.desmottes@collabora.com>",
+        "Josh Triplett <josh@joshtriplett.org>"
+      ],
+      "repository": "https://github.com/gdesmott/system-deps",
+      "source": "https://crates.io/crates/system-deps/7.0.8",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      }
+    },
+    {
+      "name": "target-lexicon",
+      "version": "0.13.5",
+      "license": "Apache-2.0 WITH LLVM-exception",
+      "authors": [
+        "Dan Gohman <sunfish@mozilla.com>"
+      ],
+      "repository": "https://github.com/bytecodealliance/target-lexicon",
+      "source": "https://crates.io/crates/target-lexicon/0.13.5",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE": "268872b9816f90fd8e85db5a28d33f8150ebb8dd016653fb39ef1f94f2686bc5"
+      }
+    },
+    {
       "name": "tempfile",
       "version": "3.27.0",
       "license": "MIT OR Apache-2.0",
@@ -3755,6 +4498,20 @@
       "upstream_notices": [],
       "files": {
         "LICENSE": "f367c1b8e1aa262435251e442901da4607b4650e0e63a026f5044473ecfb90f2"
+      }
+    },
+    {
+      "name": "toml",
+      "version": "1.1.8+spec-1.1.0",
+      "license": "MIT OR Apache-2.0",
+      "authors": [],
+      "repository": "https://github.com/toml-rs/toml",
+      "source": "https://crates.io/crates/toml/1.1.8+spec-1.1.0",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "249fdb6694467dd615b259f7ddde07be3f8ae5a72cecebb0e24f6629af4215fe",
+        "LICENSE-MIT": "6efb0476a1cc085077ed49357026d8c173bf33017278ef440f222fb9cbcb66e6",
+        "SOURCE-COPYRIGHTS.txt": "8afd6d66e0db56a93adba460328eb60eb2a73c862da883092fbaab75cbf2f1ef"
       }
     },
     {
@@ -4053,6 +4810,35 @@
         "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
         "LICENSE-MIT": "436bc5a105d8e57dcd8778730f3754f7bf39c14d2f530e4cde4bd2d17a83ec3d",
         "SOURCE-COPYRIGHTS.txt": "e597a9c0e14766321ea5539e5d21ed28d261127c395ce2e94f2c80f5f0238500"
+      }
+    },
+    {
+      "name": "v_frame",
+      "version": "0.3.9",
+      "license": "BSD-2-Clause",
+      "authors": [
+        "Luca Barbato <lu_zero@gentoo.org>"
+      ],
+      "repository": "https://github.com/rust-av/v_frame",
+      "source": "https://crates.io/crates/v_frame/0.3.9",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE": "02b80951ce6c1dd25d7278977222a91b2f61a883ca272b0238c52a60a03ae90a",
+        "SOURCE-COPYRIGHTS.txt": "1f20579a233f0b6e1b9b8b88526bb1e3ddf2515170289f66fe1d0fd5e51126a7"
+      }
+    },
+    {
+      "name": "version-compare",
+      "version": "0.2.1",
+      "license": "MIT",
+      "authors": [
+        "Tim Visee <3a4fb3964f@sinenomine.email>"
+      ],
+      "repository": "https://gitlab.com/timvisee/version-compare",
+      "source": "https://crates.io/crates/version-compare/0.2.1",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE": "cedfcc7ace1639adb054bd4a19b6f8585ccb2429a60b4bf51bfeb0601058c22c"
       }
     },
     {
@@ -4441,6 +5227,20 @@
       "upstream_notices": [],
       "files": {
         "LICENSE": "2cdce1ff4ca8f455ef169691ea493407e23c32ecdea5fd9b3a6fc82be5b49b5a"
+      }
+    },
+    {
+      "name": "y4m",
+      "version": "0.8.0",
+      "license": "MIT",
+      "authors": [
+        "Kagami Hiiragi <kagami@genshiken.org>"
+      ],
+      "repository": "https://github.com/image-rs/y4m.git",
+      "source": "https://crates.io/crates/y4m/0.8.0",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE": "1327309babc5f34582ae4731b9022c75ff6fa9903eb17cfd113f4abae95b898b"
       }
     },
     {

@@ -32,4 +32,5 @@ pub mod raster_density;
 
 mod gif_export;
 
+mod avif;
 mod jpeg_xl;

@@ -24,7 +24,7 @@ ab_glyph = "0.2"
 arboard = "3.7"
 egui_extras = { version = "=0.33.3", default-features = false, features = ["svg"] }
 eframe = { version = "=0.33.3", default-features = false, features = ["accesskit", "default_fonts", "glow", "wayland", "x11", "__screenshot"] }
-image = { version = "0.25", default-features = false, features = ["png", "jpeg", "bmp", "webp", "tiff", "tga", "gif"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "bmp", "webp", "tiff", "tga", "gif", "avif", "avif-native"] }
 rfd = "0.15"
 tempfile = "3"
 rustybuzz = "0.20.1"
@@ -33,6 +33,8 @@ unicode-script = "0.5"
 jxl-oxide = { version = "0.12.6", default-features = false, features = ["lcms2"] }
 zune-jpegxl = { version = "0.5.2", default-features = false, features = ["std"] }
 zune-core = "0.5.1"
+dav1d = "0.11"
+mp4parse = "0.17"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 winit = { version = "0.30", default-features = false, features = ["wayland-csd-adwaita"] }

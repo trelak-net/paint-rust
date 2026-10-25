@@ -8,7 +8,7 @@ WebP	partial	Read; lossless export; decoded export preview	Lossy encode options 
 GIF	partial	First-frame import; single-frame palette export with binary alpha, matte, optional Floyd-Steinberg dithering and decoded preview	Palette size controls and animation editing
 TIFF	partial	First-page import; RGBA8 export and decoded preview	Compression controls, high-bit-depth editing, metadata and multipage UI; ICC conversion/tagging supported
 JPEG XL	partial	First displayed frame import; raw/container detection; sRGB conversion, orientation and 8/16-bit SDR fixtures; lossless RGBA8 export, decoded preview and physical-resolution metadata	Lossy export, HDR tone mapping, associated alpha and animation editing
-AVIF	missing	None	Codec, options, licensing and validation
+AVIF	partial	SDR still-image import with ICC and orientation; quality/alpha export and decoded preview; bounded native preflight and independent libaom fixtures	Physical resolution, HDR, associated alpha, grids, animation, non-sRGB declarations without ICC and broader variants
 HEIC	missing	None	Codec/platform availability, licensing and validation
 DDS	partial	RGB16/24/32 and BC1/2/3/4/5 UNORM top-surface import; legacy/DX10 formats; RGBA8 export with optional full mip chain and preview	Compressed encoding, signed BC4/5 and BC6/7, mip-level import selection, arrays/cubes, advanced options and broader external fixtures
 TGA	partial	Extension-aware import; RGBA export and decoded preview	Additional variants, metadata and external fixtures

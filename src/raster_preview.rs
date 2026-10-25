@@ -52,7 +52,12 @@ impl RasterPreview {
                     if request.cancel.load(Ordering::Relaxed) {
                         return Err(files::CANCELLED.into());
                     }
-                    let decoded = if let Some(format) = request.options.format.image_format() {
+                    let decoded = if let Some(format) = request
+                        .options
+                        .format
+                        .image_format()
+                        .filter(|_| request.options.format != files::RasterFormat::Avif)
+                    {
                         let mut reader =
                             image::ImageReader::with_format(std::io::Cursor::new(&bytes), format);
                         let mut limits = image::Limits::default();

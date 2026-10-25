@@ -33,7 +33,8 @@ present, including SPDX copyright headers.
 The Rust standard library notices are included in
 licenses/dependencies/rust/COPYRIGHT-library.html. The index records the compiler
 version used to collect them. Native system libraries are supplied by the host;
-they are not bundled by the user-local installer.
+they are not bundled by the user-local installer. AVIF requires the host dav1d
+runtime; the Rust dav1d wrapper and encoder notices are included in the inventory.
 
 Regenerate after changing Cargo.lock or the compiler:
     python3 scripts/dependency_notices.py

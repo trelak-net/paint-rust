@@ -67,9 +67,17 @@ pub fn open_cancellable(path: &Path, cancel: &AtomicBool) -> Result<Document, St
             cancel,
         );
     }
-    let dimensions = raster_reader(path, cancel)?
-        .into_dimensions()
-        .map_err(|e| e.to_string())?;
+    let reader = raster_reader(path, cancel)?;
+    if reader.format() == Some(image::ImageFormat::Avif) {
+        return crate::avif::decode(
+            CancellableReader {
+                inner: File::open(path).map_err(|e| e.to_string())?,
+                cancel,
+            },
+            cancel,
+        );
+    }
+    let dimensions = reader.into_dimensions().map_err(|e| e.to_string())?;
     Document::validate_size(dimensions.0, dimensions.1)?;
     let mut reader = raster_reader(path, cancel)?;
     let mut limits = image::Limits::default();
@@ -274,6 +282,7 @@ fn write_atomic(
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RasterFormat {
+    Avif,
     JpegXl,
     Dds,
     Gif,
@@ -285,7 +294,8 @@ pub enum RasterFormat {
     WebP,
 }
 impl RasterFormat {
-    pub const ALL: [Self; 9] = [
+    pub const ALL: [Self; 10] = [
+        Self::Avif,
         Self::JpegXl,
         Self::Png,
         Self::Jpeg,
@@ -308,6 +318,7 @@ impl RasterFormat {
 
     pub fn extension(self) -> &'static str {
         match self {
+            Self::Avif => "avif",
             Self::JpegXl => "jxl",
             Self::Gif => "gif",
             Self::Dds => "dds",
@@ -321,6 +332,7 @@ impl RasterFormat {
     }
     pub fn extensions(self) -> &'static [&'static str] {
         match self {
+            Self::Avif => &["avif"],
             Self::JpegXl => &["jxl"],
             Self::Gif => &["gif"],
             Self::Dds => &["dds"],
@@ -334,6 +346,7 @@ impl RasterFormat {
     }
     pub fn image_format(self) -> Option<image::ImageFormat> {
         Some(match self {
+            Self::Avif => image::ImageFormat::Avif,
             Self::JpegXl => return None,
             Self::Gif => image::ImageFormat::Gif,
             Self::Dds => image::ImageFormat::Dds,
@@ -347,6 +360,7 @@ impl RasterFormat {
     }
     pub fn label(self) -> &'static str {
         match self {
+            Self::Avif => "AVIF",
             Self::JpegXl => "JPEG XL (lossless)",
             Self::Gif => "GIF (single frame)",
             Self::Dds => "DDS (RGBA8)",
@@ -408,6 +422,9 @@ pub fn decode_raster_bytes(
     cancel: &AtomicBool,
 ) -> Result<Document, String> {
     check_cancel(cancel)?;
+    if format == RasterFormat::Avif {
+        return crate::avif::decode(Cursor::new(bytes), cancel);
+    }
     if format == RasterFormat::JpegXl {
         return crate::jpeg_xl::decode(Cursor::new(bytes), cancel);
     }
@@ -562,6 +579,17 @@ fn encode_raster_options(
         return crate::gif_export::encode(bytes, size, writer, options.gif_dither, cancel);
     }
     match options.format {
+        RasterFormat::Avif => {
+            if size.0 > 16384 || size.1 > 16384 {
+                return Err("AVIF dimensions exceed 16,384 pixels per side".into());
+            }
+            image::codecs::avif::AvifEncoder::new_with_speed_quality(writer, 8, options.quality)
+                .with_colorspace(image::codecs::avif::ColorSpace::Srgb)
+                .with_num_threads(Some(2))
+                .write_image(&bytes, size.0, size.1, image::ExtendedColorType::Rgba8)
+                .map_err(|e| e.to_string())?;
+            return check_cancel(cancel);
+        }
         RasterFormat::Dds | RasterFormat::Gif | RasterFormat::JpegXl => {
             unreachable!("Encoded above")
         }

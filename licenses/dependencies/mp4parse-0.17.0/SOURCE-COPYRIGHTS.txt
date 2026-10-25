@@ -1,0 +1,6 @@
+src/lib.rs
+/// Copyright information of the track 'cprt'
+
+tests/public.rs
+// This file contains invalid userdata in its copyright userdata. See
+// https://bugzilla.mozilla.org/show_bug.cgi?id=1687357 for more information.

@@ -18,7 +18,8 @@ Open a file at startup:
 
 The Linux desktop needs an OpenGL driver and either Wayland or X11. Native file
 pickers use the desktop's XDG portal service. A working C linker is required to
-build. Dependencies and their exact resolved versions are recorded in Cargo.lock.
+build, together with pkg-config and dav1d development headers (libdav1d-devel on
+Fedora, libdav1d-dev on Debian-family systems). Dependencies and their exact resolved versions are recorded in Cargo.lock.
 The GUI uses eframe/egui 0.33.3 with the OpenGL renderer:
 https://docs.rs/eframe/0.33.3/eframe/
 
@@ -1715,3 +1716,33 @@ container. Source descriptive metadata is omitted. The encoder runs in a backgro
 before and after its internal encode call. Lossy encoding remains pending.
 The Linux desktop entry includes image/jxl. Decoder documentation:
 https://docs.rs/jxl-oxide/0.12.6/jxl_oxide/
+
+AVIF still images
+-----------------
+Open, Import as Layer, Save As and Export support AVIF still images. Import uses
+dav1d through the image adapter; export uses the Rust ravif/rav1e encoder. The
+quality slider affects both color and alpha. Quality 100 is not a promise of
+lossless output. Preview decodes the exact bytes that will be saved.
+
+The importer supports RGB/grayscale ICC conversion to sRGB, container rotation
+and mirroring, and straight alpha. Untagged images are treated as sRGB. HDR,
+associated alpha, animation, grids, clean-aperture cropping, layered items,
+non-square pixels, conflicting container color matrices/ranges, and unsupported
+non-sRGB color declarations without ICC are rejected explicitly. Property checks
+are conservative and can also reject unsupported properties of unused items.
+Source descriptive metadata is omitted. This first AVIF implementation does not
+retain physical resolution: reopening uses 96 DPI. It does not provide HEIC.
+
+Encoded input is limited to 128 MiB, ICC profiles to 4 MiB, and images to
+16,777,216 pixels with a maximum side of 16,384 pixels. Each coded item is drained
+with dav1d's native frame-size limit before the image adapter allocates its frames;
+multiple coded frames per item are rejected. This entails a second decoding pass.
+These are input/frame limits, not a strict cap on total process memory. Cancellation
+is checked around native calls, reads and pixel rows; a codec call itself may finish
+before cancellation takes effect. Export uses two encoder threads.
+
+Building now requires dav1d development headers and pkg-config (for example,
+libdav1d-devel on Fedora or libdav1d-dev on Debian-family systems). The executable
+also requires the matching system dav1d runtime; the installer does not bundle it.
+Independent libaom fixtures cover pixels, alpha, color profiles and rejected image
+sizes. Synthetic associated-property fixtures cover rotation and mirroring.

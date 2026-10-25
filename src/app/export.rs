@@ -79,18 +79,20 @@ impl Editor {
                 ui.small("Layers and descriptive metadata are not stored in this file. Use PRUST or PDN to keep an editable project. JPEG also loses transparency and image detail.");
                 ui.checkbox(&mut dialog.flatten_confirmed,"Save a flattened raster document");
             }
-            ui.small(if dialog.options.format == files::RasterFormat::JpegXl {
+            ui.small(if dialog.options.format == files::RasterFormat::Avif {
+                "AVIF declares sRGB. Source EXIF, location and author tags are omitted."
+            } else if dialog.options.format == files::RasterFormat::JpegXl {
                 "JPEG XL declares sRGB in the codestream. Source EXIF, location and author tags are omitted."
             } else if matches!(dialog.options.format,files::RasterFormat::Bmp | files::RasterFormat::Tga | files::RasterFormat::Gif | files::RasterFormat::Dds) {
                 "Colors use sRGB; this format is saved without an embedded profile."
             } else { "Colors use sRGB; an ICC profile is embedded. Source EXIF, location and author tags are omitted." });
-            if matches!(dialog.options.format, files::RasterFormat::Dds | files::RasterFormat::Gif | files::RasterFormat::Tga) {
+            if matches!(dialog.options.format, files::RasterFormat::Dds | files::RasterFormat::Gif | files::RasterFormat::Tga | files::RasterFormat::Avif) {
                 ui.small("Physical resolution is not stored in this format; reopening uses 96 DPI.");
             } else {
                 ui.small(format!("Physical resolution: {:.2} × {:.2} DPI.", dialog.options.dpi.x, dialog.options.dpi.y));
             }
             let mut changed=false;
-            if dialog.options.format==files::RasterFormat::Jpeg {
+            if matches!(dialog.options.format, files::RasterFormat::Jpeg | files::RasterFormat::Avif) {
                 changed |= ui.add(egui::Slider::new(&mut dialog.options.quality,1..=100).text("Quality")).changed();
             }
             if matches!(dialog.options.format,files::RasterFormat::Jpeg | files::RasterFormat::Bmp | files::RasterFormat::Gif) {
@@ -104,6 +106,9 @@ impl Editor {
             if dialog.options.format==files::RasterFormat::Gif {
                 changed |= ui.checkbox(&mut dialog.options.gif_dither, "Dither colors (Floyd–Steinberg)").changed();
                 ui.small("GIF stores one frame and up to 256 colors. Alpha below 128 becomes transparent; remaining pixels use the background color. Inspect the preview for palette changes.");
+            }
+            if dialog.options.format==files::RasterFormat::Avif {
+                ui.small("Quality affects color and alpha. Even quality 100 is not guaranteed lossless; inspect the decoded preview.");
             }
             if changed {
                 dialog.preview.request(dialog.options);
@@ -162,6 +167,7 @@ mod tests {
                 files::RasterFormat::Gif,
                 files::RasterFormat::Jpeg,
                 files::RasterFormat::JpegXl,
+                files::RasterFormat::Avif,
             ] {
                 let ctx = egui::Context::default();
                 let mut editor = Editor::blank(&ctx);
@@ -174,12 +180,17 @@ mod tests {
                     screen_rect: Some(Rect::from_min_size(Pos2::ZERO, size)),
                     ..Default::default()
                 };
-                let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+                let timeout = if format == files::RasterFormat::Avif {
+                    30
+                } else {
+                    5
+                };
+                let deadline = std::time::Instant::now() + std::time::Duration::from_secs(timeout);
                 while !editor.export_dialog.as_ref().unwrap().preview.ready {
                     let _ = ctx.run(input(), |ctx| editor.show_export(ctx));
                     assert!(
                         std::time::Instant::now() < deadline,
-                        "Export preview timed out"
+                        "{format:?} export preview timed out"
                     );
                     std::thread::sleep(std::time::Duration::from_millis(5));
                 }
