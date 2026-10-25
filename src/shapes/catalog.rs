@@ -6,7 +6,16 @@ fn vertices(shape: Shape) -> Vec<(f64, f64)> {
             .map(|i| {
                 let angle =
                     i as f64 * std::f64::consts::TAU / count as f64 - std::f64::consts::FRAC_PI_2;
-                let radius = if star && i % 2 == 1 { 0.22 } else { 0.5 };
+                let radius = if star && i % 2 == 1 {
+                    match count {
+                        6 => 0.10,
+                        8 => 0.12,
+                        12 => 0.29,
+                        _ => 0.22,
+                    }
+                } else {
+                    0.5
+                };
                 (0.5 + radius * angle.cos(), 0.5 + radius * angle.sin())
             })
             .collect()
@@ -17,7 +26,11 @@ fn vertices(shape: Shape) -> Vec<(f64, f64)> {
         Shape::Diamond => vec![(0.5, 0.0), (1.0, 0.5), (0.5, 1.0), (0.0, 0.5)],
         Shape::Pentagon => regular(5, false),
         Shape::Hexagon => regular(6, false),
+        Shape::Heptagon => regular(7, false),
         Shape::Octagon => regular(8, false),
+        Shape::StarThree => regular(6, true),
+        Shape::StarFour => regular(8, true),
+        Shape::StarSix => regular(12, true),
         Shape::Star => regular(10, true),
         Shape::Trapezoid => vec![(0.25, 0.0), (0.75, 0.0), (1.0, 1.0), (0.0, 1.0)],
         Shape::Parallelogram => vec![(0.25, 0.0), (1.0, 0.0), (0.75, 1.0), (0.0, 1.0)],
@@ -41,6 +54,115 @@ fn vertices(shape: Shape) -> Vec<(f64, f64)> {
                 })
                 .collect()
         }
+        Shape::ArrowNotched => vec![
+            (0.0, 0.25),
+            (0.6, 0.25),
+            (0.6, 0.0),
+            (1.0, 0.5),
+            (0.6, 1.0),
+            (0.6, 0.75),
+            (0.0, 0.75),
+            (0.2, 0.5),
+        ],
+        Shape::ArrowPentagon => vec![(0.0, 0.0), (0.55, 0.0), (1.0, 0.5), (0.55, 1.0), (0.0, 1.0)],
+        Shape::ArrowChevron => vec![
+            (0.0, 0.0),
+            (0.6, 0.0),
+            (1.0, 0.5),
+            (0.6, 1.0),
+            (0.0, 1.0),
+            (0.4, 0.5),
+        ],
+        Shape::CalloutRectangle => vec![
+            (0.0, 0.0),
+            (1.0, 0.0),
+            (1.0, 0.8),
+            (0.35, 0.8),
+            (0.08, 1.0),
+            (0.15, 0.8),
+            (0.0, 0.8),
+        ],
+        Shape::CalloutRounded => {
+            let mut points = Vec::with_capacity(39);
+            for (corner, (cx, cy)) in [(0.9, 0.1), (0.9, 0.7), (0.1, 0.7), (0.1, 0.1)]
+                .into_iter()
+                .enumerate()
+            {
+                if corner == 2 {
+                    points.extend([(0.35, 0.8), (0.08, 1.0), (0.15, 0.8)]);
+                }
+                for step in 0..=8 {
+                    let angle =
+                        (corner as f64 - 1.0 + step as f64 / 8.0) * std::f64::consts::FRAC_PI_2;
+                    points.push((cx + 0.1 * angle.cos(), cy + 0.1 * angle.sin()));
+                }
+            }
+            points
+        }
+        Shape::CalloutEllipse => {
+            let mut points = Vec::with_capacity(97);
+            for i in 0..96 {
+                if i == 30 {
+                    points.push((0.08, 1.0));
+                }
+                if (30..36).contains(&i) {
+                    continue;
+                }
+                let angle = i as f64 * std::f64::consts::TAU / 96.0;
+                points.push((0.5 + 0.5 * angle.cos(), 0.4 + 0.4 * angle.sin()));
+            }
+            points
+        }
+        Shape::CalloutCloud => (0..120)
+            .map(|i| {
+                let angle = i as f64 * std::f64::consts::TAU / 120.0;
+                let radius = 1.0 + 0.08 * (10.0 * angle).cos();
+                (
+                    0.56 + 0.4 * radius * angle.cos(),
+                    0.36 + 0.32 * radius * angle.sin(),
+                )
+            })
+            .collect(),
+        Shape::Lightning => vec![
+            (0.25, 0.0),
+            (0.7, 0.0),
+            (0.5, 0.38),
+            (0.82, 0.38),
+            (0.6, 0.6),
+            (1.0, 1.0),
+            (0.18, 0.48),
+            (0.43, 0.48),
+            (0.0, 0.18),
+        ],
+        Shape::CheckMark => vec![
+            (0.0, 0.5),
+            (0.16, 0.34),
+            (0.4, 0.61),
+            (0.85, 0.0),
+            (1.0, 0.14),
+            (0.42, 1.0),
+        ],
+        Shape::Multiply => vec![
+            (0.15, 0.0),
+            (0.5, 0.35),
+            (0.85, 0.0),
+            (1.0, 0.15),
+            (0.65, 0.5),
+            (1.0, 0.85),
+            (0.85, 1.0),
+            (0.5, 0.65),
+            (0.15, 1.0),
+            (0.0, 0.85),
+            (0.35, 0.5),
+            (0.0, 0.15),
+        ],
+        Shape::Gear => (0..32)
+            .map(|i| {
+                let angle = (i as f64 + 0.5) * std::f64::consts::TAU / 32.0;
+                let radius = if matches!(i % 4, 1 | 2) { 0.5 } else { 0.4 };
+                (0.5 + radius * angle.cos(), 0.5 + radius * angle.sin())
+            })
+            .collect(),
         Shape::Heart => (0..96)
             .map(|i| {
                 let t = i as f64 * std::f64::consts::TAU / 96.0;
@@ -166,6 +288,19 @@ pub(super) fn render(
                     let radius = rx.min(ry) * 0.4;
                     let (qx, qy) = ((px - cx).abs() - rx + radius, (py - cy).abs() - ry + radius);
                     radius - qx.max(qy).min(0.0) - qx.max(0.0).hypot(qy.max(0.0))
+                }
+                Shape::Gear => polygon_distance((px, py), &points)
+                    .min((((px - cx) / rx).hypot((py - cy) / ry) - 0.32) * rx.min(ry)),
+                Shape::CalloutCloud => {
+                    let bubble = |x: f64, y: f64, radius: f64| {
+                        (radius
+                            - ((px - left) / (right - left) - x)
+                                .hypot((py - top) / (bottom - top) - y))
+                            * (right - left).min(bottom - top)
+                    };
+                    polygon_distance((px, py), &points)
+                        .max(bubble(0.24, 0.76, 0.085))
+                        .max(bubble(0.1, 0.94, 0.05))
                 }
                 _ => polygon_distance((px, py), &points),
             };

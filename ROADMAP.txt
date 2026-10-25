@@ -146,8 +146,8 @@ independent tasks; do not silently reduce the required scope.
 [x] Fill tolerance, connected/global modes and active/merged sampling within selection boundaries.
 [x] Premultiplied/straight alpha comparison for color selection and sampled fill.
 [x] Linear, reflected, radial, diamond and conical gradients; blend, replace and transparency modes.
-[x] Eighteen-shape catalogue with combined outline/fill and antialiasing.
-[ ] Editable path curves, remaining shape catalogue and persistent shape handles.
+[x] Thirty-three-shape catalogue with combined outline/fill and antialiasing; all 29 native menu forms covered.
+[ ] Editable path curves, persistent shape handles and exact shape coverage comparisons.
 [x] Text alignment, letter/line spacing and antialias controls.
 [x] Background loading of local TTF/OTF/TTC fonts with session reuse.
 [x] Searchable installed-font browser with available styles and collection face indices.

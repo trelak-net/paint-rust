@@ -2192,8 +2192,21 @@ impl Editor {
             egui::ComboBox::from_label("Shape")
                 .selected_text(self.shape_kind.label())
                 .show_ui(ui, |ui| {
-                    for shape in Shape::ALL {
-                        ui.selectable_value(&mut self.shape_kind, shape, shape.label());
+                    for category in [
+                        "Basic",
+                        "Polygons and stars",
+                        "Arrows",
+                        "Callouts",
+                        "Symbols",
+                    ] {
+                        ui.strong(category);
+                        for shape in Shape::ALL
+                            .into_iter()
+                            .filter(|shape| shape.category() == category)
+                        {
+                            ui.selectable_value(&mut self.shape_kind, shape, shape.label());
+                        }
+                        ui.separator();
                     }
                 });
         }

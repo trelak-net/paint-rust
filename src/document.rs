@@ -28,9 +28,24 @@ pub enum Shape {
     Trapezoid,
     Parallelogram,
     Heart,
+    Heptagon,
+    StarThree,
+    StarFour,
+    StarSix,
+    ArrowNotched,
+    ArrowPentagon,
+    ArrowChevron,
+    CalloutRectangle,
+    CalloutRounded,
+    CalloutEllipse,
+    CalloutCloud,
+    Lightning,
+    CheckMark,
+    Multiply,
+    Gear,
 }
 impl Shape {
-    pub const ALL: [Self; 18] = [
+    pub const ALL: [Self; 33] = [
         Self::Line,
         Self::Rectangle,
         Self::Ellipse,
@@ -49,7 +64,57 @@ impl Shape {
         Self::Trapezoid,
         Self::Parallelogram,
         Self::Heart,
+        Self::Heptagon,
+        Self::StarThree,
+        Self::StarFour,
+        Self::StarSix,
+        Self::ArrowNotched,
+        Self::ArrowPentagon,
+        Self::ArrowChevron,
+        Self::CalloutRectangle,
+        Self::CalloutRounded,
+        Self::CalloutEllipse,
+        Self::CalloutCloud,
+        Self::Lightning,
+        Self::CheckMark,
+        Self::Multiply,
+        Self::Gear,
     ];
+    pub fn category(self) -> &'static str {
+        match self {
+            Self::Line
+            | Self::Rectangle
+            | Self::Ellipse
+            | Self::RoundedRectangle
+            | Self::Triangle
+            | Self::RightTriangle
+            | Self::Diamond
+            | Self::Trapezoid
+            | Self::Parallelogram => "Basic",
+            Self::Pentagon
+            | Self::Hexagon
+            | Self::Heptagon
+            | Self::Octagon
+            | Self::Star
+            | Self::StarThree
+            | Self::StarFour
+            | Self::StarSix => "Polygons and stars",
+            Self::ArrowRight
+            | Self::ArrowLeft
+            | Self::ArrowUp
+            | Self::ArrowDown
+            | Self::ArrowNotched
+            | Self::ArrowPentagon
+            | Self::ArrowChevron => "Arrows",
+            Self::CalloutRectangle
+            | Self::CalloutRounded
+            | Self::CalloutEllipse
+            | Self::CalloutCloud => "Callouts",
+            Self::Lightning | Self::CheckMark | Self::Multiply | Self::Gear | Self::Heart => {
+                "Symbols"
+            }
+        }
+    }
     pub fn label(self) -> &'static str {
         match self {
             Self::Line => "Line",
@@ -62,7 +127,7 @@ impl Shape {
             Self::Pentagon => "Pentagon",
             Self::Hexagon => "Hexagon",
             Self::Octagon => "Octagon",
-            Self::Star => "Star",
+            Self::Star => "Five-point star",
             Self::ArrowRight => "Right arrow",
             Self::ArrowLeft => "Left arrow",
             Self::ArrowUp => "Up arrow",
@@ -70,6 +135,21 @@ impl Shape {
             Self::Trapezoid => "Trapezoid",
             Self::Parallelogram => "Parallelogram",
             Self::Heart => "Heart",
+            Self::Heptagon => "Heptagon",
+            Self::StarThree => "Three-point star",
+            Self::StarFour => "Four-point star",
+            Self::StarSix => "Six-point star",
+            Self::ArrowNotched => "Notched arrow",
+            Self::ArrowPentagon => "Pentagon arrow",
+            Self::ArrowChevron => "Chevron arrow",
+            Self::CalloutRectangle => "Rectangular callout",
+            Self::CalloutRounded => "Rounded rectangular callout",
+            Self::CalloutEllipse => "Elliptical callout",
+            Self::CalloutCloud => "Cloud callout",
+            Self::Lightning => "Lightning bolt",
+            Self::CheckMark => "Check mark",
+            Self::Multiply => "Multiply",
+            Self::Gear => "Gear",
         }
     }
 }

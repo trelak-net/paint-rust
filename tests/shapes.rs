@@ -233,3 +233,34 @@ fn antialias_and_combined_outline_fill_preserve_coverage_and_hollow_pixels() {
         }
     }
 }
+
+#[test]
+fn gear_keeps_a_transparent_hub_and_cloud_has_detached_bubbles() {
+    use paint_rust::shapes::{Parameters, render};
+    use std::sync::atomic::AtomicBool;
+    let source = vec![[0; 4]; 100 * 100];
+    let make = |shape| {
+        render(
+            &source,
+            100,
+            100,
+            None,
+            Parameters {
+                shape,
+                from: (0.0, 0.0),
+                to: (100.0, 100.0),
+                style: style(true),
+            },
+            &AtomicBool::new(false),
+        )
+        .unwrap()
+    };
+    let gear = make(Shape::Gear);
+    assert_eq!(gear[50 * 100 + 50], [0; 4]);
+    assert_ne!(gear[50 * 100 + 75], [0; 4]);
+    let cloud = make(Shape::CalloutCloud);
+    assert_ne!(cloud[36 * 100 + 56], [0; 4]);
+    assert_ne!(cloud[76 * 100 + 24], [0; 4]);
+    assert_ne!(cloud[94 * 100 + 10], [0; 4]);
+    assert_eq!(cloud[86 * 100 + 17], [0; 4]);
+}

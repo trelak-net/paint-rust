@@ -1048,10 +1048,11 @@ native launches with --rulers verified stable layout and preference persistence.
 
 Shape catalogue and coverage
 ---------------------------
-Shapes (U) offers eighteen geometries: line, rectangle, ellipse, rounded rectangle,
-triangle, right triangle, diamond, pentagon, hexagon, octagon, star, four arrow
-directions, trapezoid, parallelogram and heart. Rectangle/Ellipse shortcuts remain
-available. Shapes support outline, fill and combined primary-outline/secondary-
+Shapes (U) offers 33 geometries grouped into basic forms, polygons/stars, arrows,
+callouts and symbols. The catalogue includes three- through six-point stars,
+heptagon, notched/pentagon/chevron arrows, rectangular/rounded/elliptical/cloud
+callouts, lightning bolt, check mark, multiply and a gear with a transparent hub.
+Rectangle/Ellipse shortcuts remain available. Shapes support outline, fill and combined primary-outline/secondary-
 fill modes; right drag swaps the colors. Optional signed-distance antialiasing
 blends edge coverage in premultiplied color. Line antialiasing uses the continuous
 brush kernel. Hard legacy rectangle/ellipse rendering remains available when
@@ -1059,6 +1060,10 @@ new options are off. Previews, selection masks, cancellation and one-step undo
 are shared with the existing gesture workflow. Tests cover all geometries, reverse
 drag, combined colors, hidden RGB, selection boundaries and secondary gestures.
 Persistent handles, editable curves and exact reference coverage remain pending.
+The native Windows editor 5.1.12 shape-menu inventory was checked on 2026-10-25;
+all 29 menu forms have corresponding geometry, plus line and directional arrows.
+Geometry is defined independently using normalized polygons and analytic curves.
+Generate a visual atlas with cargo run --example shape_atlas -- /tmp/shapes.png.
 
 Distortion and photo corrections
 --------------------------------
