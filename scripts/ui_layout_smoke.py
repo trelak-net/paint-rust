@@ -71,6 +71,7 @@ def main():
     dialogs.add_argument("--show-help", action="store_true")
     dialogs.add_argument("--show-errors", action="store_true")
     dialogs.add_argument("--show-new", action="store_true")
+    dialogs.add_argument("--show-settings", action="store_true")
     dialogs.add_argument("--show-resize", action="store_true")
     dialogs.add_argument("--show-canvas", action="store_true")
     dialogs.add_argument("--show-selection-transform", action="store_true")
@@ -112,6 +113,7 @@ def main():
         preferences.write_text(f"preferences-v1\n{args.theme} 1 12 1 1 0 0 {int(args.rulers)} 0 {units}\n")
         saved = []
         saved_preferences = []
+        saved_general = []
         effects = settings.with_name("effects.json")
         last_effect = {"GaussianBlur": 3}
         if args.show_effect:
@@ -141,12 +143,14 @@ def main():
                             if size:
                                 subprocess.run(["xdotool", "windowsize", window, str(size[0]), str(size[1])], check=True, timeout=5)
                             time.sleep(2)
-                            if args.show_new or args.show_errors or args.show_help or args.show_effect or args.show_selection_transform or args.show_resize or args.show_canvas:
+                            if args.show_settings or args.show_new or args.show_errors or args.show_help or args.show_effect or args.show_selection_transform or args.show_resize or args.show_canvas:
                                 subprocess.run(["xdotool", "windowactivate", "--sync", window], check=True, timeout=5)
                                 focused = subprocess.check_output(["xdotool", "getactivewindow"], text=True, timeout=5).strip()
                                 if focused != window:
                                     raise RuntimeError("Editor does not own focus; no keyboard input sent")
-                                if args.show_new:
+                                if args.show_settings:
+                                    press_key(window, ord("x"), 8)
+                                elif args.show_new:
                                     press_key(window, ord("n"), 4)
                                 elif args.show_errors:
                                     press_key(window, 0xFFBE, 4)
@@ -162,7 +166,7 @@ def main():
                                     press_key(window, 0xFFBE if args.show_help else ord("f"), 0 if args.show_help else 12)
                                 time.sleep(0.5)
                             subprocess.run(["import", "-window", window, str(args.output / f"launch-{attempt}.png")], check=True, timeout=10)
-                            if args.show_new or args.show_effect or args.show_selection_transform or args.show_resize or args.show_canvas:
+                            if args.show_settings or args.show_new or args.show_effect or args.show_selection_transform or args.show_resize or args.show_canvas:
                                 press_key(window, 0xFF1B)  # Escape cancels the preview before closing.
                                 time.sleep(0.3)
                             # WM close preserves normal shutdown and settings persistence.
@@ -171,6 +175,7 @@ def main():
                                 raise RuntimeError("Editor failed during shutdown")
                             saved.append(settings.read_text())
                             saved_preferences.append(preferences.read_text())
+                            saved_general.append(settings.with_name("general.json").read_text())
                             saved_effects.append(effects.read_text())
                             if json.loads(saved_effects[-1])["last"] != last_effect:
                                 raise RuntimeError("Last effect settings were not preserved")
@@ -190,12 +195,15 @@ def main():
                         app.wait(timeout=5)
         if saved[0] != saved[1]:
             raise RuntimeError("Panel layout changed after restart")
+        if saved_general[0] != saved_general[1]:
+            raise RuntimeError("General preferences changed after restart")
         if saved_preferences[0] != saved_preferences[1]:
             raise RuntimeError("Preferences or recent files changed after restart")
         if saved_effects[0] != saved_effects[1]:
             raise RuntimeError("Effect settings changed after restart")
         (args.output / "effects.json").write_text(saved_effects[0])
         (args.output / "preferences.txt").write_text(saved_preferences[0])
+        (args.output / "general.json").write_text(saved_general[0])
         (args.output / "workspace.txt").write_text(saved[0])
     print(f"Two native launches and clean exits; layout, preferences and recent files stable. Artifacts: {args.output}")
 

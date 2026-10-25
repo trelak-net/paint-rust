@@ -1,7 +1,7 @@
 use super::*;
 use paint_rust::resolution::Unit;
 impl Editor {
-    fn create_new_image(&self) -> Result<Document, String> {
+    pub(super) fn create_new_image(&self) -> Result<Document, String> {
         if !self.new_dpi.valid() {
             return Err("Resolution must be between 1 and 10000 DPI".into());
         }
@@ -125,6 +125,7 @@ impl Editor {
                     {
                         match self.create_new_image() {
                             Ok(document) => {
+                                self.general_settings = self.current_general_settings();
                                 self.install_document(document, None);
                                 self.new_dialog = false;
                                 self.status = "New image created".into();

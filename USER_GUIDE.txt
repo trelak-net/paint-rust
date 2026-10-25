@@ -132,7 +132,7 @@ After dragging, use the white canvas handles to resize the figure or its center
 handle to move it. The Edit shape window also accepts exact endpoints and changes
 to shape, colors, outline width, fill and antialiasing. Apply (or Enter outside a
 text field) commits one undo step; Cancel or Escape discards the entire draft.
-The option lasts for the current session.
+The option is remembered across restarts.
 
 Draw a curve
 Select Line and enable Edit after drawing. Draw the initial segment, then enable
@@ -152,3 +152,10 @@ BC4 stores red only; BC5 stores red and green. Both are lossy, discard blue and
 transparency, and reopen with opaque alpha. Their mipmaps average channel values
 directly, without color-space correction or alpha weighting. These choices are
 for channel data; use RGBA8 for exact pixels or BC3 for compressed color/alpha.
+
+Preferences
+Open View > Preferences (Alt+X) to choose theme, interface scale, grid/rulers,
+measurement units, new-image defaults and shape-edit behavior. Apply saves the
+changes; Cancel or Escape discards them. Restore defaults only changes the draft
+until Apply. Interface scale changes controls and text independently of canvas
+zoom. New-image defaults also apply to the blank document on startup.

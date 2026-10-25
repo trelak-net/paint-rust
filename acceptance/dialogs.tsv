@@ -12,7 +12,7 @@ Unsaved changes	supported	Save/discard/cancel across documents
 Error details	partial	Persistent session error details for background operations with selection/copy/clear; remaining synchronous-error coverage pending
 Layer properties	partial	Name, opacity and blend mode; exact presentation pending
 New image	supported	Pixel/inch/centimeter dimensions, linked or independent DPI, fill, pixel/memory preview and size validation
-Settings	partial	Theme/grid/brush and recent-file persistence plus panel/palette settings; remaining general preferences pending
+Settings	partial	General dialog with Apply/Cancel and UI scale; theme/grid/rulers/units/new-image/shape defaults; brush/recent/panel/palette persistence; remaining preference inventory pending
 Text	partial	Draft, font, alignment, spacing, preview/apply/cancel
 Effect settings	partial	Shared live-preview dialogs; filter inventory incomplete
 Recovery	supported	Candidate recovery flow with independent document sessions

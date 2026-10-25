@@ -1063,8 +1063,7 @@ Enable Edit after drawing to retain a shape preview after release. Canvas edge/
 corner handles resize it, the center handle translates it, and Edit shape offers
 numeric endpoints, geometry, width, colors and antialiasing. Apply/Enter commits
 one history entry; Cancel/Escape restores the original layer. Other document
-operations remain unavailable until the draft finishes. The option is session-
-local and off by default. Rotation handles, joined paths and exact reference
+operations remain unavailable until the draft finishes. The option is off by default and is remembered across restarts. Rotation handles, joined paths and exact reference
 coverage remain pending. Native pointer automation for the retained-shape dialog
 remains unverified on the current compositor; synthetic UI-event tests cover
 release retention, handle translation, apply/cancel and one-step undo.
@@ -1897,3 +1896,18 @@ Two additional canvas handles and numeric X/Y controls define its curvature.
 The center handle translates all four points. Apply and Cancel retain the same
 single-transaction behavior as other shapes. Joined paths, closed-path fill and
 additional spline modes remain pending.
+
+General preferences
+-------------------
+View > Preferences (Alt+X) groups theme, interface scale, pixel grid, rulers,
+measurement units, new-image defaults and retained shape editing. Apply changes
+the interface and saves settings; Cancel/Escape discards the dialog draft.
+Restore defaults edits the draft and still requires Apply. Interface scale
+(75-250%) multiplies native display scaling and does not change image zoom.
+
+New-image defaults include dimensions, independent X/Y DPI, units and background.
+They also initialize the startup blank document when no input filenames are given.
+Valid last-used new-image values and the shape-edit option are saved on exit.
+Invalid unfinished size drafts do not replace the last valid saved defaults.
+General settings use a bounded, validated general.json beside existing preferences;
+files are replaced atomically. Existing preferences.txt remains compatible.

@@ -17,6 +17,7 @@ mod recovery_batch;
 mod render_controls;
 mod rulers;
 mod selection_transform;
+mod settings;
 mod shape_edit;
 mod structure_shortcuts;
 mod thumbnails;
@@ -112,6 +113,8 @@ pub struct Editor {
     errors: errors::ErrorLog,
     about: about::About,
     preferences: preferences::Preferences,
+    general_settings: settings::General,
+    settings_dialog: Option<settings::Dialog>,
     system_theme: Option<egui::Theme>,
     panel_layout: panels::Layout,
     color_panel: colors::ColorPanel,
@@ -230,6 +233,21 @@ impl Editor {
                 editor.preferences = settings;
             }
             Err(error) => editor.status = format!("Using default preferences: {error}"),
+        }
+        match settings::General::load()
+            .and_then(|settings| editor.apply_general_settings(settings, &cc.egui_ctx))
+        {
+            Ok(()) => {}
+            Err(error) => {
+                editor.errors.record("load general preferences", &error);
+                editor.status = format!("Using default general preferences: {error}");
+            }
+        }
+        if std::env::args_os().len() == 1 {
+            match editor.create_new_image() {
+                Ok(document) => editor.document = document,
+                Err(error) => editor.errors.record("create startup image", &error),
+            }
         }
         match effect_settings::Settings::load() {
             Ok(settings) => {
@@ -368,6 +386,8 @@ impl Editor {
             stroke_button: egui::PointerButton::Primary,
             appearance: None,
             preferences: Default::default(),
+            general_settings: Default::default(),
+            settings_dialog: None,
             system_theme: None,
             clipboard: Default::default(),
             recovery: None,
@@ -967,6 +987,10 @@ impl Editor {
         }
         if self.help_open && ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::Escape)) {
             self.help_open = false;
+            return;
+        }
+        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::ALT, Key::X)) {
+            self.begin_settings();
             return;
         }
         if ctx.input_mut(|i| i.consume_key(egui::Modifiers::CTRL, Key::F1)) {
@@ -3207,6 +3231,7 @@ impl Editor {
         }));
         if self.file_job.is_none()
             && self.pending.is_none()
+            && self.settings_dialog.is_none()
             && !self.new_dialog
             && self.export_dialog.is_none()
             && self.text_dialog.is_none()
@@ -3270,6 +3295,7 @@ impl Editor {
         }
         let enabled = self.file_job.is_none()
             && self.pending.is_none()
+            && self.settings_dialog.is_none()
             && !self.new_dialog
             && self.layer_properties.is_none()
             && self.resize_dialog.is_none()
@@ -3285,6 +3311,7 @@ impl Editor {
         }
         let enabled = self.file_job.is_none()
             && self.pending.is_none()
+            && self.settings_dialog.is_none()
             && !self.new_dialog
             && self.layer_properties.is_none()
             && self.resize_dialog.is_none()
@@ -3667,6 +3694,7 @@ impl Editor {
                     });
                 }
                 ui.menu_button("View", |ui| {
+                    if ui.button("Preferences…    Alt+X").clicked() { self.begin_settings(); ui.close(); }
                     for (label, direction) in [("Zoom in    Ctrl++", true), ("Zoom out    Ctrl+-", false)] {
                         if ui.button(label).clicked() { self.step_view_zoom(direction); ui.close(); }
                     }
@@ -3826,6 +3854,7 @@ impl Editor {
                 self.canvas(ui);
             });
         self.dialogs(ctx);
+        self.show_settings(ctx);
         self.show_shape_edit(ctx);
         self.show_paste_confirmation(ctx);
         self.show_selection_transform(ctx);
@@ -3887,6 +3916,9 @@ impl eframe::App for Editor {
         .save()
         {
             eprintln!("Could not save effect settings: {error}");
+        }
+        if let Err(error) = self.current_general_settings().save() {
+            eprintln!("Could not save general preferences: {error}");
         }
         self.preferences.brush_size = self.brush_size;
         self.preferences.brush = self.brush_options;
