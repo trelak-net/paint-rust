@@ -580,6 +580,17 @@ impl Document {
         anchor: usize,
         cancel: &std::sync::atomic::AtomicBool,
     ) -> Result<bool, String> {
+        self.resize_canvas_filled_cancellable(width, height, anchor, [0; 4], cancel)
+    }
+
+    pub fn resize_canvas_filled_cancellable(
+        &mut self,
+        width: u32,
+        height: u32,
+        anchor: usize,
+        fill: Pixel,
+        cancel: &std::sync::atomic::AtomicBool,
+    ) -> Result<bool, String> {
         if cancel.load(std::sync::atomic::Ordering::Relaxed) {
             return Err(crate::files::CANCELLED.into());
         }
@@ -591,7 +602,14 @@ impl Document {
         }
         let old = (self.width, self.height);
         self.transform_layers("Resize canvas", width, height, cancel, |pixels| {
-            crate::transform::canvas_cancellable(pixels, old, (width, height), anchor, cancel)
+            crate::transform::canvas_filled_cancellable(
+                pixels,
+                old,
+                (width, height),
+                anchor,
+                fill,
+                cancel,
+            )
         })
     }
     pub fn reorient(&mut self, operation: crate::transform::Orientation) -> Result<bool, String> {

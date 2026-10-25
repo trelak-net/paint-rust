@@ -68,12 +68,23 @@ pub fn canvas_cancellable(
     anchor: usize,
     cancel: &AtomicBool,
 ) -> Option<Vec<Pixel>> {
+    canvas_filled_cancellable(source, old, new, anchor, [0; 4], cancel)
+}
+
+pub fn canvas_filled_cancellable(
+    source: &[Pixel],
+    old: (u32, u32),
+    new: (u32, u32),
+    anchor: usize,
+    fill: Pixel,
+    cancel: &AtomicBool,
+) -> Option<Vec<Pixel>> {
     if cancel.load(Ordering::Relaxed) {
         return None;
     }
     let offset_x = ((i64::from(new.0) - i64::from(old.0)) * (anchor % 3) as i64).div_euclid(2);
     let offset_y = ((i64::from(new.1) - i64::from(old.1)) * (anchor / 3) as i64).div_euclid(2);
-    let mut output = vec![[0; 4]; new.0 as usize * new.1 as usize];
+    let mut output = vec![fill; new.0 as usize * new.1 as usize];
     for y in 0..new.1 {
         if cancel.load(Ordering::Relaxed) {
             return None;

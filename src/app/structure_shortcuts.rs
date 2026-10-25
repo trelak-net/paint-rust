@@ -19,10 +19,17 @@ impl Editor {
             dialog.resampling,
             dialog.dpi,
         );
+        let fill = match dialog.fill {
+            1 => self.color.to_srgba_unmultiplied(),
+            2 => self.secondary_color.to_srgba_unmultiplied(),
+            3 => [255; 4],
+            4 => [0, 0, 0, 255],
+            _ => [0; 4],
+        };
         self.transform_in_background("resize image", move |document, cancel| {
             let resolution_changed = document.set_resolution(dpi)?;
             let geometry_changed = if canvas {
-                document.resize_canvas_cancellable(width, height, anchor, cancel)
+                document.resize_canvas_filled_cancellable(width, height, anchor, fill, cancel)
             } else {
                 document.resize_image_with_options_cancellable(width, height, resampling, cancel)
             }?;
@@ -46,6 +53,10 @@ impl Editor {
             dpi: self.document.resolution(),
             link_resolution: self.document.resolution().x == self.document.resolution().y,
             anchor: 4,
+            fill: 0,
+            percentage: false,
+            percent: 100.0,
+            original_size: (self.document.width, self.document.height),
         });
     }
     pub(super) fn structure_shortcuts(&mut self, ctx: &egui::Context) -> bool {
@@ -144,5 +155,18 @@ impl Editor {
             }
         }
         true
+    }
+}
+
+impl ResizeDialog {
+    pub(super) fn apply_percentage(&mut self) {
+        let maximum = 1638400.0 / f64::from(self.original_size.0.max(self.original_size.1));
+        self.percent = self.percent.clamp(0.01, maximum);
+        self.width = (f64::from(self.original_size.0) * self.percent / 100.0)
+            .round()
+            .clamp(1.0, 16384.0) as u32;
+        self.height = (f64::from(self.original_size.1) * self.percent / 100.0)
+            .round()
+            .clamp(1.0, 16384.0) as u32;
     }
 }

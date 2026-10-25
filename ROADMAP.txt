@@ -127,6 +127,7 @@ independent tasks; do not silently reduce the required scope.
 [x] On-canvas selection-boundary move, centered corner scaling and rotation handles with constraints.
 [ ] Complete remaining pixel/selection transform options and external handle behavior audit.
 [x] Eight image resize filters, linear-light gamma option, bounded row cache and cancellation benchmark.
+[x] Percentage resizing and anchored canvas expansion with transparent, primary, secondary, white or black fill.
 [ ] Remaining transform interpolation, constraints and external edge-case validation.
 6. Tools
 [x] Active-layer clone stamp and tolerance-based recolor with brush controls.

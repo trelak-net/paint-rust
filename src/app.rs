@@ -78,6 +78,10 @@ struct ResizeDialog {
     dpi: paint_rust::resolution::Dpi,
     link_resolution: bool,
     anchor: usize,
+    fill: usize,
+    percentage: bool,
+    percent: f64,
+    original_size: (u32, u32),
 }
 
 struct TextDialog {
@@ -2222,10 +2226,25 @@ impl Editor {
             })
             .collapsible(false)
             .resizable(false)
-            .vscroll(true)
+            .vscroll(false)
             .max_height((ctx.content_rect().height()-100.0).max(180.0))
             .anchor(egui::Align2::CENTER_CENTER, Vec2::ZERO)
             .show(ctx, |ui| {
+                egui::ScrollArea::vertical().max_height((ctx.content_rect().height()-200.0).max(100.0)).show(ui,|ui| {
+                ui.horizontal(|ui| {
+                    ui.selectable_value(&mut dialog.percentage,false,"Absolute size");
+                    if ui.selectable_value(&mut dialog.percentage,true,"Percentage").changed() {
+                        dialog.percent=100.0*f64::from(dialog.width)/f64::from(dialog.original_size.0);
+                        dialog.apply_percentage();
+                    }
+                });
+                if dialog.percentage {
+                    let max_percent=1638400.0 / f64::from(dialog.original_size.0.max(dialog.original_size.1));
+                    if ui.add(egui::DragValue::new(&mut dialog.percent).range(0.01..=max_percent).speed(1.0).suffix(" %")).changed() {
+                        dialog.apply_percentage();
+                    }
+                }
+                ui.add_enabled_ui(!dialog.percentage,|ui| {
                 egui::ComboBox::from_label("Measurement units").selected_text(dialog.units.label()).show_ui(ui,|ui| {
                     for unit in paint_rust::resolution::Unit::ALL {ui.selectable_value(&mut dialog.units,unit,unit.label());}
                 });
@@ -2241,6 +2260,7 @@ impl Editor {
                         }
                     });
                 }
+                });
                 ui.label(format!("Pixel size: {} × {}",dialog.width,dialog.height));
                 ui.horizontal_wrapped(|ui| {
                     if ui.add(egui::DragValue::new(&mut dialog.dpi.x).range(1.0..=10000.0).prefix("DPI X ").speed(1.0)).changed() && dialog.link_resolution {dialog.dpi.y=dialog.dpi.x;}
@@ -2268,7 +2288,11 @@ impl Editor {
                                 ui.selectable_value(&mut dialog.anchor, index, *name);
                             }
                         });
-                    ui.label("New canvas area is transparent on every layer.");
+                    let fills=["Transparent", "Primary color", "Secondary color", "White", "Black"];
+                    egui::ComboBox::from_label("Fill new area").selected_text(fills[dialog.fill]).show_ui(ui,|ui| {
+                        for (index,name) in fills.iter().enumerate() {ui.selectable_value(&mut dialog.fill,index,*name);}
+                    });
+                    ui.small("New area uses this fill on every layer; existing pixels stay unchanged.");
                 } else {
                     egui::ComboBox::from_label("Resampling")
                         .selected_text(dialog.resampling.filter.name())
@@ -2279,6 +2303,8 @@ impl Editor {
                         egui::Checkbox::new(&mut dialog.resampling.gamma_correct,"Gamma correction"));
                     ui.small("Gamma correction filters light in linear sRGB. Nearest neighbor copies exact pixels.");
                 }
+                });
+                ui.separator();
                 ui.horizontal(|ui| {
                     if ui.button("Apply").clicked() && self.apply_resize_dialog(&dialog) {
                         keep = false;
@@ -3634,6 +3660,25 @@ impl eframe::App for Editor {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn percentage_resize_uses_original_dimensions_and_preserves_ratio_at_limits() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.document = Document::new(100, 50, [255; 4]).unwrap();
+        editor.open_resize_dialog(false);
+        let mut dialog = editor.resize_dialog.take().unwrap();
+        for (percent, expected) in [
+            (50.0, (50, 25)),
+            (200.0, (200, 100)),
+            (1e6, (16384, 8192)),
+            (0.01, (1, 1)),
+        ] {
+            dialog.percent = percent;
+            dialog.apply_percentage();
+            assert_eq!((dialog.width, dialog.height), expected);
+        }
+    }
+
     #[test]
     fn resolution_only_dialog_apply_preserves_pixels_and_has_one_undo_step() {
         let ctx = egui::Context::default();
