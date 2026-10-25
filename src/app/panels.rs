@@ -12,6 +12,8 @@ impl Editor {
                 (Tool::Select, Icon::Select, "Select area", "S"),
                 (Tool::Polygon, Icon::Polygon, "Polygon select", "P"),
                 (Tool::Move, Icon::Move, "Move", "M"),
+                (Tool::Zoom, Icon::Zoom, "Zoom", "Z"),
+                (Tool::Pan, Icon::Pan, "Pan", "H"),
                 (Tool::Gradient, Icon::Gradient, "Gradient", "G"),
                 (Tool::Text, Icon::Text, "Text", "T"),
                 (Tool::Brush, Icon::Brush, "Brush", "B"),

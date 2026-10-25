@@ -17,6 +17,8 @@ use std::path::PathBuf;
 #[derive(Clone, Copy, PartialEq)]
 enum Tool {
     Polygon,
+    Zoom,
+    Pan,
     Brush,
     Pencil,
     Eraser,
@@ -102,6 +104,9 @@ pub struct Editor {
     canvas_offset: Vec2,
     canvas_viewport: Rect,
     panning: bool,
+    pan_button: egui::PointerButton,
+    zoom_origin: Option<Pos2>,
+    pixel_grid: bool,
     fit_canvas: bool,
     last_point: Option<(f32, f32)>,
     path: Option<PathBuf>,
@@ -193,6 +198,9 @@ impl Editor {
             canvas_offset: Vec2::ZERO,
             canvas_viewport: Rect::NOTHING,
             panning: false,
+            pan_button: egui::PointerButton::Middle,
+            zoom_origin: None,
+            pixel_grid: false,
             fit_canvas: false,
             last_point: None,
             path: None,
@@ -799,6 +807,8 @@ impl Editor {
             } else if !i.modifiers.command && !self.document.editing() && self.last_point.is_none()
             {
                 if i.key_pressed(Key::P) { self.tool = Tool::Polygon; }
+                if i.key_pressed(Key::Z) { self.tool = Tool::Zoom; }
+                if i.key_pressed(Key::H) { self.tool = Tool::Pan; }
                 if i.key_pressed(Key::N) { self.tool = Tool::Pencil; }
                 if i.key_pressed(Key::B) {
                     self.tool = Tool::Brush;
@@ -845,6 +855,7 @@ impl Editor {
             Some(4) => self.redo(),
             Some(5) => self.undo(),
             Some(6) => {
+                self.zoom_origin = None;
                 self.suppress_stroke = true;
                 self.gesture_preview = None;
                 self.document.cancel();
@@ -933,17 +944,19 @@ impl Editor {
             let available = viewport.size();
             self.zoom = (available.x / self.document.width as f32)
                 .min(available.y / self.document.height as f32)
-                .clamp(0.1, 4.0);
+                .clamp(0.01, 64.0);
             self.canvas_offset = Vec2::ZERO;
             self.fit_canvas = false;
         }
         let navigation_enabled =
             ui.is_enabled() && !self.document.editing() && self.last_point.is_none();
+        let temporary_pan =
+            ui.input(|i| i.key_down(Key::Space)) && !ui.ctx().wants_keyboard_input();
         let pointer = ui.input(|i| i.pointer.hover_pos());
         if navigation_enabled && let Some(pointer) = pointer.filter(|p| viewport.contains(*p)) {
             let factor = ui.input(|i| i.zoom_delta());
             if factor != 1.0 {
-                let zoom = (self.zoom * factor).clamp(0.1, 4.0);
+                let zoom = (self.zoom * factor).clamp(0.01, 64.0);
                 let anchor = pointer - viewport.min;
                 self.canvas_offset =
                     ((self.canvas_offset + anchor) * (zoom / self.zoom) - anchor).max(Vec2::ZERO);
@@ -951,19 +964,30 @@ impl Editor {
             }
             if ui.input(|i| i.pointer.button_pressed(egui::PointerButton::Middle)) {
                 self.panning = true;
+                self.pan_button = egui::PointerButton::Middle;
+            } else if (self.tool == Tool::Pan || temporary_pan)
+                && ui.input(|i| i.pointer.button_pressed(egui::PointerButton::Primary))
+            {
+                self.panning = true;
+                self.pan_button = egui::PointerButton::Primary;
+                self.stroke_button = egui::PointerButton::Primary;
+                self.suppress_stroke = true;
             }
         }
-        if !navigation_enabled || !ui.input(|i| i.pointer.button_down(egui::PointerButton::Middle))
-        {
+        if !navigation_enabled || !ui.input(|i| i.pointer.button_down(self.pan_button)) {
             self.panning = false;
         }
         if self.panning {
-            if !ui.input(|i| i.pointer.button_pressed(egui::PointerButton::Middle)) {
+            if !ui.input(|i| i.pointer.button_pressed(self.pan_button)) {
                 self.canvas_offset =
                     (self.canvas_offset - ui.input(|i| i.pointer.delta())).max(Vec2::ZERO);
             }
             ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
         }
+        if self.tool != Tool::Zoom || !navigation_enabled || !ui.input(|i| i.focused) {
+            self.zoom_origin = None;
+        }
+        let mut requested_view = None;
         let scroll = egui::ScrollArea::both()
             .id_salt("canvas-scroll")
             .scroll_offset(self.canvas_offset)
@@ -1098,6 +1122,70 @@ impl Editor {
                         );
                     }
                 }
+                if self.pixel_grid && self.zoom >= 8.0 {
+                    let first = ((clip.min - rect.min) / self.zoom).floor().max(Vec2::ZERO);
+                    let last = ((clip.max - rect.min) / self.zoom).ceil();
+                    let stroke = egui::Stroke::new(1.0_f32, Color32::from_black_alpha(90));
+                    for x in first.x as u32..=(last.x as u32).min(self.document.width) {
+                        let x = rect.min.x + x as f32 * self.zoom;
+                        painter.line_segment(
+                            [Pos2::new(x, clip.min.y), Pos2::new(x, clip.max.y)],
+                            stroke,
+                        );
+                    }
+                    for y in first.y as u32..=(last.y as u32).min(self.document.height) {
+                        let y = rect.min.y + y as f32 * self.zoom;
+                        painter.line_segment(
+                            [Pos2::new(clip.min.x, y), Pos2::new(clip.max.x, y)],
+                            stroke,
+                        );
+                    }
+                }
+                if self.tool == Tool::Zoom && navigation_enabled && !self.panning && !temporary_pan
+                {
+                    ui.ctx().set_cursor_icon(egui::CursorIcon::ZoomIn);
+                    if response.drag_started_by(egui::PointerButton::Primary) {
+                        self.zoom_origin = ui.input(|i| i.pointer.press_origin());
+                    }
+                    if let Some(origin) = self.zoom_origin
+                        && let Some(pointer) = ui.input(|i| i.pointer.latest_pos())
+                    {
+                        let region = Rect::from_two_pos(origin, pointer).intersect(rect);
+                        painter.rect_stroke(
+                            region,
+                            0.0,
+                            egui::Stroke::new(1.0_f32, Color32::from_rgb(53, 132, 228)),
+                            egui::StrokeKind::Inside,
+                        );
+                        if ui.input(|i| i.pointer.button_released(egui::PointerButton::Primary)) {
+                            self.zoom_origin = None;
+                            if region.width() >= 4.0 && region.height() >= 4.0 {
+                                let image_size = region.size() / self.zoom;
+                                let zoom = (viewport.width() / image_size.x)
+                                    .min(viewport.height() / image_size.y)
+                                    .clamp(0.01, 64.0);
+                                requested_view =
+                                    Some((zoom, (region.min - rect.min) / self.zoom * zoom));
+                            }
+                        }
+                    } else if (response.clicked_by(egui::PointerButton::Primary)
+                        || response.clicked_by(egui::PointerButton::Secondary))
+                        && let Some(pointer) = response.interact_pointer_pos()
+                    {
+                        let factor = if response.clicked_by(egui::PointerButton::Secondary) {
+                            0.5
+                        } else {
+                            2.0
+                        };
+                        let zoom = (self.zoom * factor).clamp(0.01, 64.0);
+                        let anchor = pointer - viewport.min;
+                        requested_view = Some((
+                            zoom,
+                            ((self.canvas_offset + anchor) * (zoom / self.zoom) - anchor)
+                                .max(Vec2::ZERO),
+                        ));
+                    }
+                }
                 self.transform_handles(ui, rect, &painter);
                 if response.hovered()
                     && !self.panning
@@ -1123,7 +1211,8 @@ impl Editor {
                         );
                     }
                 }
-                if ui.is_enabled() && self.tool == Tool::Polygon {
+                if ui.is_enabled() && self.tool == Tool::Polygon && !self.panning && !temporary_pan
+                {
                     if response.hovered() {
                         ui.ctx().set_cursor_icon(egui::CursorIcon::Crosshair);
                     }
@@ -1193,7 +1282,8 @@ impl Editor {
                     egui::PointerButton::Primary
                 };
                 if ui.is_enabled()
-                    && self.tool != Tool::Polygon
+                    && !matches!(self.tool, Tool::Polygon | Tool::Pan | Tool::Zoom)
+                    && !temporary_pan
                     && ui.input(|i| i.focused)
                     && !self.suppress_stroke
                     && !self.panning
@@ -1231,7 +1321,7 @@ impl Editor {
                             Tool::Select => {
                                 self.selection_before = Some(self.document.selection());
                             }
-                            Tool::Polygon => {}
+                            Tool::Polygon | Tool::Pan | Tool::Zoom => {}
                             Tool::Picker => {
                                 if let Some(pixel) = self
                                     .document
@@ -1415,6 +1505,11 @@ impl Editor {
                 }
             });
         self.canvas_offset = scroll.state.offset;
+        if let Some((zoom, offset)) = requested_view {
+            self.zoom = zoom;
+            self.canvas_offset = offset;
+            ui.ctx().request_repaint();
+        }
         self.canvas_viewport = scroll.inner_rect;
     }
 
@@ -1481,6 +1576,12 @@ impl Editor {
         }
         if self.tool == Tool::Eraser {
             ui.small("Drag to erase · Escape cancels");
+        }
+        if self.tool == Tool::Zoom {
+            ui.small("Left: zoom in · Right: zoom out · Drag: fit region");
+        }
+        if self.tool == Tool::Pan {
+            ui.small("Drag to pan · Hold Space to pan from another tool");
         }
         if self.tool == Tool::Text {
             ui.small("Left: primary text · Right: secondary text");
@@ -2287,6 +2388,7 @@ impl Editor {
                 }
                 ui.menu_button("View", |ui| {
                     ui.checkbox(&mut self.panel_layout.floating, "Floating panels");
+                    ui.checkbox(&mut self.pixel_grid, "Pixel grid (at 800% and above)");
                     for (index, name) in panels::NAMES.iter().enumerate() {
                         ui.checkbox(
                             &mut self.panel_layout.visible[index],
@@ -2308,7 +2410,7 @@ impl Editor {
                 self.tool_options(ui);
                 ui.separator();
                 ui.add(
-                    egui::Slider::new(&mut self.zoom, 0.1..=4.0)
+                    egui::Slider::new(&mut self.zoom, 0.01..=64.0)
                         .text("Zoom")
                         .logarithmic(true)
                         .custom_formatter(|v, _| format!("{:.0}%", v * 100.0)),
@@ -2596,6 +2698,91 @@ mod tests {
             }
             assert!(!editor.document.dirty());
         }
+    }
+
+    #[test]
+    fn zoom_tool_clicks_and_region_drag_change_only_the_view() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.tool = Tool::Zoom;
+        frame(&mut editor, &ctx, vec![]);
+        frame(&mut editor, &ctx, vec![]);
+        let point = editor.canvas_viewport.min + Vec2::new(120.0, 100.0);
+        for button in [egui::PointerButton::Primary, egui::PointerButton::Secondary] {
+            for pressed in [true, false] {
+                frame(
+                    &mut editor,
+                    &ctx,
+                    vec![
+                        egui::Event::PointerMoved(point),
+                        egui::Event::PointerButton {
+                            pos: point,
+                            button,
+                            pressed,
+                            modifiers: egui::Modifiers::NONE,
+                        },
+                    ],
+                );
+            }
+            assert_eq!(
+                editor.zoom,
+                if button == egui::PointerButton::Primary {
+                    2.0
+                } else {
+                    1.0
+                }
+            );
+        }
+        let end = point + Vec2::new(120.0, 80.0);
+        frame(
+            &mut editor,
+            &ctx,
+            vec![egui::Event::PointerMoved(point), pointer(point, true)],
+        );
+        frame(&mut editor, &ctx, vec![egui::Event::PointerMoved(end)]);
+        let expected =
+            (editor.canvas_viewport.width() / 120.0).min(editor.canvas_viewport.height() / 80.0);
+        frame(&mut editor, &ctx, vec![pointer(end, false)]);
+        assert!((editor.zoom - expected).abs() < 0.1);
+        assert!(!editor.document.dirty());
+        assert!(!editor.document.can_undo());
+        assert!(editor.document.selection().is_none());
+    }
+
+    #[test]
+    fn space_pan_can_end_before_button_release_without_painting() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.document = Document::new(2048, 2048, [255; 4]).unwrap();
+        editor.canvas_offset = Vec2::new(100.0, 100.0);
+        editor.stroke_button = egui::PointerButton::Secondary;
+        frame(&mut editor, &ctx, vec![]);
+        frame(&mut editor, &ctx, vec![]);
+        let start = editor.canvas_viewport.min + Vec2::new(160.0, 100.0);
+        let end = start - Vec2::new(30.0, 20.0);
+        let space = |pressed| egui::Event::Key {
+            key: Key::Space,
+            physical_key: None,
+            pressed,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        };
+        frame(
+            &mut editor,
+            &ctx,
+            vec![
+                space(true),
+                egui::Event::PointerMoved(start),
+                pointer(start, true),
+            ],
+        );
+        frame(&mut editor, &ctx, vec![egui::Event::PointerMoved(end)]);
+        frame(&mut editor, &ctx, vec![space(false)]);
+        frame(&mut editor, &ctx, vec![pointer(end, false)]);
+        assert!(!editor.document.dirty());
+        assert!(!editor.document.can_undo());
+        assert!(editor.canvas_offset.x > 100.0 && editor.canvas_offset.y > 100.0);
+        assert!(!editor.panning);
     }
 
     #[test]

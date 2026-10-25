@@ -21,6 +21,7 @@ impl Editor {
         self.selection_before = None;
         self.fit_canvas = false;
         self.panning = false;
+        self.zoom_origin = None;
         self.suppress_stroke = false;
     }
 

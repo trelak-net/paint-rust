@@ -791,3 +791,12 @@ Invalid settings fall back to the default docked layout. Floating tool icons ret
 accessible names, shortcut tooltips and a readable current-tool label.
 Two native launches with two PDN documents verified clean exit and stable panel
 positions/sizes across restart, using isolated configuration and recovery folders.
+
+Canvas navigation
+-----------------
+Zoom (Z): left-click zooms in, right-click zooms out, and dragging a rectangle
+fits that region in the viewport. Pan (H): drag with the primary button. Hold
+Space to pan temporarily from another tool; middle-button navigation remains
+available. Zoom ranges from 1% to 6400%. View can enable a pixel grid, rendered
+only at 800% or above and only over visible pixels. These operations do not edit
+the document or add undo steps. Escape cancels an in-progress zoom rectangle.

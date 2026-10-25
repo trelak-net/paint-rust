@@ -89,8 +89,9 @@ independent tasks; do not silently reduce the required scope.
 [ ] Light/dark/high-DPI and compact-window acceptance checks.
 3. Colors and navigation
 [ ] Full RGB/HSV/alpha/HEX editing, palette persistence and defaults.
-[ ] Zoom/Pan tools, temporary spacebar navigation and zoom-to-region.
-[ ] Pixel grid, rulers and measurement units.
+[x] Zoom/Pan tools, temporary spacebar navigation and zoom-to-region.
+[x] Visible-region pixel grid at high zoom.
+[ ] Rulers and measurement units.
 4. Rendering
 [ ] Antialiasing, brush hardness, opacity, blending and replacement modes.
 [ ] Eraser coverage, continuous strokes and tablet pressure.
