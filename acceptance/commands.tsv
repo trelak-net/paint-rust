@@ -6,7 +6,7 @@ File.Acquire	Acquire	missing	-	-	Not implemented
 File.FromScannerOrCamera	FromScannerOrCamera	missing	-	-	Not implemented
 File.Save	Save	partial	Ctrl+S	Ctrl+S	Project/raster save routing, decoded preview and confirmed undoable flattening; remaining codecs pending
 File.SaveAs	Save As...	partial	Ctrl+Shift+S	Ctrl+Shift+S	Project/raster save routing, decoded preview and confirmed undoable flattening; remaining codecs pending
-File.SaveAll	Save All	missing	Ctrl+Alt+S	-	Not implemented
+File.SaveAll	Save All	supported	Ctrl+Alt+S	Ctrl+Alt+S	Sequential dirty-document saves; cancellation/error stops the sequence
 File.Print	Print...	missing	Ctrl+P	-	Not implemented
 File.Close	Close	supported	Ctrl+W	Ctrl+W	Available; see workflow cases
 File.Exit	Exit	supported	-	OS window close	Available; see workflow cases

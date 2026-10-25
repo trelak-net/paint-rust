@@ -12,6 +12,32 @@ pub(super) struct DocumentSlot {
     recovery: Option<paint_rust::recovery::Recovery>,
 }
 impl Editor {
+    pub(super) fn save_all_next(&mut self) {
+        if !self.document.dirty() {
+            let next = self
+                .document_order
+                .iter()
+                .find(|id| {
+                    self.documents
+                        .iter()
+                        .any(|slot| slot.id == **id && slot.document.dirty())
+                })
+                .copied();
+            if let Some(id) = next {
+                self.activate_document(id);
+            } else {
+                self.status = "All documents are saved".into();
+                return;
+            }
+        }
+        if self.save(false) {
+            self.after_save = Some(Action::SaveAll);
+        } else {
+            self.after_save = None;
+            self.status = "Save all stopped; remaining documents are still unsaved".into();
+        }
+    }
+
     fn reset_document_view(&mut self) {
         self.texture_dirty = true;
         self.selection_texture = None;

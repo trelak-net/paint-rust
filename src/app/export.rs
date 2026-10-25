@@ -122,7 +122,10 @@ impl Editor {
         } else if keep && open {
             self.export_dialog = Some(dialog);
         } else if dialog.save_document {
-            self.pending = self.after_save.take();
+            self.pending = self
+                .after_save
+                .take()
+                .filter(|action| !matches!(action, Action::SaveAll));
         }
     }
 }

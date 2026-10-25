@@ -48,6 +48,7 @@ enum Tool {
 
 #[derive(Clone, Copy)]
 enum Action {
+    SaveAll,
     New,
     Open,
     Close,
@@ -549,6 +550,7 @@ impl Editor {
 
     fn perform(&mut self, action: Action, ctx: &egui::Context) {
         match action {
+            Action::SaveAll => self.save_all_next(),
             Action::New => self.new_dialog = true,
             Action::Recovery => self.recovery_prompt = true,
             Action::Open => {
@@ -905,6 +907,8 @@ impl Editor {
                 Some(0)
             } else if i.consume_key(egui::Modifiers::COMMAND, Key::O) {
                 Some(1)
+            } else if i.consume_key(egui::Modifiers::COMMAND | egui::Modifiers::ALT, Key::S) {
+                Some(22)
             } else if i.consume_key(egui::Modifiers::COMMAND | egui::Modifiers::SHIFT, Key::S) {
                 Some(2)
             } else if i.consume_key(egui::Modifiers::COMMAND, Key::S) {
@@ -969,6 +973,7 @@ impl Editor {
             }
         });
         match command {
+            Some(22) => self.request(Action::SaveAll, ctx),
             Some(20) => self.invert_selection(),
             Some(21) => self.start_document_edit(DocumentEdit::Invert),
             Some(18) => self.repeat_effect(),
@@ -2671,7 +2676,39 @@ impl Editor {
                 if ui.add(Icon::SaveAs.button("Save as…")).clicked() {
                     self.save(true);
                 }
-                self.recent_menu(ui);
+                ui.menu_button("File", |ui| {
+                    if ui.button("New    Ctrl+N").clicked() {
+                        self.request(Action::New, ctx);
+                        ui.close();
+                    }
+                    if ui.button("Open…    Ctrl+O").clicked() {
+                        self.request(Action::Open, ctx);
+                        ui.close();
+                    }
+                    self.recent_menu(ui);
+                    ui.separator();
+                    if ui.button("Save    Ctrl+S").clicked() {
+                        self.save(false);
+                        ui.close();
+                    }
+                    if ui.button("Save as…    Ctrl+Shift+S").clicked() {
+                        self.save(true);
+                        ui.close();
+                    }
+                    if ui.button("Save all    Ctrl+Alt+S").clicked() {
+                        self.request(Action::SaveAll, ctx);
+                        ui.close();
+                    }
+                    ui.separator();
+                    if ui.button("Close document    Ctrl+W").clicked() {
+                        self.request(Action::CloseDocument, ctx);
+                        ui.close();
+                    }
+                    if ui.button("Close all").clicked() {
+                        self.request(Action::CloseAll, ctx);
+                        ui.close();
+                    }
+                });
                 ui.menu_button("Export", |ui| {
                     for format in [
                         files::RasterFormat::Png,
@@ -3161,6 +3198,75 @@ mod tests {
         assert_eq!(editor.path, Some(path));
         assert!(matches!(editor.pending, Some(Action::Close)));
         assert!(!editor.allow_close);
+    }
+
+    #[test]
+    fn save_all_serializes_dirty_documents_and_stops_on_error() {
+        let ctx = egui::Context::default();
+        let directory = tempfile::tempdir().unwrap();
+        let mut editor = Editor::blank(&ctx);
+        for index in 0..3 {
+            let path = directory.path().join(format!("image{index}.prust"));
+            editor.install_document(
+                Document::new(2, 2, [index * 50, 10, 20, 255]).unwrap(),
+                Some(path),
+            );
+            editor.document.invert();
+        }
+        editor.request(Action::SaveAll, &ctx);
+        wait_for_files(&mut editor, &ctx);
+        for index in 0..3 {
+            let path = directory.path().join(format!("image{index}.prust"));
+            assert_eq!(
+                files::open(&path).unwrap().pixels()[0],
+                [255 - index * 50, 245, 235, 255]
+            );
+        }
+        assert_eq!(editor.status, "All documents are saved");
+        assert!(editor.after_save.is_none());
+        editor.document.invert();
+        editor.path = Some(directory.path().join("missing/error.prust"));
+        editor.request(Action::SaveAll, &ctx);
+        wait_for_files(&mut editor, &ctx);
+        assert!(editor.document.dirty());
+        assert!(editor.after_save.is_none());
+        assert!(editor.pending.is_none());
+        assert!(editor.status.starts_with("Could not save project:"));
+    }
+
+    #[test]
+    fn save_all_raster_confirmation_can_cancel_the_remaining_sequence() {
+        let ctx = egui::Context::default();
+        let directory = tempfile::tempdir().unwrap();
+        let mut editor = Editor::blank(&ctx);
+        let project = directory.path().join("later.prust");
+        editor.install_document(
+            Document::new(2, 2, [255; 4]).unwrap(),
+            Some(project.clone()),
+        );
+        editor.document.invert();
+        let raster = directory.path().join("first.png");
+        editor.install_document(Document::new(2, 2, [255; 4]).unwrap(), Some(raster.clone()));
+        editor.document.invert();
+        editor.request(Action::SaveAll, &ctx);
+        assert!(editor.export_dialog.is_some());
+        assert!(matches!(editor.after_save, Some(Action::SaveAll)));
+        frame(
+            &mut editor,
+            &ctx,
+            vec![egui::Event::Key {
+                key: Key::Escape,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers::NONE,
+            }],
+        );
+        assert!(editor.after_save.is_none());
+        assert!(editor.pending.is_none());
+        assert!(editor.file_job.is_none());
+        assert!(editor.document.dirty());
+        assert!(!raster.exists() && !project.exists());
     }
 
     fn wait_for_files(editor: &mut Editor, ctx: &egui::Context) {

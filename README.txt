@@ -1015,3 +1015,13 @@ open normally but are omitted from history. Preferences are size/range checked.
 Two launches each at dark/100% and light/200% verified stable panel layout,
 preferences and recent files. The native smoke script accepts --theme and --scale.
 Further preference controls, localization and effect persistence remain pending.
+
+Save all
+--------
+File > Save all (Ctrl+Alt+S) saves the active dirty document, then remaining dirty
+documents in tab order. Each write must finish successfully before the next
+document is activated. Untitled documents request a filename; raster documents
+use the same flattening confirmation and preview as Save. Cancellation or failure
+stops the sequence and leaves remaining documents unsaved. Tests cover multiple
+project writes, a write failure and cancellation at a raster confirmation.
+The File menu also groups basic open/save/close commands and recent files.

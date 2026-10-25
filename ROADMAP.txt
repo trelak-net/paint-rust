@@ -85,6 +85,7 @@ independent tasks; do not silently reduce the required scope.
 [x] Independent document/history/path/view/recovery state.
 [x] Thumbnail tabs, switching, reordering, individual close and close all.
 [x] Save/discard/cancel flows across multiple dirty documents.
+[x] Sequential Save All with raster confirmation and cancellation/error guards.
 2. Workspace
 [x] Movable, hideable panels with layout persistence and reset.
 [ ] Complete menu/toolbar organization and contextual options.

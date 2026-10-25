@@ -455,7 +455,10 @@ impl Editor {
                         self.status = format!(
                             "Image was written, but the document could not be updated: {error}"
                         );
-                        self.pending = self.after_save.take();
+                        self.pending = self
+                            .after_save
+                            .take()
+                            .filter(|action| !matches!(action, Action::SaveAll));
                     }
                 }
             }
@@ -481,7 +484,9 @@ impl Editor {
                     format!("Could not {operation}: {error}")
                 };
                 // A failed save must not proceed to New/Open/Close.
-                if let Some(action) = self.after_save.take() {
+                if let Some(action) = self.after_save.take()
+                    && !matches!(action, Action::SaveAll)
+                {
                     self.pending = Some(action);
                 }
             }
