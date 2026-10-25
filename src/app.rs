@@ -1336,6 +1336,74 @@ impl Editor {
         self.canvas_viewport = scroll.inner_rect;
     }
 
+    fn tool_options(&mut self, ui: &mut egui::Ui) {
+        if matches!(
+            self.tool,
+            Tool::Brush | Tool::Eraser | Tool::Line | Tool::Rectangle | Tool::Ellipse
+        ) {
+            ui.add(
+                egui::Slider::new(&mut self.brush_size, 1.0..=128.0)
+                    .suffix(" px")
+                    .text("Brush size"),
+            );
+        }
+        if self.tool == Tool::Pencil {
+            ui.label("Pencil: 1 px");
+        }
+        if self.tool == Tool::Gradient {
+            ui.checkbox(&mut self.radial_gradient, "Radial gradient");
+        }
+        if matches!(self.tool, Tool::Select | Tool::Polygon) {
+            if self.tool == Tool::Select {
+                ui.checkbox(&mut self.ellipse_selection, "Elliptical selection");
+            } else {
+                ui.small("Click points. Enter or double-click finishes. Backspace removes a point; Escape cancels.");
+            }
+            egui::ComboBox::from_label("Combine")
+                .selected_text(self.selection_mode.label())
+                .show_ui(ui, |ui| {
+                    for mode in [
+                        CombineMode::Replace,
+                        CombineMode::Add,
+                        CombineMode::Subtract,
+                        CombineMode::Intersect,
+                    ] {
+                        ui.selectable_value(&mut self.selection_mode, mode, mode.label());
+                    }
+                });
+        }
+        if self.tool == Tool::Move {
+            ui.checkbox(&mut self.move_selection_only, "Move selection only");
+            ui.small("Drag: Shift constrains direction; Ctrl copies pixels.");
+            ui.small("Arrows: move 1 px. Shift+arrows: move 10 px.");
+        }
+        if matches!(self.tool, Tool::Rectangle | Tool::Ellipse) {
+            ui.checkbox(&mut self.shape_filled, "Filled shape");
+            ui.small("Hold Shift for equal sides.");
+        }
+        if self.tool == Tool::Line {
+            ui.small("Hold Shift for 45° angles.");
+        }
+        if matches!(
+            self.tool,
+            Tool::Brush
+                | Tool::Pencil
+                | Tool::Fill
+                | Tool::Line
+                | Tool::Rectangle
+                | Tool::Ellipse
+                | Tool::Picker
+        ) {
+            ui.small("X swaps primary and secondary colors");
+        }
+        if self.tool == Tool::Eraser {
+            ui.small("Drag to erase · Escape cancels");
+        }
+        if self.tool == Tool::Text {
+            ui.small("Click to place text");
+        }
+    }
+
     fn dialogs(&mut self, ctx: &egui::Context) {
         if self.file_job.is_some() {
             egui::Window::new("Working")
@@ -2104,16 +2172,9 @@ impl Editor {
                     self.start_document_edit(DocumentEdit::Invert);
                 }
             });
-            ui.horizontal(|ui| {
-                if self.tool == Tool::Pencil {
-                    ui.label("Pencil: 1 px");
-                }
-                ui.add_enabled(
-                    self.tool != Tool::Pencil,
-                    egui::Slider::new(&mut self.brush_size, 1.0..=128.0)
-                        .suffix(" px")
-                        .text("Brush size"),
-                );
+            ui.horizontal_wrapped(|ui| {
+                ui.strong("Tool options");
+                self.tool_options(ui);
                 ui.separator();
                 ui.add(
                     egui::Slider::new(&mut self.zoom, 0.1..=4.0)
@@ -2145,8 +2206,8 @@ impl Editor {
             });
         });
         egui::SidePanel::left("tools")
-            .exact_width(180.0)
-            .resizable(false)
+            .default_width(180.0)
+            .width_range(160.0..=240.0)
             .show(ctx, |ui| {
                 egui::ScrollArea::vertical()
                     .id_salt("tool-panel")
@@ -2180,57 +2241,21 @@ impl Editor {
                                         ui.visuals().weak_text_color()
                                     },
                                 ));
-                            if ui.add_sized([ui.available_width(), 34.0], button).clicked() {
+                            if ui.add_sized([ui.available_width(), 26.0], button).clicked() {
                                 self.tool = tool;
                             }
-                        }
-                        if self.tool == Tool::Gradient {
-                            ui.checkbox(&mut self.radial_gradient, "Radial gradient");
-                        }
-                        if matches!(self.tool, Tool::Select | Tool::Polygon) {
-                            if self.tool == Tool::Select {
-                                ui.checkbox(&mut self.ellipse_selection, "Elliptical selection");
-                            } else {
-                                ui.small("Click points. Enter or double-click finishes. Backspace removes a point; Escape cancels.");
-                            }
-                            egui::ComboBox::from_label("Combine")
-                                .selected_text(self.selection_mode.label())
-                                .show_ui(ui, |ui| {
-                                    for mode in [
-                                        CombineMode::Replace,
-                                        CombineMode::Add,
-                                        CombineMode::Subtract,
-                                        CombineMode::Intersect,
-                                    ] {
-                                        ui.selectable_value(
-                                            &mut self.selection_mode,
-                                            mode,
-                                            mode.label(),
-                                        );
-                                    }
-                                });
-                        }
-                        if self.tool == Tool::Move {
-                            ui.checkbox(&mut self.move_selection_only, "Move selection only");
-                            ui.small("Drag: Shift constrains direction; Ctrl copies pixels.");
-                            ui.small("Arrows: move 1 px. Shift+arrows: move 10 px.");
-                        }
-                        if matches!(self.tool, Tool::Rectangle | Tool::Ellipse) {
-                            ui.checkbox(&mut self.shape_filled, "Filled shape");
-                            ui.small("Hold Shift for equal sides.");
-                        }
-                        if self.tool == Tool::Line {
-                            ui.small("Hold Shift for 45° angles.");
                         }
                         ui.separator();
                         ui.heading("Color");
                         ui.horizontal(|ui| {
                             let label = ui.label("Primary");
-                            ui.color_edit_button_srgba(&mut self.color).labelled_by(label.id);
+                            ui.color_edit_button_srgba(&mut self.color)
+                                .labelled_by(label.id);
                         });
                         ui.horizontal(|ui| {
                             let label = ui.label("Secondary");
-                            ui.color_edit_button_srgba(&mut self.secondary_color).labelled_by(label.id);
+                            ui.color_edit_button_srgba(&mut self.secondary_color)
+                                .labelled_by(label.id);
                         });
                         if ui.button("Swap colors    X").clicked() {
                             std::mem::swap(&mut self.color, &mut self.secondary_color);
@@ -2245,9 +2270,20 @@ impl Editor {
                                 Color32::from_rgb(42, 113, 224),
                                 Color32::from_rgb(153, 90, 210),
                             ] {
-                                let label = format!("Set primary color to #{:02X}{:02X}{:02X}", color.r(), color.g(), color.b());
+                                let label = format!(
+                                    "Set primary color to #{:02X}{:02X}{:02X}",
+                                    color.r(),
+                                    color.g(),
+                                    color.b()
+                                );
                                 let response = ui.add(egui::Button::new("  ").fill(color));
-                                response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, response.enabled(), &label));
+                                response.widget_info(|| {
+                                    egui::WidgetInfo::labeled(
+                                        egui::WidgetType::Button,
+                                        response.enabled(),
+                                        &label,
+                                    )
+                                });
                                 if response.on_hover_text(label).clicked() {
                                     self.color = color;
                                 }
@@ -2259,24 +2295,6 @@ impl Editor {
                             self.color.g(),
                             self.color.b()
                         ));
-                        ui.separator();
-                        ui.heading("History");
-                        ui.small(format!(
-                            "RAM: {:.1} / 128 MiB; disk: {:.1} MiB",
-                            self.document.history_bytes() as f64 / (1024.0 * 1024.0),
-                            self.document.history_disk_bytes() as f64 / (1024.0 * 1024.0)
-                        ));
-                        egui::ScrollArea::vertical()
-                            .max_height(240.0)
-                            .show(ui, |ui| {
-                                for label in self.document.history() {
-                                    ui.label(label);
-                                }
-                            });
-                        ui.separator();
-                        ui.small(
-                    "Drag to paint.\nEscape cancels a stroke.\nScroll to navigate the canvas.",
-                );
                     });
             });
         egui::SidePanel::right("layers")
@@ -2416,65 +2434,67 @@ impl Editor {
                             ui.small("The active layer is hidden.");
                         }
                         ui.separator();
-                        egui::CollapsingHeader::new("History").show(ui, |ui| {
-                            ui.small(format!(
-                                "RAM: {:.1} MiB; disk: {:.1} MiB",
-                                self.document.history_bytes() as f64 / (1024.0 * 1024.0),
-                                self.document.history_disk_bytes() as f64 / (1024.0 * 1024.0)
-                            ));
-                            if self.history_storage_paused {
-                                ui.small("History storage paused; undo remains in RAM.");
-                            }
-                            if (self.history_storage_paused
-                                || self.document.history_error().is_some())
-                                && ui.button("Resume history storage").clicked()
-                            {
-                                self.store_history_async();
-                            }
-                            let undo: Vec<String> =
-                                self.document.history().map(str::to_owned).collect();
-                            let redo: Vec<String> =
-                                self.document.redo_history().map(str::to_owned).collect();
-                            let mut chosen = None;
-                            egui::ScrollArea::vertical()
-                                .id_salt("history-list")
-                                .max_height(160.0)
-                                .show(ui, |ui| {
-                                    if undo.is_empty() && redo.is_empty() {
-                                        ui.label("No edits yet");
-                                    }
-                                    for (index, label) in redo.iter().enumerate() {
-                                        if ui
-                                            .button(format!("Redo {label}"))
-                                            .on_hover_text(format!(
-                                                "Redo {} operation(s)",
-                                                index + 1
-                                            ))
-                                            .clicked()
-                                        {
-                                            chosen = Some((index + 1, true));
+                        egui::CollapsingHeader::new("History")
+                            .default_open(true)
+                            .show(ui, |ui| {
+                                ui.small(format!(
+                                    "RAM: {:.1} MiB; disk: {:.1} MiB",
+                                    self.document.history_bytes() as f64 / (1024.0 * 1024.0),
+                                    self.document.history_disk_bytes() as f64 / (1024.0 * 1024.0)
+                                ));
+                                if self.history_storage_paused {
+                                    ui.small("History storage paused; undo remains in RAM.");
+                                }
+                                if (self.history_storage_paused
+                                    || self.document.history_error().is_some())
+                                    && ui.button("Resume history storage").clicked()
+                                {
+                                    self.store_history_async();
+                                }
+                                let undo: Vec<String> =
+                                    self.document.history().map(str::to_owned).collect();
+                                let redo: Vec<String> =
+                                    self.document.redo_history().map(str::to_owned).collect();
+                                let mut chosen = None;
+                                egui::ScrollArea::vertical()
+                                    .id_salt("history-list")
+                                    .max_height(160.0)
+                                    .show(ui, |ui| {
+                                        if undo.is_empty() && redo.is_empty() {
+                                            ui.label("No edits yet");
                                         }
-                                    }
-                                    if !undo.is_empty() && !redo.is_empty() {
-                                        ui.separator();
-                                    }
-                                    for (index, label) in undo.iter().enumerate() {
-                                        if ui
-                                            .button(format!("Undo {label}"))
-                                            .on_hover_text(format!(
-                                                "Undo {} operation(s)",
-                                                index + 1
-                                            ))
-                                            .clicked()
-                                        {
-                                            chosen = Some((index + 1, false));
+                                        for (index, label) in redo.iter().enumerate() {
+                                            if ui
+                                                .button(format!("Redo {label}"))
+                                                .on_hover_text(format!(
+                                                    "Redo {} operation(s)",
+                                                    index + 1
+                                                ))
+                                                .clicked()
+                                            {
+                                                chosen = Some((index + 1, true));
+                                            }
                                         }
-                                    }
-                                });
-                            if let Some((steps, redo)) = chosen {
-                                self.navigate_history(steps, redo);
-                            }
-                        });
+                                        if !undo.is_empty() && !redo.is_empty() {
+                                            ui.separator();
+                                        }
+                                        for (index, label) in undo.iter().enumerate() {
+                                            if ui
+                                                .button(format!("Undo {label}"))
+                                                .on_hover_text(format!(
+                                                    "Undo {} operation(s)",
+                                                    index + 1
+                                                ))
+                                                .clicked()
+                                            {
+                                                chosen = Some((index + 1, false));
+                                            }
+                                        }
+                                    });
+                                if let Some((steps, redo)) = chosen {
+                                    self.navigate_history(steps, redo);
+                                }
+                            });
                     });
             });
         egui::CentralPanel::default()
