@@ -121,3 +121,48 @@ fn text_blend_modes_apply_glyph_coverage_and_preserve_unpainted_pixels() {
         }
     }
 }
+
+#[test]
+fn pencil_overlap_is_stable_and_sampled_fill_blends_only_matching_selected_pixels() {
+    let dst = [80, 140, 210, 130];
+    let src = [190, 70, 110, 170];
+    for mode in BlendMode::ALL {
+        let expected = expected(dst, src, mode, 255);
+        let mut pencil = Document::new(4, 4, dst).unwrap();
+        pencil.begin("Pencil");
+        for _ in 0..3 {
+            pencil.pencil_with_mode((0.0, 1.0), (3.0, 1.0), src, Some(mode));
+        }
+        assert_eq!(pencil.pixels()[5], expected);
+        assert_eq!(pencil.pixels()[0], dst);
+        pencil.commit();
+        assert_eq!(pencil.history().count(), 1);
+        pencil.undo();
+        assert_eq!(pencil.pixels(), &[dst; 16]);
+        let mut fill = Document::from_pixels(4, 1, vec![dst, dst, [255; 4], dst]).unwrap();
+        fill.set_selection(Some(paint_rust::document::Selection::elliptical(
+            0, 0, 3, 1,
+        )));
+        let original = fill.pixels().to_vec();
+        fill.begin("Fill");
+        assert!(
+            fill.fill_sampled_with_mode_cancellable(
+                (1, 0),
+                src,
+                paint_rust::selection::ColorMatch {
+                    tolerance: 0,
+                    contiguous: false
+                },
+                false,
+                Some(mode),
+                &AtomicBool::new(false)
+            )
+            .unwrap()
+        );
+        assert_eq!(fill.pixels()[1], expected);
+        assert_eq!(fill.pixels()[2], [255; 4]);
+        assert_eq!(fill.pixels()[3], dst);
+        fill.cancel();
+        assert_eq!(fill.pixels(), original);
+    }
+}

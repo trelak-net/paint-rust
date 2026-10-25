@@ -1610,3 +1610,10 @@ Text has its own paint-mode selector, including glyph and decoration coverage.
 All modes are compared against layer compositing with partially transparent
 source/destination colors. Existing preview cancellation and undo still apply.
 Text Apply/Cancel remain outside the scrollable controls on compact windows.
+
+Pencil and flood fill share the paint-mode controls. Pencil remains a one-pixel
+path and blends against the original stroke snapshot, so repeated samples in one
+stroke do not accumulate alpha. Flood fill finds its region using active/merged
+sampling, tolerance and selection first, then blends only the matching active-layer
+pixels. Turning Blend color off retains exact replacement. Tests compare all
+fourteen modes to layer compositing and verify cancellation/undo and selection.

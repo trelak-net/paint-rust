@@ -289,9 +289,20 @@ impl Editor {
             contiguous: self.color_contiguous,
         };
         let merged = self.color_sample_merged;
+        let mode = self
+            .brush_options
+            .blend
+            .then_some(self.brush_options.blend_mode);
         self.start_cancellable_file_job("fill image", move |cancel| {
             document.begin("Flood fill");
-            document.fill_sampled_cancellable((x, y), color, options, merged, cancel)?;
+            document.fill_sampled_with_mode_cancellable(
+                (x, y),
+                color,
+                options,
+                merged,
+                mode,
+                cancel,
+            )?;
             document.commit();
             Ok(Outcome::Edited(
                 Box::new(document),

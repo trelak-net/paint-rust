@@ -1560,6 +1560,16 @@ impl Document {
 
     /// Draw a single-pixel path between pointer samples without antialiasing.
     pub fn pencil(&mut self, from: (f32, f32), to: (f32, f32), color: Pixel) {
+        self.pencil_with_mode(from, to, color, None);
+    }
+
+    pub fn pencil_with_mode(
+        &mut self,
+        from: (f32, f32),
+        to: (f32, f32),
+        color: Pixel,
+        mode: Option<BlendMode>,
+    ) {
         assert!(self.editing(), "Begin a transaction before drawing");
         if ![from.0, from.1, to.0, to.1].iter().all(|v| v.is_finite()) {
             return;
@@ -1583,6 +1593,9 @@ impl Document {
         if start > end {
             return;
         }
+        let original = self.pending.as_ref().unwrap().layers[self.active]
+            .pixels
+            .clone();
         let pixels = Arc::make_mut(&mut self.layers[self.active].pixels);
         for major in start as u32..=end as u32 {
             let minor = if x0 == x1 {
@@ -1599,7 +1612,9 @@ impl Document {
                 (major as usize, minor as usize)
             };
             if self.selection.as_ref().is_none_or(|s| s.contains(x, y)) {
-                pixels[y * self.width as usize + x] = color;
+                let index = y * self.width as usize + x;
+                pixels[index] =
+                    mode.map_or(color, |mode| blend_layer(original[index], color, 255, mode));
             }
         }
     }
@@ -1812,6 +1827,18 @@ impl Document {
         merged: bool,
         cancel: &std::sync::atomic::AtomicBool,
     ) -> Result<bool, String> {
+        self.fill_sampled_with_mode_cancellable(seed, color, options, merged, None, cancel)
+    }
+
+    pub fn fill_sampled_with_mode_cancellable(
+        &mut self,
+        seed: (i32, i32),
+        color: Pixel,
+        options: crate::selection::ColorMatch,
+        merged: bool,
+        mode: Option<BlendMode>,
+        cancel: &std::sync::atomic::AtomicBool,
+    ) -> Result<bool, String> {
         use std::sync::atomic::Ordering;
         assert!(self.editing(), "Begin a transaction before filling");
         if cancel.load(Ordering::Relaxed) {
@@ -1850,8 +1877,9 @@ impl Document {
                 }
                 if region.contains(x as usize, y as usize) {
                     let pixel = &mut pixels[y as usize * self.width as usize + x as usize];
-                    changed |= *pixel != color;
-                    *pixel = color;
+                    let result = mode.map_or(color, |mode| blend_layer(*pixel, color, 255, mode));
+                    changed |= *pixel != result;
+                    *pixel = result;
                 }
             }
             if cancel.load(Ordering::Relaxed) {

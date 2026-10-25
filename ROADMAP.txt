@@ -113,7 +113,8 @@ independent tasks; do not silently reduce the required scope.
 [x] Shape antialiasing and combined outline/fill with primary/secondary colors.
 [x] Fourteen brush/clone color blend modes with persistent settings.
 [x] Fourteen paint blend modes for lines, shape fills/outlines, color gradients and text.
-[ ] Blend modes for remaining drawing tools and exact external coverage comparisons.
+[x] Pencil and sampled fill blend modes, with stable per-stroke pencil coverage.
+[ ] Exact external coverage comparisons for drawing-tool blend modes.
 [ ] Eraser coverage, continuous strokes and tablet pressure.
 [ ] Reference comparisons on opaque and transparent layers.
 5. Selection and transforms

@@ -1711,10 +1711,13 @@ impl Editor {
                         } else {
                             self.color
                         };
-                        self.document.pencil(
+                        self.document.pencil_with_mode(
                             self.last_point.or(self.shape_origin).unwrap_or(point),
                             point,
                             color.to_srgba_unmultiplied(),
+                            self.brush_options
+                                .blend
+                                .then_some(self.brush_options.blend_mode),
                         );
                         self.texture_dirty = true;
                     }
@@ -2084,7 +2087,13 @@ impl Editor {
         }
         if matches!(
             self.tool,
-            Tool::Line | Tool::Rectangle | Tool::Ellipse | Tool::Shapes | Tool::Gradient
+            Tool::Line
+                | Tool::Rectangle
+                | Tool::Ellipse
+                | Tool::Shapes
+                | Tool::Gradient
+                | Tool::Pencil
+                | Tool::Fill
         ) {
             if self.tool != Tool::Gradient {
                 ui.checkbox(&mut self.brush_options.blend, "Blend color");
