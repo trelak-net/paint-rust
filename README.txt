@@ -1326,3 +1326,15 @@ preview, undo, repeat and parameter persistence follow the common workflow.
 Tests cover weighted dominant colors, transparent neighbors, monochrome detail,
 flat regions, edge thresholds and invalid settings. Exact external algorithms,
 edge quality comparisons and large-image performance remain acceptance work.
+
+Color quantization
+-------------------
+Effects > Color > Quantize reduces visible RGB colors to a maximum of 2–256 while
+retaining each pixel's alpha and all hidden RGB. Images already within the target
+color count remain byte-identical, even when close colors share a histogram cell.
+A bounded 32×32×32 alpha-weighted histogram feeds deterministic weighted median
+cuts; occupied cells map to the nearest palette RGB. This bounds palette search
+work independently of full image size. The palette is derived from the active
+layer; selection limits publication, not palette analysis. Dithering and palette
+scope controls remain pending. Tests verify palette bounds, repeatability, exact
+small-palette preservation, alpha/hidden colors, selection and cancellation.

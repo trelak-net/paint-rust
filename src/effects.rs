@@ -6,6 +6,7 @@ mod morphology;
 mod object;
 pub use morphology::MorphologyOperation;
 mod photo;
+mod quantize;
 mod render;
 pub use render::{FractalSettings, NoiseSettings};
 mod stylize;
@@ -14,6 +15,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 #[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum Effect {
+    Quantize(u16),
     OilPainting {
         radius: u32,
         bins: u8,
@@ -171,6 +173,7 @@ impl Effect {
         let range = |v: f32, min: f32, max: f32| v.is_finite() && (min..=max).contains(&v);
         match self {
             Self::Move(_) | Self::Shape(_) | Self::Gradient(_) | Self::FreeTransform(_) => false,
+            Self::Quantize(colors) => (2..=256).contains(&colors),
             Self::OilPainting { radius, bins } => radius <= 10 && (2..=64).contains(&bins),
             Self::PencilSketch { radius, strength } => {
                 (1..=64).contains(&radius) && range(strength, 0.0, 1.0)
@@ -285,6 +288,7 @@ impl Effect {
 
     pub fn category(self) -> &'static str {
         match self {
+            Self::Quantize(_) => "Color",
             Self::OilPainting { .. } | Self::PencilSketch { .. } | Self::InkSketch { .. } => {
                 "Artistic"
             }
@@ -333,6 +337,7 @@ impl Effect {
     }
     pub fn name(self) -> &'static str {
         match self {
+            Self::Quantize(_) => "Quantize",
             Self::OilPainting { .. } => "Oil painting",
             Self::PencilSketch { .. } => "Pencil sketch",
             Self::InkSketch { .. } => "Ink sketch",
@@ -515,6 +520,7 @@ pub fn render(
         return None;
     }
     let mut output = match effect {
+        Effect::Quantize(colors) => quantize::render(source, colors, cancel)?,
         Effect::OilPainting { .. } | Effect::PencilSketch { .. } | Effect::InkSketch { .. } => {
             artistic::render(source, width, height, effect, cancel)?
         }
@@ -765,7 +771,8 @@ pub fn render(
                         let steps = f64::from(levels.clamp(2, 32) - 1);
                         (f64::from(*channel) * steps / 255.0).round() * 255.0 / steps
                     }
-                    Effect::OilPainting { .. }
+                    Effect::Quantize(_)
+                    | Effect::OilPainting { .. }
                     | Effect::PencilSketch { .. }
                     | Effect::InkSketch { .. }
                     | Effect::ReduceNoise { .. }

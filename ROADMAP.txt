@@ -151,6 +151,7 @@ independent tasks; do not silently reduce the required scope.
 [x] Seeded noise, median/percentile blur, edge detection and directional emboss.
 [x] Median noise reduction, local-extrema outlines and color-preserving directional relief.
 [x] Oil painting, pencil sketch and ink sketch with dedicated artistic menu and persistent controls.
+[x] Alpha-preserving color quantization with a bounded median-cut palette.
 [x] Bulge, twist, frosted glass, crystalize, vignette and red-eye correction.
 [x] Seeded dents, centered polar inversion and rotated tile-reflection distortions.
 [x] Alpha-aware dilation, erosion, opening and closing with separable sliding extrema.

@@ -1,5 +1,5 @@
 Capability	Category	Status	Current implementation	Remaining validation or work
-Quantize	Color	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Quantize	Color	partial	Bounded alpha-weighted median-cut RGB palette with 2–256 colors and exact small-palette bypass	Dithering, palette scope/options, external reference algorithm and performance audit
 Red Eye Removal	Photo	partial	Selection-aware red-dominance correction	Reference algorithm/ranges, center controls and color-space audit
 Add Noise	Noise	partial	Deterministic seeded uniform noise, coverage and monochrome/color controls	External reference output, ranges and color-space audit
 Auto-Level	Adjustment	partial	Auto levels; selected nontransparent histogram, configurable tail clipping	Exact transfer function, ranges, color space and reference output audit

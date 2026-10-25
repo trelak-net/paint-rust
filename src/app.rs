@@ -2531,6 +2531,10 @@ impl Editor {
                                 changed |= ui.add(egui::Slider::new(shadows,-100..=100).text("Shadows")).changed();
                                 changed |= ui.add(egui::Slider::new(highlights,-100..=100).text("Highlights")).changed();
                             }
+                            Effect::Quantize(colors) => {
+                                changed |= ui.add(egui::Slider::new(colors,2..=256).text("Maximum colors")).changed();
+                                ui.small("Reduces RGB colors while retaining opacity. No dithering.");
+                            }
                             Effect::OilPainting {radius,bins} => {
                                 changed |= ui.add(egui::Slider::new(radius,0..=10).text("Radius (px)")).changed();
                                 changed |= ui.add(egui::Slider::new(bins,2..=64).text("Tonal bins")).changed();
@@ -3167,6 +3171,7 @@ impl Editor {
                                 softness: 0.5,
                                 warmth: 0.1,
                             },
+                            Effect::Quantize(16),
                             Effect::OilPainting {radius:3,bins:16},
                             Effect::PencilSketch {radius:4,strength:1.0},
                             Effect::InkSketch {threshold:40,color:1.0},
@@ -3231,7 +3236,7 @@ impl Editor {
                         }
                         if title == "Effects" {
                             for category in
-                                ["Artistic", "Blurs", "Distort", "Noise", "Object", "Photo", "Render", "Stylize"]
+                                ["Artistic", "Blurs", "Color", "Distort", "Noise", "Object", "Photo", "Render", "Stylize"]
                             {
                                 ui.menu_button(category, |ui| {
                                     for &effect in effects
