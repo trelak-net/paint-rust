@@ -298,6 +298,9 @@ impl Editor {
                 );
             }
             Err(error) => {
+                if operation == "open image" && error != files::CANCELLED {
+                    self.open_errors.push(error.clone());
+                }
                 if error == files::CANCELLED && operation == "store undo history" {
                     self.history_storage_paused = true;
                 }

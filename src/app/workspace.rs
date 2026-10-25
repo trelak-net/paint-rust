@@ -354,6 +354,46 @@ mod tests {
     }
 
     #[test]
+    fn batch_open_continues_after_invalid_file_without_replacing_unsaved_work() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.document.invert();
+        let original = editor.active_document_id;
+        let directory = tempfile::tempdir().unwrap();
+        for (name, color) in [("one.prust", [10; 4]), ("two.prust", [20; 4])] {
+            files::save_project(
+                &Document::new(4, 4, color).unwrap(),
+                &directory.path().join(name),
+            )
+            .unwrap();
+        }
+        std::fs::write(directory.path().join("bad.pdn"), b"PDN3").unwrap();
+        editor
+            .open_queue
+            .extend(["one.prust", "bad.pdn", "two.prust"].map(|name| directory.path().join(name)));
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        while !editor.open_queue.is_empty() || editor.file_job.is_some() {
+            let _ = ctx.run(
+                egui::RawInput {
+                    screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1180.0, 800.0))),
+                    focused: true,
+                    ..Default::default()
+                },
+                |ctx| editor.show(ctx),
+            );
+            assert!(std::time::Instant::now() < deadline);
+            std::thread::sleep(std::time::Duration::from_millis(2));
+        }
+        assert_eq!(editor.documents.len(), 2);
+        assert_eq!(editor.open_errors.len(), 1);
+        assert!(editor.open_errors[0].contains("bad.pdn"));
+        assert!(editor.document.pixels().iter().all(|p| *p == [20; 4]));
+        editor.activate_document(original);
+        assert!(editor.document.dirty());
+        assert_eq!(editor.document.history().count(), 1);
+    }
+
+    #[test]
     fn each_document_keeps_an_independent_recovery_session() {
         let ctx = egui::Context::default();
         let root = tempfile::tempdir().unwrap();

@@ -67,6 +67,8 @@ struct EffectDialog {
 
 pub struct Editor {
     documents: Vec<workspace::DocumentSlot>,
+    open_queue: std::collections::VecDeque<PathBuf>,
+    open_errors: Vec<String>,
     active_document_id: u64,
     next_document_id: u64,
     document_order: Vec<u64>,
@@ -126,9 +128,9 @@ impl Editor {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         let mut editor = Self::blank(&cc.egui_ctx);
         editor.appearance = Some(crate::appearance::connect(&cc.egui_ctx));
-        if let Some(path) = std::env::args_os().nth(1) {
-            editor.load(PathBuf::from(path));
-        }
+        editor
+            .open_queue
+            .extend(std::env::args_os().skip(1).map(PathBuf::from));
         match paint_rust::recovery::Recovery::default_root().and_then(|root| {
             let recovery = paint_rust::recovery::Recovery::new(&root)?;
             let candidates = paint_rust::recovery::Recovery::discover(&root)?;
@@ -150,6 +152,8 @@ impl Editor {
         egui_extras::install_image_loaders(ctx);
         Self {
             documents: Vec::new(),
+            open_queue: Default::default(),
+            open_errors: Vec::new(),
             active_document_id: 0,
             next_document_id: 1,
             document_order: vec![0],
@@ -217,7 +221,10 @@ impl Editor {
     fn load(&mut self, path: PathBuf) {
         self.start_cancellable_file_job("open image", move |cancel| {
             Ok(Outcome::Opened(
-                Box::new(files::open_cancellable(&path, cancel)?),
+                Box::new(
+                    files::open_cancellable(&path, cancel)
+                        .map_err(|e| format!("{}: {e}", path.display()))?,
+                ),
                 path,
             ))
         });
@@ -453,14 +460,14 @@ impl Editor {
             Action::New => self.new_dialog = true,
             Action::Recovery => self.recovery_prompt = true,
             Action::Open => {
-                if let Some(path) = rfd::FileDialog::new()
+                if let Some(paths) = rfd::FileDialog::new()
                     .add_filter(
                         "Projects and images",
                         &["prust", "pdn", "png", "jpg", "jpeg", "bmp", "webp"],
                     )
-                    .pick_file()
+                    .pick_files()
                 {
-                    self.load(path);
+                    self.open_queue.extend(paths);
                 }
             }
             Action::CloseDocument => self.close_current_document(),
@@ -1486,6 +1493,24 @@ impl Editor {
                 });
             return;
         }
+        if !self.open_errors.is_empty() && self.open_queue.is_empty() {
+            let mut dismiss = false;
+            egui::Window::new("Files that could not be opened")
+                .collapsible(false)
+                .show(ctx, |ui| {
+                    egui::ScrollArea::vertical()
+                        .max_height(200.0)
+                        .show(ui, |ui| {
+                            for error in &self.open_errors {
+                                ui.label(error);
+                            }
+                        });
+                    dismiss = ui.button("Dismiss").clicked();
+                });
+            if dismiss {
+                self.open_errors.clear();
+            }
+        }
         if let Some(action) = self.pending {
             egui::Window::new("Unsaved changes")
                 .collapsible(false)
@@ -1959,6 +1984,26 @@ impl Editor {
         }
         self.document.defer_history_storage(true);
         self.poll_file_job(ctx);
+        self.open_queue.extend(ctx.input(|i| {
+            i.raw
+                .dropped_files
+                .iter()
+                .filter_map(|f| f.path.clone())
+                .collect::<Vec<_>>()
+        }));
+        if self.file_job.is_none()
+            && self.pending.is_none()
+            && !self.new_dialog
+            && self.text_dialog.is_none()
+            && self.effect_dialog.is_none()
+            && self.resize_dialog.is_none()
+            && self.layer_properties.is_none()
+            && !self.document.editing()
+            && self.last_point.is_none()
+            && let Some(path) = self.open_queue.pop_front()
+        {
+            self.load(path);
+        }
         self.document.defer_history_storage(true);
         if let Some(error) = self.document.history_error() {
             self.status = error.to_owned();
