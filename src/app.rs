@@ -359,6 +359,7 @@ impl Editor {
                 .add_filter("WebP image", &["webp"])
                 .add_filter("TIFF image", &["tif", "tiff"])
                 .add_filter("TGA image", &["tga"])
+                .add_filter("GIF image", &["gif"])
                 .set_file_name(
                     self.path
                         .as_ref()
@@ -418,7 +419,8 @@ impl Editor {
             .add_filter(
                 "Images and projects",
                 &[
-                    "png", "jpg", "jpeg", "bmp", "webp", "tif", "tiff", "tga", "prust", "pdn",
+                    "png", "jpg", "jpeg", "bmp", "webp", "tif", "tiff", "tga", "gif", "prust",
+                    "pdn",
                 ],
             )
             .pick_file()
@@ -584,7 +586,7 @@ impl Editor {
                         "Projects and images",
                         &[
                             "prust", "pdn", "png", "jpg", "jpeg", "bmp", "webp", "tif", "tiff",
-                            "tga",
+                            "tga", "gif",
                         ],
                     )
                     .pick_files()

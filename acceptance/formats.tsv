@@ -5,7 +5,7 @@ PNG	partial	Read; lossless RGBA export; decoded export preview	RGB/grayscale ICC
 JPEG	partial	Read/write; EXIF orientation; quality 1–100, matte and decoded preview	RGB/grayscale ICC supported; monitor profiles and metadata options pending
 BMP	partial	Read/write; opaque RGB with selectable matte and decoded preview	Additional BMP variants and metadata policy
 WebP	partial	Read; lossless export; decoded export preview	Lossy encode options and metadata options; ICC conversion/tagging supported
-GIF	missing	None	Palette, dithering, transparency and animation policy
+GIF	partial	First-frame import; single-frame palette export with binary alpha, matte and decoded preview	Palette/dithering controls and animation editing
 TIFF	partial	First-page import; RGBA8 export and decoded preview	Compression controls, high-bit-depth editing, metadata and multipage UI; ICC conversion/tagging supported
 JPEG XL	missing	None	Codec, options, licensing and validation
 AVIF	missing	None	Codec, options, licensing and validation

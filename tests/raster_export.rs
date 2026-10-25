@@ -144,6 +144,7 @@ fn raster_export_omits_private_metadata_and_tags_supported_formats_as_srgb() {
         RasterFormat::WebP,
         RasterFormat::Tiff,
         RasterFormat::Tga,
+        RasterFormat::Gif,
     ] {
         let path = directory
             .path()
@@ -163,7 +164,10 @@ fn raster_export_omits_private_metadata_and_tags_supported_formats_as_srgb() {
         } else {
             decoder.icc_profile().unwrap()
         };
-        if matches!(format, RasterFormat::Bmp | RasterFormat::Tga) {
+        if matches!(
+            format,
+            RasterFormat::Bmp | RasterFormat::Tga | RasterFormat::Gif
+        ) {
             assert!(profile.is_none());
         } else {
             assert_eq!(

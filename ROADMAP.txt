@@ -153,6 +153,7 @@ independent tasks; do not silently reduce the required scope.
 [ ] Preserve layer names, visibility, opacity, blend modes and metadata.
 [x] Decoded-output export preview, byte count, JPEG quality and JPEG/BMP matte controls.
 [x] TIFF and TGA import/export with alpha and decoded export previews.
+[x] GIF first-frame import and single-frame export with explicit transparency policy.
 [x] Unified project/raster Save and Save As with confirmed flattening and undo.
 [ ] Remaining raster codecs and advanced export options.
 [x] Apply all eight EXIF orientations once on raster import.

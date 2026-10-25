@@ -1140,3 +1140,15 @@ They share the text color, antialias setting and selection clipping. Decoration
 thickness and baseline offsets scale with font size; font-specific decoration
 metrics remain pending. Tests cover multiple lines, alignment, clipping, partial
 coverage and combined decorations. Apply and Cancel use the existing text transaction.
+
+GIF images
+----------
+GIF import opens the first frame as a single raster layer. Save, Save As and
+Export support a single-frame GIF with an automatically quantized palette of
+up to 256 colors. Alpha below 128 becomes transparent; pixels at or above 128
+are composited onto the selected matte and become opaque. The decoded preview
+shows the actual palette result before writing. GIF remains untagged sRGB and
+omits source descriptive metadata. Animation editing, palette selection and
+dithering controls remain pending. Quantization is bounded by the document size,
+but the codec does not expose cancellation within its palette-building pass.
+Tests cover the alpha boundary, matte, first-frame import and cancelled writes.

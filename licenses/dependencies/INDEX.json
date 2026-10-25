@@ -1,6 +1,6 @@
 {
   "target": "x86_64-unknown-linux-gnu",
-  "cargo_lock_sha256": "6be35ebaeaf0c4f8d268792340684be272c74f0e24b38d241008c0ceb0dcc640",
+  "cargo_lock_sha256": "b80dd162cc3f1ebff3607264773a437643eaffb10708746758bdb912ff2bc51f",
   "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1",
   "rust_library_notice_sha256": "5647be074c8edf7339fd863055923a8fc80bc5610a8d4661ec3b767b9d392c27",
   "packages": [
@@ -786,6 +786,21 @@
       "upstream_notices": [],
       "files": {
         "LICENSE": "31b94860253d8ec7b4529f51901044d3b459d6292d996504a36b1bae3a36a812"
+      }
+    },
+    {
+      "name": "color_quant",
+      "version": "1.1.0",
+      "license": "MIT",
+      "authors": [
+        "nwin <nwin@users.noreply.github.com>"
+      ],
+      "repository": "https://github.com/image-rs/color_quant.git",
+      "source": "https://crates.io/crates/color_quant/1.1.0",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE": "592dc80f1a865d20d61a2006a2d29ce34a2bc28cd7e868ab300fdeed6da154ca",
+        "SOURCE-COPYRIGHTS.txt": "c238e0a260cc2fb617ed98ec06e302879267df1633dd515e187f59060f971cfa"
       }
     },
     {
@@ -1656,6 +1671,21 @@
       "files": {
         "LICENSE-APACHE": "aaff376532ea30a0cd5330b9502ad4a4c8bf769c539c87ffe78819d188a18ebf",
         "LICENSE-MIT": "523a42c25d245dde9c015f882cec7f4555aad883382a6cf19b4b7d9b2cd5419b"
+      }
+    },
+    {
+      "name": "gif",
+      "version": "0.14.2",
+      "license": "MIT OR Apache-2.0",
+      "authors": [
+        "The image-rs Developers"
+      ],
+      "repository": "https://github.com/image-rs/image-gif",
+      "source": "https://crates.io/crates/gif/0.14.2",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "769f80b5bcb42ed0af4e4d2fd74e1ac9bf843cb80c5a29219d1ef3544428a6bb",
+        "LICENSE-MIT": "77257f3d2181236b1aee78920238062ae64efe13c5d858b2db126e79c9e1b14f"
       }
     },
     {

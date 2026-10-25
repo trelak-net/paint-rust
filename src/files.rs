@@ -2,8 +2,8 @@ use crate::document::{BlendMode, Document, Layer};
 use image::{
     ImageDecoder, ImageEncoder, ImageReader,
     codecs::{
-        bmp::BmpEncoder, jpeg::JpegEncoder, png::PngEncoder, tga::TgaEncoder, tiff::TiffEncoder,
-        webp::WebPEncoder,
+        bmp::BmpEncoder, gif::GifEncoder, jpeg::JpegEncoder, png::PngEncoder, tga::TgaEncoder,
+        tiff::TiffEncoder, webp::WebPEncoder,
     },
 };
 use std::{
@@ -227,6 +227,7 @@ fn write_atomic(
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RasterFormat {
+    Gif,
     Tiff,
     Tga,
     Jpeg,
@@ -235,13 +236,14 @@ pub enum RasterFormat {
     WebP,
 }
 impl RasterFormat {
-    pub const ALL: [Self; 6] = [
+    pub const ALL: [Self; 7] = [
         Self::Png,
         Self::Jpeg,
         Self::Bmp,
         Self::WebP,
         Self::Tiff,
         Self::Tga,
+        Self::Gif,
     ];
     pub fn from_path(path: &Path) -> Option<Self> {
         let extension = path.extension()?;
@@ -255,6 +257,7 @@ impl RasterFormat {
 
     pub fn extension(self) -> &'static str {
         match self {
+            Self::Gif => "gif",
             Self::Tiff => "tif",
             Self::Tga => "tga",
             Self::Jpeg => "jpg",
@@ -265,6 +268,7 @@ impl RasterFormat {
     }
     pub fn extensions(self) -> &'static [&'static str] {
         match self {
+            Self::Gif => &["gif"],
             Self::Tiff => &["tif", "tiff"],
             Self::Tga => &["tga"],
             Self::Jpeg => &["jpg", "jpeg"],
@@ -275,6 +279,7 @@ impl RasterFormat {
     }
     pub fn image_format(self) -> image::ImageFormat {
         match self {
+            Self::Gif => image::ImageFormat::Gif,
             Self::Tiff => image::ImageFormat::Tiff,
             Self::Tga => image::ImageFormat::Tga,
             Self::Jpeg => image::ImageFormat::Jpeg,
@@ -285,6 +290,7 @@ impl RasterFormat {
     }
     pub fn label(self) -> &'static str {
         match self {
+            Self::Gif => "GIF (single frame)",
             Self::Tiff => "TIFF",
             Self::Tga => "TGA",
             Self::Jpeg => "JPEG",
@@ -392,7 +398,22 @@ fn encode_raster_options(
     let mut bytes = Vec::with_capacity(pixels.len() * if opaque { 3 } else { 4 });
     for chunk in pixels.chunks(4096) {
         check_cancel(cancel)?;
-        if opaque {
+        if options.format == RasterFormat::Gif {
+            for pixel in chunk {
+                if pixel[3] < 128 {
+                    bytes.extend([0; 4]);
+                } else {
+                    let alpha = u32::from(pixel[3]);
+                    bytes.extend((0..3).map(|c| {
+                        ((u32::from(pixel[c]) * alpha
+                            + u32::from(options.matte[c]) * (255 - alpha)
+                            + 127)
+                            / 255) as u8
+                    }));
+                    bytes.push(255);
+                }
+            }
+        } else if opaque {
             for pixel in chunk {
                 let alpha = u32::from(pixel[3]);
                 bytes.extend((0..3).map(|c| {
@@ -411,6 +432,9 @@ fn encode_raster_options(
         cancel,
     };
     match options.format {
+        RasterFormat::Gif => {
+            GifEncoder::new(writer).encode(&bytes, size.0, size.1, image::ExtendedColorType::Rgba8)
+        }
         RasterFormat::Tiff => {
             let mut encoded = Cursor::new(Vec::new());
             with_srgb_profile(TiffEncoder::new(CancellableWriter {
