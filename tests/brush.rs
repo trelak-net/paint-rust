@@ -135,3 +135,39 @@ fn brush_blend_modes_match_layer_compositing_and_do_not_accumulate() {
         assert_eq!(document.pixels()[0], expected);
     }
 }
+
+#[test]
+fn aliased_strokes_ignore_hardness_but_keep_opacity_and_selection() {
+    for erase in [false, true] {
+        let mut results = Vec::new();
+        for hardness in [0.0, 0.5, 1.0] {
+            let mut document = Document::new(11, 11, [10, 20, 30, 255]).unwrap();
+            document.set_selection(Some(paint_rust::document::Selection {
+                x: 2,
+                y: 2,
+                width: 7,
+                height: 7,
+                ellipse: None,
+                mask: None,
+            }));
+            document.begin("Stroke");
+            stroke(
+                &mut document,
+                (3.5, 5.5),
+                (7.5, 5.5),
+                Options {
+                    hardness,
+                    opacity: 0.5,
+                    antialias: false,
+                    ..Options::default()
+                },
+                erase,
+            );
+            assert_eq!(document.pixels()[5 * 11 + 1], [10, 20, 30, 255]);
+            assert_ne!(document.pixels()[5 * 11 + 5], [10, 20, 30, 255]);
+            results.push(document.pixels().to_vec());
+        }
+        assert_eq!(results[0], results[1]);
+        assert_eq!(results[1], results[2]);
+    }
+}

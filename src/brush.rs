@@ -128,7 +128,7 @@ pub(crate) fn render(
                 f64::from(distance <= radius)
             };
             let inner = radius * f64::from(options.hardness.clamp(0.0, 1.0));
-            let softness = if inner < radius {
+            let softness = if options.antialias && inner < radius {
                 ((radius - distance) / (radius - inner)).clamp(0.0, 1.0)
             } else {
                 1.0

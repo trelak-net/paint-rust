@@ -1975,11 +1975,15 @@ impl Editor {
             self.tool,
             Tool::Brush | Tool::Eraser | Tool::Clone | Tool::Recolor
         ) {
-            toolbar::slider(
-                ui,
-                egui::Slider::new(&mut self.brush_options.hardness, 0.0..=1.0),
-                "Hardness",
-            );
+            ui.add_enabled_ui(self.brush_options.antialias, |ui| {
+                toolbar::slider(
+                    ui,
+                    egui::Slider::new(&mut self.brush_options.hardness, 0.0..=1.0),
+                    "Hardness",
+                );
+            })
+            .response
+            .on_disabled_hover_text("Enable antialiasing to use a soft brush edge");
             toolbar::slider(
                 ui,
                 egui::Slider::new(&mut self.brush_options.opacity, 0.0..=1.0),
