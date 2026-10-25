@@ -115,7 +115,9 @@ policy. Compare the decoded preview with the actual saved bytes. Status: partial
 PNG/JPEG/BMP/lossless WebP tests and decoded previews exist; further formats/options
 and unified Save routing remain pending.
 FILE-02: Verify EXIF orientation and ICC conversion exactly once, including
-round-trips through project/recovery/PDN. Status: pending.
+round-trips through project/recovery/PDN. Status: partial; all eight JPEG EXIF
+orientations, invalid tags, cancellation and PRUST/PNG round-trips are tested.
+ICC conversion and remaining round-trip combinations are pending.
 PERF-01: Benchmark large images and many documents while editing, saving,
 recovering and spilling undo to disk. Status: per-document checks exist; shared
 memory limits and full multi-document benchmarks remain pending.

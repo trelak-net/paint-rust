@@ -62,7 +62,8 @@ Next iteration: workspace and tool consistency
 Later iterations
 ----------------
 [ ] Antialiased brush and shape rendering, with explicit opacity behavior.
-[ ] JPEG export quality controls, EXIF orientation and color profile support.
+[x] JPEG export quality controls and EXIF orientation on import.
+[ ] Embedded color profile support.
 [ ] Tablet pressure and further large-document responsiveness work.
 [ ] Distribution checks on additional Linux environments.
 The full screen-reader audit remains the final task.
@@ -131,7 +132,8 @@ independent tasks; do not silently reduce the required scope.
 [ ] Preserve layer names, visibility, opacity, blend modes and metadata.
 [x] Decoded-output export preview, byte count, JPEG quality and JPEG/BMP matte controls.
 [ ] Remaining raster codecs/options and unified raster Save/Save As routing.
-[ ] EXIF orientation and ICC color management.
+[x] Apply all eight EXIF orientations once on raster import.
+[ ] ICC color management and raster metadata preservation policy.
 10. Reliability and performance
 [ ] Bounded foreground work, large-document/multi-document benchmarks.
 [ ] Disk-full, corrupted-input, interrupted-save and low-memory scenarios.

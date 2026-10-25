@@ -135,8 +135,9 @@ history run in background workers with cooperative cancellation. Small brush edi
 use changed-region compositing and partial texture uploads. Initial copies of
 shared layer buffers, allocation and GPU uploads still take time on the UI thread;
 this is not a guarantee of constant frame time at the document limits. PDN/PRUST
-preserve string metadata and layer background flags. Raster metadata, orientation
-tags and embedded color profiles are not yet preserved or interpreted. PNG, JPEG,
+preserve string metadata and layer background flags. Raster EXIF orientation is applied to pixels on import, including mirrored
+orientations. Raster metadata and embedded color profiles are not preserved;
+ICC color conversion is not implemented. PNG, JPEG,
 BMP and lossless WebP are available for raster export. A user-local Linux installation helper is available; there is no signed
 distribution yet. Linux is the currently validated desktop target.
 

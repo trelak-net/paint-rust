@@ -1,6 +1,6 @@
 use crate::document::{BlendMode, Document, Layer};
 use image::{
-    ImageEncoder, ImageReader,
+    ImageDecoder, ImageEncoder, ImageReader,
     codecs::{bmp::BmpEncoder, jpeg::JpegEncoder, png::PngEncoder, webp::WebPEncoder},
 };
 use std::{
@@ -58,12 +58,39 @@ pub fn open_cancellable(path: &Path, cancel: &AtomicBool) -> Result<Document, St
     limits.max_image_width = Some(16384);
     limits.max_image_height = Some(16384);
     reader.limits(limits);
-    let image = reader.decode().map_err(|e| e.to_string())?.to_rgba8();
-    Document::from_pixels(
-        image.width(),
-        image.height(),
-        collect_pixels(&image, cancel)?,
-    )
+    let mut decoder = reader.into_decoder().map_err(|e| e.to_string())?;
+    if decoder.total_bytes() > 256 * 1024 * 1024 {
+        return Err("Decoded image exceeds the memory limit.".into());
+    }
+    let orientation = decoder.orientation().map_err(|e| e.to_string())?;
+    check_cancel(cancel)?;
+    let image = image::DynamicImage::from_decoder(decoder)
+        .map_err(|e| e.to_string())?
+        .to_rgba8();
+    let (mut width, mut height) = image.dimensions();
+    let mut pixels = collect_pixels(&image, cancel)?;
+    drop(image);
+    use crate::transform::Orientation as O;
+    use image::metadata::Orientation as E;
+    let operations: &[O] = match orientation {
+        E::NoTransforms => &[],
+        E::Rotate90 => &[O::Clockwise],
+        E::Rotate180 => &[O::HalfTurn],
+        E::Rotate270 => &[O::Counterclockwise],
+        E::FlipHorizontal => &[O::FlipHorizontal],
+        E::FlipVertical => &[O::FlipVertical],
+        E::Rotate90FlipH => &[O::Clockwise, O::FlipHorizontal],
+        E::Rotate270FlipH => &[O::Counterclockwise, O::FlipHorizontal],
+    };
+    for operation in operations {
+        pixels = crate::transform::orient_cancellable(&pixels, width, height, *operation, cancel)
+            .ok_or(CANCELLED)?;
+        if matches!(operation, O::Clockwise | O::Counterclockwise) {
+            std::mem::swap(&mut width, &mut height);
+        }
+    }
+    check_cancel(cancel)?;
+    Document::from_pixels(width, height, pixels)
 }
 
 pub const CANCELLED: &str = "Operation cancelled";
