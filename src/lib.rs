@@ -27,3 +27,5 @@ pub mod dds;
 pub mod resample;
 
 pub mod resolution;
+
+pub mod raster_density;

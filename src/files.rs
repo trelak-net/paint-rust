@@ -3,7 +3,7 @@ use image::{
     ImageDecoder, ImageEncoder, ImageReader,
     codecs::{
         bmp::BmpEncoder, gif::GifEncoder, jpeg::JpegEncoder, png::PngEncoder, tga::TgaEncoder,
-        tiff::TiffEncoder, webp::WebPEncoder,
+        webp::WebPEncoder,
     },
 };
 use std::{
@@ -70,6 +70,20 @@ pub fn open_cancellable(path: &Path, cancel: &AtomicBool) -> Result<Document, St
         return Err("Decoded image exceeds the memory limit.".into());
     }
     let orientation = decoder.orientation().map_err(|e| e.to_string())?;
+    let mut density = decoder
+        .exif_metadata()
+        .ok()
+        .flatten()
+        .as_deref()
+        .and_then(crate::raster_density::read_exif)
+        .or_else(|| {
+            File::open(path).ok().and_then(|file| {
+                crate::raster_density::read(CancellableReader {
+                    inner: file,
+                    cancel,
+                })
+            })
+        });
     let profile = if is_tiff {
         // Read metadata with an independent bound: the image wrapper limits TIFF
         // tag reads to the pixel buffer size, which excludes profiles on tiny images.
@@ -114,10 +128,17 @@ pub fn open_cancellable(path: &Path, cancel: &AtomicBool) -> Result<Document, St
             .ok_or(CANCELLED)?;
         if matches!(operation, O::Clockwise | O::Counterclockwise) {
             std::mem::swap(&mut width, &mut height);
+            if let Some(dpi) = &mut density {
+                std::mem::swap(&mut dpi.x, &mut dpi.y);
+            }
         }
     }
     check_cancel(cancel)?;
-    Document::from_pixels(width, height, pixels)
+    let mut document = Document::from_pixels(width, height, pixels)?;
+    if let Some(dpi) = density {
+        crate::resolution::write(&mut document.metadata, dpi)?;
+    }
+    Ok(document)
 }
 
 fn tiff_metadata_limits() -> tiff::decoder::Limits {
@@ -320,8 +341,9 @@ impl RasterFormat {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct RasterOptions {
+    pub dpi: crate::resolution::Dpi,
     pub format: RasterFormat,
     pub quality: u8,
     pub matte: [u8; 3],
@@ -330,6 +352,7 @@ impl RasterOptions {
     pub fn new(format: RasterFormat) -> Self {
         Self {
             format,
+            dpi: Default::default(),
             quality: 90,
             matte: [255; 3],
         }
@@ -363,7 +386,14 @@ pub fn decode_raster_bytes(
     limits.max_image_width = Some(16384);
     limits.max_image_height = Some(16384);
     reader.limits(limits);
-    let decoder = reader.into_decoder().map_err(|e| e.to_string())?;
+    let mut decoder = reader.into_decoder().map_err(|e| e.to_string())?;
+    let density = decoder
+        .exif_metadata()
+        .ok()
+        .flatten()
+        .as_deref()
+        .and_then(crate::raster_density::read_exif)
+        .or_else(|| crate::raster_density::read(Cursor::new(bytes)));
     let (width, height) = decoder.dimensions();
     Document::validate_size(width, height)?;
     let image = image::DynamicImage::from_decoder(decoder)
@@ -371,7 +401,11 @@ pub fn decode_raster_bytes(
         .to_rgba8();
     let pixels = collect_pixels(&image, cancel)?;
     check_cancel(cancel)?;
-    Document::from_pixels(width, height, pixels)
+    let mut document = Document::from_pixels(width, height, pixels)?;
+    if let Some(dpi) = density {
+        crate::resolution::write(&mut document.metadata, dpi)?;
+    }
+    Ok(document)
 }
 
 pub fn save_encoded_raster(bytes: &[u8], path: &Path, cancel: &AtomicBool) -> Result<(), String> {
@@ -413,7 +447,10 @@ fn encode_raster_options(
 ) -> Result<(), String> {
     check_cancel(cancel)?;
     Document::validate_size(size.0, size.1)?;
-    if pixels.len() != size.0 as usize * size.1 as usize || !(1..=100).contains(&options.quality) {
+    if pixels.len() != size.0 as usize * size.1 as usize
+        || !(1..=100).contains(&options.quality)
+        || !options.dpi.valid()
+    {
         return Err("Invalid raster export pixels or quality.".into());
     }
     if options.format == RasterFormat::Dds {
@@ -471,12 +508,48 @@ fn encode_raster_options(
         }
         RasterFormat::Tiff => {
             let mut encoded = Cursor::new(Vec::new());
-            with_srgb_profile(TiffEncoder::new(CancellableWriter {
-                inner: &mut encoded,
-                cancel,
-            }))?
-            .write_image(&bytes, size.0, size.1, image::ExtendedColorType::Rgba8)
-            .map_err(|e| e.to_string())?;
+            {
+                let mut encoder = tiff::encoder::TiffEncoder::new(CancellableWriter {
+                    inner: &mut encoded,
+                    cancel,
+                })
+                .map_err(|e| e.to_string())?;
+                let mut image = encoder
+                    .new_image::<tiff::encoder::colortype::RGBA8>(size.0, size.1)
+                    .map_err(|e| e.to_string())?;
+                use tiff::tags::Tag;
+                image
+                    .encoder()
+                    .write_tag(Tag::ExtraSamples, &[2u16][..])
+                    .map_err(|e| e.to_string())?;
+                image
+                    .encoder()
+                    .write_tag(Tag::ResolutionUnit, 2u16)
+                    .map_err(|e| e.to_string())?;
+                for (tag, dpi) in [
+                    (Tag::XResolution, options.dpi.x),
+                    (Tag::YResolution, options.dpi.y),
+                ] {
+                    image
+                        .encoder()
+                        .write_tag(
+                            tag,
+                            tiff::encoder::Rational {
+                                n: (dpi * 10000.0).round() as u32,
+                                d: 10000,
+                            },
+                        )
+                        .map_err(|e| e.to_string())?;
+                }
+                image
+                    .encoder()
+                    .write_tag(
+                        Tag::IccProfile,
+                        crate::color_management::srgb_profile()?.as_slice(),
+                    )
+                    .map_err(|e| e.to_string())?;
+                image.write_data(&bytes).map_err(|e| e.to_string())?;
+            }
             check_cancel(cancel)?;
             return writer
                 .write_all(encoded.get_ref())
@@ -488,29 +561,35 @@ fn encode_raster_options(
             size.1,
             image::ExtendedColorType::Rgba8,
         ),
-        RasterFormat::Jpeg => with_srgb_profile(JpegEncoder::new_with_quality(
+        RasterFormat::Jpeg => {
+            let mut encoder =
+                with_srgb_profile(JpegEncoder::new_with_quality(writer, options.quality))?;
+            encoder.set_pixel_density(image::codecs::jpeg::PixelDensity {
+                density: (options.dpi.x.round() as u16, options.dpi.y.round() as u16),
+                unit: image::codecs::jpeg::PixelDensityUnit::Inches,
+            });
+            encoder
+                .set_exif_metadata(crate::raster_density::exif(options.dpi))
+                .map_err(|e| e.to_string())?;
+            encoder.encode(&bytes, size.0, size.1, image::ExtendedColorType::Rgb8)
+        }
+        RasterFormat::Bmp => BmpEncoder::new(&mut crate::raster_density::HeaderWriter::new(
             writer,
-            options.quality,
-        ))?
+            options.dpi,
+            false,
+        ))
         .encode(&bytes, size.0, size.1, image::ExtendedColorType::Rgb8),
-        RasterFormat::Bmp => BmpEncoder::new(&mut writer).encode(
-            &bytes,
-            size.0,
-            size.1,
-            image::ExtendedColorType::Rgb8,
-        ),
-        RasterFormat::Png => with_srgb_profile(PngEncoder::new(writer))?.write_image(
-            &bytes,
-            size.0,
-            size.1,
-            image::ExtendedColorType::Rgba8,
-        ),
-        RasterFormat::WebP => with_srgb_profile(WebPEncoder::new_lossless(writer))?.write_image(
-            &bytes,
-            size.0,
-            size.1,
-            image::ExtendedColorType::Rgba8,
-        ),
+        RasterFormat::Png => with_srgb_profile(PngEncoder::new(
+            crate::raster_density::HeaderWriter::new(writer, options.dpi, true),
+        ))?
+        .write_image(&bytes, size.0, size.1, image::ExtendedColorType::Rgba8),
+        RasterFormat::WebP => {
+            let mut encoder = with_srgb_profile(WebPEncoder::new_lossless(writer))?;
+            encoder
+                .set_exif_metadata(crate::raster_density::exif(options.dpi))
+                .map_err(|e| e.to_string())?;
+            encoder.write_image(&bytes, size.0, size.1, image::ExtendedColorType::Rgba8)
+        }
     }
     .map_err(|e| e.to_string())
 }
@@ -545,12 +624,15 @@ pub fn save_raster_cancellable(
             inner: file,
             cancel,
         });
-        encode_raster(
+        encode_raster_options(
             &document.composite_cancellable(cancel).ok_or(CANCELLED)?,
             (document.width, document.height),
             &mut writer,
             cancel,
-            format,
+            RasterOptions {
+                dpi: document.resolution(),
+                ..RasterOptions::new(format)
+            },
         )?;
         writer.flush().map_err(|e| e.to_string())
     })

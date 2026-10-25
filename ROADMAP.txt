@@ -107,7 +107,7 @@ independent tasks; do not silently reduce the required scope.
 [x] Fit image and fit selection commands with keyboard shortcuts.
 [x] Undoable physical-resolution EXIF project metadata and native 300 DPI PDN round-trip fixture.
 [x] Pixel/inch/centimeter resize controls, linked X/Y DPI and persistent physical rulers.
-[ ] Raster density tags.
+[x] PNG/JPEG/BMP/WebP/TIFF density import/export, independent X/Y DPI and orientation-aware axes.
 4. Rendering
 [x] Brush/eraser antialiasing, hardness, stroke opacity and blend/replacement modes.
 [x] Shape antialiasing and combined outline/fill with primary/secondary colors.

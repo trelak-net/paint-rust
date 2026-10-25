@@ -11,6 +11,7 @@ fn single_frame_export_has_binary_alpha_and_selected_matte() {
     let options = RasterOptions {
         format: RasterFormat::Gif,
         quality: 90,
+        dpi: Default::default(),
         matte: [20, 60, 100],
     };
     let bytes =

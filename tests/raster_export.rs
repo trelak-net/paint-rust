@@ -60,6 +60,7 @@ fn opaque_formats_apply_the_selected_matte_and_preserve_preview_bytes_on_save() 
     let options = RasterOptions {
         format: RasterFormat::Bmp,
         quality: 90,
+        dpi: Default::default(),
         matte: [20, 100, 180],
     };
     let bytes = files::encode_raster_bytes(&source, (3, 1), options, &cancel).unwrap();
@@ -88,6 +89,7 @@ fn jpeg_export_has_valid_dimensions_quality_control_and_opaque_matte() {
             RasterOptions {
                 format: RasterFormat::Jpeg,
                 quality,
+                dpi: Default::default(),
                 matte: [128; 3],
             },
             &cancel,
@@ -157,7 +159,15 @@ fn raster_export_omits_private_metadata_and_tags_supported_formats_as_srgb() {
                 .any(|window| window == marker.as_bytes())
         );
         let mut decoder = ImageReader::open(&path).unwrap().into_decoder().unwrap();
-        assert!(decoder.exif_metadata().unwrap().is_none());
+        let exif = decoder.exif_metadata().unwrap();
+        if matches!(format, RasterFormat::Jpeg | RasterFormat::WebP) {
+            assert_eq!(
+                paint_rust::raster_density::read_exif(&exif.unwrap()),
+                Some(Default::default())
+            );
+        } else {
+            assert!(exif.is_none());
+        }
         let profile = if format == RasterFormat::Tiff {
             let mut tiff = tiff::decoder::Decoder::new(std::io::Cursor::new(&bytes)).unwrap();
             Some(tiff.get_tag_u8_vec(tiff::tags::Tag::IccProfile).unwrap())
