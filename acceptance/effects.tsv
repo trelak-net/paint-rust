@@ -14,7 +14,7 @@ Black and White	Adjustment	partial	Grayscale with weighted RGB luminance	Exact t
 Drop Shadow	Object	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
 Edge Detect	Stylize	partial	Sobel magnitude with premultiplied input; source alpha retained	External reference output, ranges and color-space audit
 Emboss	Stylize	partial	Directional grayscale Sobel relief; source alpha retained	External reference output, ranges and color-space audit
-Exposure	Adjustment	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Exposure	Adjustment	partial	Linear-sRGB EV gain, offset and gamma with bounded LUT	External reference algorithm/ranges and working-space comparison
 Fragment Blur	Blurs	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
 Frosted Glass	Distort	partial	Deterministic seeded disk scatter and bilinear sampling	Reference algorithm/ranges, center controls and color-space audit
 Gaussian Blur	Blurs	partial	Separable normalized Gaussian, premultiplied alpha, replicated edges	External reference output, ranges and color-space audit

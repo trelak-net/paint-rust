@@ -1081,3 +1081,12 @@ seeds. Version, size, numeric ranges and curve topology are validated before use
 invalid settings fall back to defaults. Writes replace the file atomically.
 Geometry gestures are excluded. Tests cover malformed settings and round trips;
 two isolated native launches verify persistence across clean application exits.
+
+Exposure adjustment
+-------------------
+Adjustments > Exposure applies -10 to +10 EV gain in linear sRGB, then a
+-1 to +1 linear offset and gamma 0.1 to 10 before encoding back to sRGB.
+A bounded 256-entry table keeps preview work proportional to image size. Alpha,
+hidden RGB in fully transparent pixels and pixels outside the selection remain
+unchanged. Neutral settings preserve exact bytes. Parameters persist alongside
+other filters; reference transfer-function comparison remains pending.

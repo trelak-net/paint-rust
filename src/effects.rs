@@ -6,6 +6,11 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 #[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum Effect {
+    Exposure {
+        stops: f32,
+        offset: f32,
+        gamma: f32,
+    },
     Bulge(f32),
     Twist(f32),
     FrostedGlass {
@@ -87,6 +92,11 @@ impl Effect {
             | Self::Grayscale
             | Self::Sepia
             | Self::EdgeDetect => true,
+            Self::Exposure {
+                stops,
+                offset,
+                gamma,
+            } => range(stops, -10.0, 10.0) && range(offset, -1.0, 1.0) && range(gamma, 0.1, 10.0),
             Self::AutoLevels(v) => range(v, 0.0, 5.0),
             Self::BrightnessContrast {
                 brightness,
@@ -162,6 +172,7 @@ impl Effect {
     }
     pub fn name(self) -> &'static str {
         match self {
+            Self::Exposure { .. } => "Exposure",
             Self::Bulge(_) => "Bulge",
             Self::Twist(_) => "Twist",
             Self::FrostedGlass { .. } => "Frosted glass",
@@ -218,6 +229,38 @@ pub fn render(
     {
         return None;
     }
+    let exposure_table = if let Effect::Exposure {
+        stops,
+        offset,
+        gamma,
+    } = effect
+    {
+        if !effect.valid_settings() {
+            return None;
+        }
+        Some(std::array::from_fn::<u8, 256, _>(|i| {
+            if stops == 0.0 && offset == 0.0 && gamma == 1.0 {
+                return i as u8;
+            }
+            let encoded = i as f64 / 255.0;
+            let linear = if encoded <= 0.04045 {
+                encoded / 12.92
+            } else {
+                ((encoded + 0.055) / 1.055).powf(2.4)
+            };
+            let adjusted = (linear * 2.0_f64.powf(f64::from(stops)) + f64::from(offset))
+                .clamp(0.0, 1.0)
+                .powf(1.0 / f64::from(gamma));
+            let encoded = if adjusted <= 0.0031308 {
+                adjusted * 12.92
+            } else {
+                1.055 * adjusted.powf(1.0 / 2.4) - 0.055
+            };
+            (encoded * 255.0).round().clamp(0.0, 255.0) as u8
+        }))
+    } else {
+        None
+    };
     if let Effect::Move(parameters) = effect {
         return crate::movement::render(
             source,
@@ -331,6 +374,14 @@ pub fn render(
                 continue;
             }
             let p = source[i];
+            if let Some(table) = &exposure_table {
+                if p[3] > 0 {
+                    for c in 0..3 {
+                        output[i][c] = table[p[c] as usize];
+                    }
+                }
+                continue;
+            }
             if let Effect::Vignette { amount, roundness } = effect {
                 let dx = (x as f64 + 0.5 - f64::from(width) / 2.0) / (f64::from(width) / 2.0);
                 let dy = (y as f64 + 0.5 - f64::from(height) / 2.0) / (f64::from(height) / 2.0);
@@ -443,7 +494,8 @@ pub fn render(
                         let steps = f64::from(levels.clamp(2, 32) - 1);
                         (f64::from(*channel) * steps / 255.0).round() * 255.0 / steps
                     }
-                    Effect::Bulge(_)
+                    Effect::Exposure { .. }
+                    | Effect::Bulge(_)
                     | Effect::Twist(_)
                     | Effect::FrostedGlass { .. }
                     | Effect::Crystalize { .. }

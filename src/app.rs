@@ -2378,6 +2378,11 @@ impl Editor {
                                     .add(egui::Slider::new(contrast, -100..=100).text("Contrast"))
                                     .changed();
                             }
+                            Effect::Exposure { stops, offset, gamma } => {
+                                changed |= ui.add(egui::Slider::new(stops,-10.0..=10.0).text("Exposure (EV)")).changed();
+                                changed |= ui.add(egui::Slider::new(offset,-1.0..=1.0).text("Linear offset")).changed();
+                                changed |= ui.add(egui::Slider::new(gamma,0.1..=10.0).logarithmic(true).text("Gamma")).changed();
+                            }
                             Effect::Curves(parameters) => {
                                 changed |= curves::controls(ui, parameters, &mut self.levels_channel);
                             }
@@ -2944,6 +2949,11 @@ impl Editor {
                             Effect::HighlightsShadows {
                                 highlights: 0,
                                 shadows: 0,
+                            },
+                            Effect::Exposure {
+                                stops: 0.0,
+                                offset: 0.0,
+                                gamma: 1.0,
                             },
                             Effect::Curves(Default::default()),
                             Effect::Levels(Default::default()),

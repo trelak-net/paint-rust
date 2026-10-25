@@ -135,6 +135,7 @@ independent tasks; do not silently reduce the required scope.
 [x] Master/per-channel levels, gamma and automatic histogram-tail clipping.
 [x] Editable master/per-channel tonal curves with bounded cubic interpolation.
 [x] Temperature/tint, highlights/shadows and invert-alpha adjustments.
+[x] Linear-sRGB exposure, offset and gamma with persistent parameters.
 [x] Background input histograms for levels/curves with channel and logarithmic views.
 [ ] Remaining adjustment parity audit.
 [x] Gaussian and motion blur with premultiplied-alpha sampling and live previews.
