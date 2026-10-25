@@ -1,5 +1,7 @@
 use super::*;
 
+pub(super) const HISTORY_RAM_BUDGET: usize = 128 * 1024 * 1024;
+
 pub(super) struct DocumentSlot {
     id: u64,
     document: Document,
@@ -8,10 +10,66 @@ pub(super) struct DocumentSlot {
     offset: Vec2,
     texture: Option<TextureHandle>,
     renderer: crate::canvas_renderer::CanvasRenderer,
-    history_paused: bool,
     recovery: Option<paint_rust::recovery::Recovery>,
 }
 impl Editor {
+    pub(super) fn workspace_history_bytes(&self) -> usize {
+        self.document.history_bytes()
+            + self
+                .documents
+                .iter()
+                .map(|slot| slot.document.history_bytes())
+                .sum::<usize>()
+    }
+
+    pub(super) fn workspace_history_error(&self) -> Option<&str> {
+        self.document.history_error().or_else(|| {
+            self.documents
+                .iter()
+                .find_map(|slot| slot.document.history_error())
+        })
+    }
+
+    pub(super) fn workspace_history_needs_storage(&self, budget: usize) -> bool {
+        if self.history_storage_paused || self.workspace_history_bytes() <= budget {
+            return false;
+        }
+        let share = budget / (self.documents.len() + 1);
+        std::iter::once(&self.document)
+            .chain(self.documents.iter().map(|slot| &slot.document))
+            .any(|doc| doc.history_error().is_none() && doc.history_bytes() > share)
+    }
+
+    pub(super) fn history_storage_inputs(
+        &self,
+        budget: usize,
+        retry: bool,
+    ) -> Vec<(u64, Document)> {
+        let share = budget / (self.documents.len() + 1);
+        std::iter::once((self.active_document_id, &self.document))
+            .chain(self.documents.iter().map(|slot| (slot.id, &slot.document)))
+            .filter(|(_, doc)| {
+                doc.history_bytes() > share && (retry || doc.history_error().is_none())
+            })
+            .map(|(id, doc)| (id, doc.clone()))
+            .collect()
+    }
+
+    pub(super) fn publish_history_storage(&mut self, documents: Vec<(u64, Document)>) {
+        for (id, mut document) in documents {
+            document.defer_history_storage(true);
+            if id == self.active_document_id {
+                self.document = document;
+            } else if let Some(slot) = self.documents.iter_mut().find(|slot| slot.id == id) {
+                slot.document = document;
+            }
+        }
+        self.status = self
+            .workspace_history_error()
+            .map(str::to_owned)
+            .unwrap_or_else(|| "Workspace undo history stored".into());
+    }
+
     pub(super) fn document_menu(&mut self, ui: &mut egui::Ui) {
         ui.set_max_width(360.0);
         if ui.button("Next document    Ctrl+Tab").clicked() {
@@ -139,7 +197,6 @@ impl Editor {
                 &mut self.canvas_renderer,
                 crate::canvas_renderer::CanvasRenderer::new(self.context.clone()),
             ),
-            history_paused: std::mem::replace(&mut self.history_storage_paused, false),
             recovery: std::mem::replace(&mut self.recovery, recovery),
         };
         if preserve {
@@ -175,7 +232,6 @@ impl Editor {
         std::mem::swap(&mut self.canvas_offset, &mut slot.offset);
         std::mem::swap(&mut self.texture, &mut slot.texture);
         std::mem::swap(&mut self.canvas_renderer, &mut slot.renderer);
-        std::mem::swap(&mut self.history_storage_paused, &mut slot.history_paused);
         std::mem::swap(&mut self.recovery, &mut slot.recovery);
         std::mem::swap(&mut self.active_document_id, &mut slot.id);
         self.reset_document_view();
@@ -329,6 +385,116 @@ impl Editor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn history_workspace(ctx: &egui::Context) -> Editor {
+        let mut editor = Editor::blank(ctx);
+        for value in [20, 40, 60] {
+            let mut document = Document::new(8, 8, [value, value, value, 255]).unwrap();
+            document.defer_history_storage(true);
+            for _ in 0..5 {
+                document.invert();
+            }
+            editor.install_document(document, Some(format!("{value}.prust").into()));
+        }
+        editor
+    }
+
+    fn finish_job(editor: &mut Editor, ctx: &egui::Context) {
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        while editor.file_job.is_some() {
+            editor.poll_file_job(ctx);
+            assert!(std::time::Instant::now() < deadline);
+            std::thread::sleep(std::time::Duration::from_millis(2));
+        }
+    }
+
+    #[test]
+    fn workspace_budget_stores_inactive_history_without_losing_undo_or_views() {
+        let ctx = egui::Context::default();
+        let mut editor = history_workspace(&ctx);
+        let budget = 3 * 8 * 8 * 4 * 2;
+        assert!(editor.workspace_history_needs_storage(budget));
+        assert_eq!(editor.documents.len(), 2);
+        editor.zoom = 3.0;
+        let bytes = editor.workspace_history_bytes();
+        let active = editor.active_document_id;
+        editor.store_workspace_history_async(budget, false);
+        // Worker results must be published as a complete batch by the UI thread.
+        assert_eq!(editor.workspace_history_bytes(), bytes);
+        editor.activate_document(0);
+        assert_eq!(editor.active_document_id, active);
+        finish_job(&mut editor, &ctx);
+        assert!(editor.workspace_history_bytes() <= budget);
+        assert!(!editor.workspace_history_needs_storage(budget));
+        assert_eq!(editor.zoom, 3.0);
+        for id in editor.document_order.clone() {
+            editor.activate_document(id);
+            let value = (id as u8 + 1) * 20;
+            assert_eq!(editor.path, Some(format!("{value}.prust").into()));
+            assert!(editor.document.history_disk_bytes() > 0);
+            assert_eq!(editor.document.history().count(), 5);
+            for _ in 0..5 {
+                assert!(editor.document.undo());
+            }
+            assert_eq!(editor.document.pixels(), &[[value, value, value, 255]; 64]);
+            assert!(!editor.document.dirty());
+            for _ in 0..5 {
+                assert!(editor.document.redo());
+            }
+            assert_eq!(
+                editor.document.pixels(),
+                &[[255 - value, 255 - value, 255 - value, 255]; 64]
+            );
+        }
+    }
+
+    #[test]
+    fn cancelled_workspace_storage_retains_every_document_and_pause_survives_switching() {
+        let ctx = egui::Context::default();
+        let mut editor = history_workspace(&ctx);
+        let before = editor.workspace_history_bytes();
+        let mut documents = editor.history_storage_inputs(0, false);
+        let (release, wait) = std::sync::mpsc::channel();
+        editor.start_cancellable_file_job("store undo history", move |cancel| {
+            // Complete one private clone before cancellation; none may be published.
+            assert!(documents[0].1.store_history_with_budget_cancellable(
+                0,
+                &std::sync::atomic::AtomicBool::new(false)
+            ));
+            wait.recv().unwrap();
+            for (_, document) in &mut documents {
+                if !document.store_history_with_budget_cancellable(0, cancel) {
+                    return Err(files::CANCELLED.into());
+                }
+            }
+            Ok(file_operations::Outcome::WorkspaceHistory(documents))
+        });
+        editor
+            .file_job
+            .as_ref()
+            .unwrap()
+            .cancel
+            .as_ref()
+            .unwrap()
+            .store(true, std::sync::atomic::Ordering::Relaxed);
+        release.send(()).unwrap();
+        finish_job(&mut editor, &ctx);
+        assert_eq!(editor.workspace_history_bytes(), before);
+        assert!(editor.history_storage_paused);
+        for id in editor.document_order.clone() {
+            editor.activate_document(id);
+            assert!(editor.history_storage_paused);
+            assert!(!editor.workspace_history_needs_storage(0));
+            assert_eq!(editor.document.history().count(), 5);
+            assert_eq!(editor.document.history_disk_bytes(), 0);
+        }
+        editor.install_document(Document::new(8, 8, [255; 4]).unwrap(), None);
+        assert!(editor.history_storage_paused);
+        editor.store_workspace_history_async(0, true);
+        finish_job(&mut editor, &ctx);
+        assert!(!editor.history_storage_paused);
+        assert_eq!(editor.workspace_history_bytes(), 0);
+    }
+
     #[test]
     fn switching_restores_history_selection_view_and_paths() {
         let ctx = egui::Context::default();

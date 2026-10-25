@@ -1040,7 +1040,17 @@ impl Document {
     }
 
     pub fn store_history_cancellable(&mut self, cancel: &std::sync::atomic::AtomicBool) -> bool {
-        self.spill_history_cancellable(HISTORY_BYTES, history::temporary_file, cancel)
+        self.store_history_with_budget_cancellable(HISTORY_BYTES, cancel)
+    }
+
+    /// Store older undo/redo states without discarding them, using a caller's RAM budget.
+    /// Storage failures retain the remaining states in RAM and set `history_error`.
+    pub fn store_history_with_budget_cancellable(
+        &mut self,
+        budget: usize,
+        cancel: &std::sync::atomic::AtomicBool,
+    ) -> bool {
+        self.spill_history_cancellable(budget, history::temporary_file, cancel)
     }
 
     fn trim_history(&mut self) {

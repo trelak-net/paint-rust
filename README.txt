@@ -116,7 +116,7 @@ opacity and optional edge antialiasing. The eraser reduces alpha while retaining
 RGB. Coverage accumulates once per gesture, so repeated samples do not accumulate
 opacity. The temporary coverage mask uses one byte per canvas pixel. Transparent pixels are displayed over a checkerboard. History
 shares unchanged layer buffers and keeps up to 128 MiB of unique pixel and
-selection-mask buffers in RAM across undo/redo. Older states spill into private
+selection-mask buffers in RAM across undo/redo for all open documents. Older states spill into private
 temporary files instead of being evicted. Labels and metadata remain in RAM. The
 active document is limited to 256 MiB of layer pixels, excluding previews/history.
 A canvas is limited to 16,777,216 pixels. The New dialog permits up to 4096 per axis.
@@ -1243,3 +1243,19 @@ or selection. USER_GUIDE.txt is embedded in the executable and included in Linux
 installation and distribution files. Tests cover non-destructive help shortcuts
 and packaging. Polish localization and complete keyboard-navigation acceptance
 remain pending.
+
+Workspace undo memory budget
+----------------------------
+The desktop editor shares a soft 128 MiB undo/redo pixel-and-mask budget across
+all open documents. When the aggregate exceeds this target, a background job
+stores older states above each document's equal share, including inactive tabs.
+It publishes the complete batch only after completion. Document pixels, paths,
+views, saved revisions and the number of undo steps remain unchanged.
+Cancelling storage retains all original histories in RAM and pauses automatic
+storage for the entire workspace, including after switching or opening tabs.
+Resume in History retries storage. A failed document remains in RAM with an error;
+other documents can still spill. The panel reports aggregate undo RAM usage.
+This is not a total process-memory limit: current pixels, previews, textures,
+metadata and temporary worker allocations are separate. Disk usage is not capped.
+Regression checks cover inactive histories, exact undo/redo, guarded publication,
+cancellation after a private partial batch and persistent workspace pause.

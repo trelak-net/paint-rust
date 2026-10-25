@@ -3338,11 +3338,9 @@ impl Editor {
         if enabled
             && !self.allow_close
             && !self.document.editing()
-            && !self.history_storage_paused
-            && self.document.history_error().is_none()
-            && self.document.history_needs_storage()
+            && self.workspace_history_needs_storage(workspace::HISTORY_RAM_BUDGET)
         {
-            self.store_history_async();
+            self.store_workspace_history_async(workspace::HISTORY_RAM_BUDGET, false);
         }
         if self.file_job.is_some()
             && !self.allow_close

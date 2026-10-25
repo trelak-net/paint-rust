@@ -23,6 +23,7 @@ pub(super) enum Outcome {
     Selection(Selection),
     Edited(Box<Document>, String, bool),
     History(Box<Document>, usize, bool),
+    WorkspaceHistory(Vec<(u64, Document)>),
 }
 
 pub(super) struct FileJob {
@@ -33,16 +34,29 @@ pub(super) struct FileJob {
 
 impl Editor {
     pub(super) fn store_history_async(&mut self) {
+        self.store_workspace_history_async(workspace::HISTORY_RAM_BUDGET, true);
+    }
+
+    pub(super) fn store_workspace_history_async(&mut self, budget: usize, retry: bool) {
         if self.file_job.is_some() || self.document.editing() {
             return;
         }
         self.history_storage_paused = false;
-        let mut document = self.document.clone();
+        let share = budget / (self.documents.len() + 1);
+        let mut documents = self.history_storage_inputs(budget, retry);
+        if documents.is_empty() {
+            return;
+        }
         self.start_cancellable_file_job("store undo history", move |cancel| {
-            if !document.store_history_cancellable(cancel) {
+            for (_, document) in &mut documents {
+                if !document.store_history_with_budget_cancellable(share, cancel) {
+                    return Err(files::CANCELLED.into());
+                }
+            }
+            if cancel.load(std::sync::atomic::Ordering::Relaxed) {
                 return Err(files::CANCELLED.into());
             }
-            Ok(Outcome::History(Box::new(document), 0, false))
+            Ok(Outcome::WorkspaceHistory(documents))
         });
     }
 
@@ -333,6 +347,7 @@ impl Editor {
                     self.status = "Font loaded".into();
                 }
             }
+            Ok(Outcome::WorkspaceHistory(documents)) => self.publish_history_storage(documents),
             Ok(Outcome::History(mut document, count, redo)) => {
                 document.defer_history_storage(true);
                 self.document = *document;

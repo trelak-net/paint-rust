@@ -345,10 +345,17 @@ impl Editor {
             self.document.history_bytes() as f64 / (1024.0 * 1024.0),
             self.document.history_disk_bytes() as f64 / (1024.0 * 1024.0)
         ));
+        ui.small(format!(
+            "All documents: {:.1} / 128 MiB undo RAM",
+            self.workspace_history_bytes() as f64 / (1024.0 * 1024.0)
+        ));
+        if let Some(error) = self.workspace_history_error() {
+            ui.small(error);
+        }
         if self.history_storage_paused {
             ui.small("History storage paused; undo remains in RAM.");
         }
-        if (self.history_storage_paused || self.document.history_error().is_some())
+        if (self.history_storage_paused || self.workspace_history_error().is_some())
             && ui.button("Resume history storage").clicked()
         {
             self.store_history_async();
