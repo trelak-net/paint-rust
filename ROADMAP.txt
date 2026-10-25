@@ -88,7 +88,8 @@ independent tasks; do not silently reduce the required scope.
 [ ] Complete menu/toolbar organization and contextual options.
 [ ] Light/dark/high-DPI and compact-window acceptance checks.
 3. Colors and navigation
-[ ] Full RGB/HSV/alpha/HEX editing, palette persistence and defaults.
+[x] Numeric RGB/HSV/alpha/HEX editing, palette persistence and defaults.
+[ ] Expanded color-wheel presentation and transparent-color precision audit.
 [x] Zoom/Pan tools, temporary spacebar navigation and zoom-to-region.
 [x] Visible-region pixel grid at high zoom.
 [ ] Rulers and measurement units.

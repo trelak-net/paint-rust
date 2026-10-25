@@ -800,3 +800,11 @@ Space to pan temporarily from another tool; middle-button navigation remains
 available. Zoom ranges from 1% to 6400%. View can enable a pixel grid, rendered
 only at 800% or above and only over visible pixels. These operations do not edit
 the document or add undo steps. Escape cancels an in-progress zoom rectangle.
+
+Color controls and palettes
+---------------------------
+Color channels exposes numeric RGB, alpha, HSV and HEX RGBA editing for either
+primary or secondary color. Reset colors restores black/white. Palette swatches
+retain left/right assignment; Add current, Remove last, Reset, Load and Save As
+manage up to 256 colors. The palette is saved atomically beside workspace settings.
+Malformed or oversized palette files are rejected before replacing existing colors.

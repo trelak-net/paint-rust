@@ -1,3 +1,4 @@
+mod colors;
 mod file_operations;
 mod panels;
 mod transform_handles;
@@ -70,6 +71,7 @@ struct EffectDialog {
 
 pub struct Editor {
     panel_layout: panels::Layout,
+    color_panel: colors::ColorPanel,
     panel_epoch: u64,
     documents: Vec<workspace::DocumentSlot>,
     open_queue: std::collections::VecDeque<PathBuf>,
@@ -139,6 +141,9 @@ impl Editor {
             Ok(layout) => editor.panel_layout = layout,
             Err(error) => editor.status = format!("Using default workspace layout: {error}"),
         }
+        if let Err(error) = editor.color_panel.load() {
+            editor.status = format!("Using default palette: {error}");
+        }
         editor.appearance = Some(crate::appearance::connect(&cc.egui_ctx));
         editor
             .open_queue
@@ -164,6 +169,7 @@ impl Editor {
         egui_extras::install_image_loaders(ctx);
         Self {
             panel_layout: Default::default(),
+            color_panel: Default::default(),
             panel_epoch: 0,
             documents: Vec::new(),
             open_queue: Default::default(),
@@ -2489,6 +2495,9 @@ impl eframe::App for Editor {
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
         self.clear_recovery();
         self.clear_inactive_recovery();
+        if let Err(error) = self.color_panel.save() {
+            eprintln!("Could not save palette: {error}");
+        }
         if let Err(error) = self.panel_layout.save() {
             eprintln!("Could not save workspace layout: {error}");
         }

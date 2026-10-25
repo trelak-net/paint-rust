@@ -94,15 +94,7 @@ impl Editor {
             std::mem::swap(&mut self.color, &mut self.secondary_color);
         }
         ui.horizontal_wrapped(|ui| {
-            for color in [
-                Color32::BLACK,
-                Color32::WHITE,
-                Color32::from_rgb(225, 65, 75),
-                Color32::from_rgb(245, 170, 40),
-                Color32::from_rgb(70, 175, 115),
-                Color32::from_rgb(42, 113, 224),
-                Color32::from_rgb(153, 90, 210),
-            ] {
+            for color in self.color_panel.palette.clone() {
                 let label = format!(
                     "Set primary color to #{:02X}{:02X}{:02X}",
                     color.r(),
@@ -123,6 +115,12 @@ impl Editor {
                 }
             }
         });
+        if ui.button("Reset colors").clicked() {
+            self.color = Color32::BLACK;
+            self.secondary_color = Color32::WHITE;
+        }
+        self.palette_actions(ui);
+        self.color_channels(ui);
         ui.label(format!(
             "#{:02X}{:02X}{:02X}",
             self.color.r(),
@@ -425,7 +423,7 @@ impl Editor {
 }
 
 impl Layout {
-    fn path() -> Option<PathBuf> {
+    pub(super) fn path() -> Option<PathBuf> {
         std::env::var_os("XDG_CONFIG_HOME")
             .filter(|p| std::path::Path::new(p).is_absolute())
             .map(PathBuf::from)
