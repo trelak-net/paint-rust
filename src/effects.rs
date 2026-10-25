@@ -1,12 +1,22 @@
 mod blurs;
 mod distort;
 mod object;
+mod photo;
 mod stylize;
 use crate::document::{Pixel, Selection};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 #[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum Effect {
+    Glow {
+        radius: u32,
+        amount: f32,
+    },
+    SoftenPortrait {
+        radius: u32,
+        softness: f32,
+        warmth: f32,
+    },
     DropShadow {
         radius: u32,
         offset: [i32; 2],
@@ -139,6 +149,12 @@ impl Effect {
             Self::DropShadow { radius, offset, .. } => {
                 radius <= 64 && offset.into_iter().all(|v| (-200..=200).contains(&v))
             }
+            Self::Glow { radius, amount } => radius <= 64 && range(amount, 0.0, 1.0),
+            Self::SoftenPortrait {
+                radius,
+                softness,
+                warmth,
+            } => radius <= 64 && range(softness, 0.0, 1.0) && range(warmth, -1.0, 1.0),
             Self::AutoLevels(v) => range(v, 0.0, 5.0),
             Self::BrightnessContrast {
                 brightness,
@@ -202,7 +218,11 @@ impl Effect {
             | Self::Pixelate(_) => "Distort",
             Self::DropShadow { .. } => "Object",
             Self::AddNoise { .. } => "Noise",
-            Self::RedEye(_) | Self::Vignette { .. } | Self::Sharpen(_) => "Photo",
+            Self::Glow { .. }
+            | Self::SoftenPortrait { .. }
+            | Self::RedEye(_)
+            | Self::Vignette { .. }
+            | Self::Sharpen(_) => "Photo",
             Self::EdgeDetect | Self::Emboss(_) => "Stylize",
             Self::Move(_) | Self::Shape(_) | Self::Gradient(_) | Self::FreeTransform(_) => {
                 "Geometry"
@@ -224,6 +244,8 @@ impl Effect {
             Self::FragmentBlur { .. } => "Fragment blur",
             Self::SurfaceBlur { .. } => "Surface blur",
             Self::DropShadow { .. } => "Drop shadow",
+            Self::Glow { .. } => "Glow",
+            Self::SoftenPortrait { .. } => "Soften portrait",
             Self::Exposure { .. } => "Exposure",
             Self::Bulge(_) => "Bulge",
             Self::Twist(_) => "Twist",
@@ -414,6 +436,9 @@ pub fn render(
             offset,
             color,
         } => object::shadow(source, width, height, radius, offset, color, cancel)?,
+        Effect::Glow { .. } | Effect::SoftenPortrait { .. } => {
+            photo::render(source, width, height, effect, cancel)?
+        }
         Effect::GaussianBlur(radius) => blurs::gaussian(source, width, height, radius, cancel)?,
         Effect::MotionBlur {
             distance,
@@ -576,7 +601,9 @@ pub fn render(
                         let steps = f64::from(levels.clamp(2, 32) - 1);
                         (f64::from(*channel) * steps / 255.0).round() * 255.0 / steps
                     }
-                    Effect::DropShadow { .. }
+                    Effect::Glow { .. }
+                    | Effect::SoftenPortrait { .. }
+                    | Effect::DropShadow { .. }
                     | Effect::SurfaceBlur { .. }
                     | Effect::RadialBlur { .. }
                     | Effect::ZoomBlur { .. }

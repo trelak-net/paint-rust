@@ -2494,6 +2494,15 @@ impl Editor {
                                 changed |= ui.add(egui::Slider::new(shadows,-100..=100).text("Shadows")).changed();
                                 changed |= ui.add(egui::Slider::new(highlights,-100..=100).text("Highlights")).changed();
                             }
+                            Effect::Glow { radius, amount } => {
+                                changed |= ui.add(egui::Slider::new(radius,0..=64).text("Radius (px)")).changed();
+                                changed |= ui.add(egui::Slider::new(amount,0.0..=1.0).text("Amount")).changed();
+                            }
+                            Effect::SoftenPortrait { radius, softness, warmth } => {
+                                changed |= ui.add(egui::Slider::new(radius,0..=64).text("Radius (px)")).changed();
+                                changed |= ui.add(egui::Slider::new(softness,0.0..=1.0).text("Softness")).changed();
+                                changed |= ui.add(egui::Slider::new(warmth,-1.0..=1.0).text("Warmth")).changed();
+                            }
                             Effect::DropShadow { radius, offset, color } => {
                                 changed |= ui.add(egui::Slider::new(radius,0..=64).text("Blur radius (px)")).changed();
                                 changed |= ui.add(egui::Slider::new(&mut offset[0],-200..=200).text("Offset X (px)")).changed();
@@ -3066,6 +3075,15 @@ impl Editor {
                                 radius: 4,
                                 offset: [4, 4],
                                 color: [0, 0, 0, 128],
+                            },
+                            Effect::Glow {
+                                radius: 6,
+                                amount: 0.5,
+                            },
+                            Effect::SoftenPortrait {
+                                radius: 4,
+                                softness: 0.5,
+                                warmth: 0.1,
                             },
                             Effect::GaussianBlur(3),
                             Effect::MotionBlur {

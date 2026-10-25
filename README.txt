@@ -1193,3 +1193,13 @@ with old workers cancelled when superseded. Changing parameters clears the old
 output chart until new preview data arrives. RGB views combine three channel
 counts; luminance counts each selected nontransparent pixel once using the same
 weights as luminance curves. Both charts offer logarithmic height and hover counts.
+
+Glow and portrait softening
+--------------------------
+Glow screens a Gaussian-blurred version over the original RGB with adjustable
+strength and blurred-alpha weighting. Soften portrait mixes Gaussian detail
+smoothing with the source and offers a warm/cool balance. Both retain source
+alpha and fully transparent RGB, use the common selection/preview/undo workflow
+and persist parameters. Zero-strength neutral settings preserve exact bytes.
+Tests cover hidden colors, partial alpha, smoothing and warm/cool direction;
+external reference algorithms and parameter-range comparisons remain pending.

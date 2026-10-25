@@ -144,6 +144,7 @@ independent tasks; do not silently reduce the required scope.
 [x] Radial, zoom and fragment blur with persistent controls and alpha-aware sampling.
 [x] Surface blur with radius and color threshold controls.
 [x] Colored drop shadow with blur, opacity, offset and object-effect menu.
+[x] Glow and portrait softening with blur, strength and warm/cool controls.
 [x] Seeded noise, median/percentile blur, edge detection and directional emboss.
 [x] Bulge, twist, frosted glass, crystalize, vignette and red-eye correction.
 [ ] Complete remaining blur, distortion, noise and stylization inventory.
