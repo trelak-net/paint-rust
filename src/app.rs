@@ -2531,6 +2531,12 @@ impl Editor {
                                 changed |= ui.add(egui::Slider::new(shadows,-100..=100).text("Shadows")).changed();
                                 changed |= ui.add(egui::Slider::new(highlights,-100..=100).text("Highlights")).changed();
                             }
+                            Effect::BokehBlur {radius,gamma,quality} => {
+                                changed |= ui.add(egui::Slider::new(radius,0.0..=100.0).text("Radius (px)")).changed();
+                                changed |= ui.add(egui::Slider::new(gamma,0.1..=5.0).text("Gamma boost")).changed();
+                                changed |= ui.add(egui::Slider::new(quality,1..=5).text("Quality")).changed();
+                                ui.small("Higher quality takes longer to render.");
+                            }
                             Effect::Quantize(colors) => {
                                 changed |= ui.add(egui::Slider::new(colors,2..=256).text("Maximum colors")).changed();
                                 ui.small("Reduces RGB colors while retaining opacity. No dithering.");
@@ -3171,6 +3177,7 @@ impl Editor {
                                 softness: 0.5,
                                 warmth: 0.1,
                             },
+                            Effect::BokehBlur {radius:4.0,gamma:1.0,quality:2},
                             Effect::Quantize(16),
                             Effect::OilPainting {radius:3,bins:16},
                             Effect::PencilSketch {radius:4,strength:1.0},

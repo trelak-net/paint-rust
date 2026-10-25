@@ -1,5 +1,6 @@
 mod artistic;
 mod blurs;
+mod bokeh;
 mod detail;
 mod distort;
 mod morphology;
@@ -15,6 +16,11 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 #[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum Effect {
+    BokehBlur {
+        radius: f32,
+        gamma: f32,
+        quality: u8,
+    },
     Quantize(u16),
     OilPainting {
         radius: u32,
@@ -173,6 +179,11 @@ impl Effect {
         let range = |v: f32, min: f32, max: f32| v.is_finite() && (min..=max).contains(&v);
         match self {
             Self::Move(_) | Self::Shape(_) | Self::Gradient(_) | Self::FreeTransform(_) => false,
+            Self::BokehBlur {
+                radius,
+                gamma,
+                quality,
+            } => range(radius, 0.0, 100.0) && range(gamma, 0.1, 5.0) && (1..=5).contains(&quality),
             Self::Quantize(colors) => (2..=256).contains(&colors),
             Self::OilPainting { radius, bins } => radius <= 10 && (2..=64).contains(&bins),
             Self::PencilSketch { radius, strength } => {
@@ -295,7 +306,8 @@ impl Effect {
             Self::Clouds(_) | Self::Turbulence(_) | Self::Mandelbrot(_) | Self::Julia(_) => {
                 "Render"
             }
-            Self::SurfaceBlur { .. }
+            Self::BokehBlur { .. }
+            | Self::SurfaceBlur { .. }
             | Self::RadialBlur { .. }
             | Self::ZoomBlur { .. }
             | Self::FragmentBlur { .. }
@@ -337,6 +349,7 @@ impl Effect {
     }
     pub fn name(self) -> &'static str {
         match self {
+            Self::BokehBlur { .. } => "Bokeh blur",
             Self::Quantize(_) => "Quantize",
             Self::OilPainting { .. } => "Oil painting",
             Self::PencilSketch { .. } => "Pencil sketch",
@@ -520,6 +533,11 @@ pub fn render(
         return None;
     }
     let mut output = match effect {
+        Effect::BokehBlur {
+            radius,
+            gamma,
+            quality,
+        } => bokeh::render(source, width, height, radius, gamma, quality, cancel)?,
         Effect::Quantize(colors) => quantize::render(source, colors, cancel)?,
         Effect::OilPainting { .. } | Effect::PencilSketch { .. } | Effect::InkSketch { .. } => {
             artistic::render(source, width, height, effect, cancel)?
@@ -771,7 +789,8 @@ pub fn render(
                         let steps = f64::from(levels.clamp(2, 32) - 1);
                         (f64::from(*channel) * steps / 255.0).round() * 255.0 / steps
                     }
-                    Effect::Quantize(_)
+                    Effect::BokehBlur { .. }
+                    | Effect::Quantize(_)
                     | Effect::OilPainting { .. }
                     | Effect::PencilSketch { .. }
                     | Effect::InkSketch { .. }

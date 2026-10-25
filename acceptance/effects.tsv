@@ -3,7 +3,7 @@ Quantize	Color	partial	Bounded alpha-weighted median-cut RGB palette with 2–25
 Red Eye Removal	Photo	partial	Selection-aware red-dominance correction	Reference algorithm/ranges, center controls and color-space audit
 Add Noise	Noise	partial	Deterministic seeded uniform noise, coverage and monochrome/color controls	External reference output, ranges and color-space audit
 Auto-Level	Adjustment	partial	Auto levels; selected nontransparent histogram, configurable tail clipping	Exact transfer function, ranges, color space and reference output audit
-Bokeh Blur	Blurs	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Bokeh Blur	Blurs	partial	Paired disk sampling with radius, gamma boost and quality; premultiplied bilinear samples	External reference sampling/ranges, edge modes and large-image performance audit
 Brightness / Contrast	Adjustment	partial	CPU transfer curve and live preview	Exact transfer function, ranges, color space and reference output audit
 Bulge	Distort	partial	Centered radial power warp with signed amount	Reference algorithm/ranges, center controls and color-space audit
 Clouds	Render	partial	Seeded eight-octave smooth value noise, scale, roughness and alpha-aware two-color palette	External reference algorithms/ranges, palette options and large-image performance audit

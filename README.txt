@@ -1338,3 +1338,14 @@ work independently of full image size. The palette is derived from the active
 layer; selection limits publication, not palette analysis. Dithering and palette
 scope controls remain pending. Tests verify palette bounds, repeatability, exact
 small-palette preservation, alpha/hidden colors, selection and cancellation.
+
+Bokeh blur
+-----------
+Bokeh blur averages paired, evenly distributed disk samples with bilinear,
+premultiplied-alpha sampling. Radius controls the disk; Gamma boost changes RGB
+averaging and Quality controls 33–513 samples. Edges clamp to the canvas. Gamma
+does not alter alpha averaging. Zero radius preserves exact bytes. Workers check
+cancellation every 16 pixels. Tests cover constant images, point symmetry, hidden
+colors, gamma brightness, selected-area publication and invalid values. Native
+sampling parity, alternate edge modes and high-quality large-image performance
+remain pending.
