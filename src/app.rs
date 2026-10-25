@@ -1,5 +1,6 @@
 mod file_operations;
 mod transform_handles;
+mod workspace;
 use crate::icons::Icon;
 use eframe::egui::{self, Color32, Key, Pos2, Rect, Sense, TextureHandle, TextureOptions, Vec2};
 use file_operations::{DocumentEdit, FileJob, Outcome};
@@ -34,6 +35,8 @@ enum Action {
     New,
     Open,
     Close,
+    CloseDocument,
+    CloseAll,
     Recovery,
 }
 
@@ -63,6 +66,11 @@ struct EffectDialog {
 }
 
 pub struct Editor {
+    documents: Vec<workspace::DocumentSlot>,
+    active_document_id: u64,
+    next_document_id: u64,
+    document_order: Vec<u64>,
+    initial_placeholder: bool,
     context: egui::Context,
     file_job: Option<FileJob>,
     history_storage_paused: bool,
@@ -141,6 +149,11 @@ impl Editor {
         crate::appearance::configure(ctx);
         egui_extras::install_image_loaders(ctx);
         Self {
+            documents: Vec::new(),
+            active_document_id: 0,
+            next_document_id: 1,
+            document_order: vec![0],
+            initial_placeholder: true,
             context: ctx.clone(),
             file_job: None,
             history_storage_paused: false,
@@ -423,7 +436,12 @@ impl Editor {
             return;
         }
         self.finish_stroke();
-        if self.document.dirty() {
+        if self.document.dirty()
+            && matches!(
+                action,
+                Action::Close | Action::CloseDocument | Action::CloseAll
+            )
+        {
             self.pending = Some(action);
         } else {
             self.perform(action, ctx);
@@ -445,7 +463,20 @@ impl Editor {
                     self.load(path);
                 }
             }
+            Action::CloseDocument => self.close_current_document(),
+            Action::CloseAll => {
+                let more = !self.documents.is_empty();
+                self.close_current_document();
+                if more {
+                    self.request(Action::CloseAll, ctx);
+                }
+            }
             Action::Close => {
+                if !self.documents.is_empty() {
+                    self.close_current_document();
+                    self.request(Action::Close, ctx);
+                    return;
+                }
                 self.clear_recovery();
                 self.allow_close = true;
                 ctx.send_viewport_cmd(egui::ViewportCommand::Close);
@@ -706,6 +737,8 @@ impl Editor {
             // The window backend consumes Ctrl+V presses when no text is available.
             // Its release event remains available for image clipboard handling.
             } else if i.events.iter().any(|event| matches!(event,egui::Event::Key{key:Key::V,pressed:false,modifiers,..} if modifiers.command)) { Some(13)
+            } else if i.consume_key(egui::Modifiers::COMMAND, Key::W) {
+                Some(14)
             } else if i.consume_key(egui::Modifiers::COMMAND, Key::N) {
                 Some(0)
             } else if i.consume_key(egui::Modifiers::COMMAND, Key::O) {
@@ -815,6 +848,7 @@ impl Editor {
             Some(11) => self.copy(false, false),
             Some(12) => self.copy(true, false),
             Some(13) => self.paste(),
+            Some(14) => self.request(Action::CloseDocument, ctx),
             _ => {}
         }
     }
@@ -1878,15 +1912,9 @@ impl Editor {
                                 if self.transparent { [0; 4] } else { [255; 4] },
                             ) {
                                 Ok(document) => {
-                                    self.document = document;
-                                    self.history_storage_paused = false;
-                                    self.path = None;
-                                    self.texture_dirty = true;
-                                    self.zoom = 1.0;
-                                    self.canvas_offset = Vec2::ZERO;
+                                    self.install_document(document, None);
                                     self.new_dialog = false;
                                     self.status = "New image created".into();
-                                    self.clear_recovery();
                                 }
                                 Err(error) => self.status = error,
                             }
@@ -1957,10 +1985,12 @@ impl Editor {
             && !self.allow_close
             && self.file_job.is_none()
             && self.text_dialog.is_none()
-            && self.document.dirty()
+            && (self.document.dirty() || !self.documents.is_empty())
         {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
-            self.pending = Some(Action::Close);
+            if self.pending.is_none() {
+                self.request(Action::Close, ctx);
+            }
         }
         let enabled = self.file_job.is_none()
             && self.pending.is_none()
@@ -2204,6 +2234,7 @@ impl Editor {
                 }
             });
         });
+        self.document_tabs(ctx, enabled && self.file_job.is_none());
         egui::TopBottomPanel::bottom("status").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.label(format!(
@@ -2539,6 +2570,7 @@ impl Editor {
             }
             ctx.request_repaint_after(std::time::Duration::from_secs(1));
         }
+        self.tick_inactive_recovery(ctx);
         if !ctx.input(|i| i.pointer.button_down(self.stroke_button)) {
             self.finish_stroke();
             self.suppress_stroke = false;
@@ -2567,6 +2599,7 @@ impl Editor {
 impl eframe::App for Editor {
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
         self.clear_recovery();
+        self.clear_inactive_recovery();
     }
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
@@ -3329,7 +3362,7 @@ mod tests {
         let ctx = egui::Context::default();
         let mut editor = Editor::blank(&ctx);
         editor.document.invert();
-        editor.request(Action::New, &ctx);
+        editor.request(Action::CloseDocument, &ctx);
         assert!(editor.pending.is_some());
         assert!(!editor.new_dialog);
         assert!(editor.document.dirty());

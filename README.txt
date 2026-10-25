@@ -759,3 +759,13 @@ are not supported yet. ICC interpretation and metadata updates after geometry
 changes remain separate work. Reproduce a codec round trip with:
 
     cargo run --example pdn_roundtrip -- INPUT OUTPUT.pdn
+
+Multiple documents
+------------------
+New, Open and recovery create independent documents instead of replacing unsaved
+work. Tabs retain each document's undo/redo, selection, filename, zoom and scroll
+position. Each document has its own recovery session, including inactive tabs.
+Ctrl+W closes the active document. Close all and application exit ask about each
+unsaved document; cancelling leaves the remaining documents open. Switching is
+blocked during background operations and unfinished text/effect transactions.
+Closing the last document creates a clean blank workspace.

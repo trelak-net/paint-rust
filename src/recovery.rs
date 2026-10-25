@@ -81,6 +81,10 @@ impl Recovery {
         })
     }
 
+    pub fn sibling(&self) -> Result<Self, String> {
+        Self::new(self.session.parent().ok_or("Invalid recovery root")?)
+    }
+
     pub fn discover(root: &Path) -> Result<Vec<Candidate>, String> {
         let entries = match fs::read_dir(root) {
             Ok(entries) => entries,

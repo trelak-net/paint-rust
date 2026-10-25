@@ -80,9 +80,9 @@ independent tasks; do not silently reduce the required scope.
 [ ] Build repeatable reference input/output cases and UI scenarios.
 [ ] Track supported, partial, missing and intentionally different behavior.
 1. Multiple documents
-[ ] Independent document/history/path/view/recovery state.
+[x] Independent document/history/path/view/recovery state.
 [ ] Thumbnail tabs, switching, reordering, individual close and close all.
-[ ] Save/discard/cancel flows across multiple dirty documents.
+[x] Save/discard/cancel flows across multiple dirty documents.
 2. Workspace
 [ ] Movable, hideable panels with layout persistence and reset.
 [ ] Complete menu/toolbar organization and contextual options.

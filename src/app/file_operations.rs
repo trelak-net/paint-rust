@@ -194,25 +194,12 @@ impl Editor {
                     });
             }
             Ok(Outcome::Opened(document, path)) => {
-                self.history_storage_paused = false;
-                self.document = *document;
-                self.path = Some(path);
-                self.texture_dirty = true;
-                self.last_point = None;
-                self.zoom = 1.0;
-                self.canvas_offset = Vec2::ZERO;
+                self.install_document(*document, Some(path));
                 self.status = "Image opened".into();
-                self.clear_recovery();
             }
             Ok(Outcome::Recovered(mut document, index)) => {
-                self.history_storage_paused = false;
                 document.mark_unsaved();
-                self.clear_recovery();
-                self.document = *document;
-                self.path = None;
-                self.texture_dirty = true;
-                self.zoom = 1.0;
-                self.canvas_offset = Vec2::ZERO;
+                self.install_document(*document, None);
                 let candidate = self.recoverable.remove(index);
                 if let Some(recovery) = &mut self.recovery {
                     recovery.adopt(candidate);
