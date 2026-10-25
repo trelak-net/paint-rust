@@ -262,3 +262,45 @@ fn region_compositing_matches_full_image_for_every_blend_mode() {
         );
     }
 }
+
+#[test]
+fn arbitrary_reordering_retains_active_identity_and_is_one_undo_step() {
+    use paint_rust::document::Layer;
+    for source in 0..4 {
+        for target in 0..4 {
+            for active in 0..4 {
+                let layers = (0..4)
+                    .map(|i| Layer::new(i.to_string(), vec![[i as u8, 0, 0, 255]]))
+                    .collect();
+                let mut doc = Document::from_layers(1, 1, layers, active).unwrap();
+                let original = doc.layers().to_vec();
+                assert_eq!(doc.reorder_layer(source, target), source != target);
+                assert_eq!(doc.layers()[doc.active_layer()].name, active.to_string());
+                let mut order = vec![0, 1, 2, 3];
+                let moved = order.remove(source);
+                order.insert(target, moved);
+                assert_eq!(
+                    doc.layers()
+                        .iter()
+                        .map(|l| l.name.clone())
+                        .collect::<Vec<_>>(),
+                    order.iter().map(usize::to_string).collect::<Vec<_>>()
+                );
+                assert_eq!(doc.history().count(), usize::from(source != target));
+                if source != target {
+                    assert!(doc.undo());
+                    assert!(doc.layers() == original);
+                    assert_eq!(doc.active_layer(), active);
+                    assert!(!doc.dirty());
+                    assert!(doc.redo());
+                    assert_eq!(doc.layers()[doc.active_layer()].name, active.to_string());
+                }
+                assert!(!doc.reorder_layer(4, 0));
+                assert!(!doc.reorder_layer(0, usize::MAX));
+                doc.begin("Pending stroke");
+                assert!(!doc.reorder_layer(0, 1));
+                assert!(doc.editing());
+            }
+        }
+    }
+}

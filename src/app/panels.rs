@@ -1,5 +1,11 @@
 use super::*;
 
+#[derive(Clone, Copy)]
+struct LayerDrag {
+    document: u64,
+    index: usize,
+}
+
 impl Editor {
     fn tools_panel(&mut self, ui: &mut egui::Ui) {
         if !self.panel_layout.floating {
@@ -202,6 +208,7 @@ impl Editor {
             self.start_document_edit(DocumentEdit::Flatten);
         }
         ui.separator();
+        let mut reorder = None;
         egui::ScrollArea::vertical()
             .id_salt("layer-list")
             .max_height(320.0)
@@ -225,16 +232,37 @@ impl Editor {
                             self.document.set_visibility(index, visible);
                             self.texture_dirty = true;
                         }
-                        if ui
-                            .selectable_label(index == self.document.active_layer(), name)
-                            .clicked()
-                        {
+                        let response = ui
+                            .push_id(index, |ui| {
+                                ui.add(
+                                    egui::Button::new(name)
+                                        .selected(index == self.document.active_layer())
+                                        .sense(Sense::click_and_drag()),
+                                )
+                                .on_hover_text(
+                                    "Drag onto another layer to change the stacking order",
+                                )
+                            })
+                            .inner;
+                        if response.clicked() {
                             self.document.select_layer(index);
+                        }
+                        response.dnd_set_drag_payload(LayerDrag {
+                            document: self.active_document_id,
+                            index,
+                        });
+                        if let Some(source) = response.dnd_release_payload::<LayerDrag>()
+                            && source.document == self.active_document_id
+                        {
+                            reorder = Some((source.index, index));
                         }
                     });
                 }
             });
         ui.separator();
+        if let Some((source, target)) = reorder {
+            self.texture_dirty |= self.document.reorder_layer(source, target);
+        }
         let layer = &self.document.layers()[self.document.active_layer()];
         ui.label(format!(
             "Opacity: {:.0}%",

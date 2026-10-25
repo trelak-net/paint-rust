@@ -808,3 +808,6 @@ primary or secondary color. Reset colors restores black/white. Palette swatches
 retain left/right assignment; Add current, Remove last, Reset, Load and Save As
 manage up to 256 colors. The palette is saved atomically beside workspace settings.
 Malformed or oversized palette files are rejected before replacing existing colors.
+
+Drag a layer name onto another layer to move it to that position in the stack.
+The selected layer stays selected, and Undo restores the previous order.

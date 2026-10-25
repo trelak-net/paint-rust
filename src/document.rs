@@ -693,12 +693,30 @@ impl Document {
         } else {
             self.active.saturating_sub(1)
         };
-        if self.editing() || next == self.active || next >= self.layers.len() {
+        self.reorder_layer(self.active, next)
+    }
+
+    /// Move a layer to its final stack index, retaining the selected layer's identity.
+    pub fn reorder_layer(&mut self, source: usize, target: usize) -> bool {
+        if self.editing()
+            || source == target
+            || source >= self.layers.len()
+            || target >= self.layers.len()
+        {
             return false;
         }
         self.begin("Reorder layer");
-        self.layers.swap(self.active, next);
-        self.active = next;
+        let layer = self.layers.remove(source);
+        self.layers.insert(target, layer);
+        self.active = if self.active == source {
+            target
+        } else if source < self.active && self.active <= target {
+            self.active - 1
+        } else if target <= self.active && self.active < source {
+            self.active + 1
+        } else {
+            self.active
+        };
         self.commit()
     }
     pub fn set_visibility(&mut self, index: usize, visible: bool) {
