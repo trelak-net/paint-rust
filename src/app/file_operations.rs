@@ -128,12 +128,22 @@ impl Editor {
                 DocumentEdit::Flatten => document.flatten_cancellable(cancel).is_some(),
                 DocumentEdit::MergeDown => document.merge_down_cancellable(cancel).is_some(),
                 DocumentEdit::Invert => document.invert_cancellable(cancel),
-                DocumentEdit::Delete => document.clear_pixels_cancellable(cancel),
+                DocumentEdit::Delete => {
+                    let completed = document.clear_pixels_cancellable(cancel);
+                    if completed {
+                        document.set_selection(None);
+                    }
+                    completed
+                }
             };
             if !completed {
                 return Err(files::CANCELLED.into());
             }
-            Ok(Outcome::Edited(Box::new(document), label.into(), false))
+            Ok(Outcome::Edited(
+                Box::new(document),
+                label.into(),
+                edit == DocumentEdit::Delete,
+            ))
         });
     }
 
@@ -488,10 +498,15 @@ impl Editor {
             }
             Ok(Outcome::Copied(document)) => {
                 if let Some(document) = document {
-                    let selection = self.document.selection();
+                    let selection = document.selection();
                     match self.document.apply_transformed(*document, "Cut pixels") {
                         Ok(changed) => {
-                            self.document.set_selection(selection);
+                            if changed {
+                                self.document.set_selection(selection);
+                            } else {
+                                self.document
+                                    .set_selection_with_history(selection, "Cut pixels");
+                            }
                             self.texture_dirty |= changed;
                             self.status = "Cut pixels to clipboard".into();
                         }

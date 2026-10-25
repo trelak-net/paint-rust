@@ -533,8 +533,9 @@ impl Editor {
                 if cancel.load(std::sync::atomic::Ordering::Relaxed) {
                     return Err(files::CANCELLED.into());
                 }
-                if cut && !document.clear_pixels_cancellable(cancel) {
-                    return Err(files::CANCELLED.into());
+                if cut {
+                    document.fill_selection_cancellable([255, 255, 255, 0], cancel)?;
+                    document.set_selection(None);
                 }
                 Ok(Outcome::Copied(cut.then(|| Box::new(document))))
             },
@@ -3606,6 +3607,46 @@ impl eframe::App for Editor {
 #[cfg(test)]
 mod tests {
     #[test]
+    fn erase_and_cut_restore_selection_in_one_undo_even_without_pixel_changes() {
+        let ctx = egui::Context::default();
+        for cut in [false, true] {
+            for already_clear in [false, true] {
+                let mut editor = Editor::blank(&ctx);
+                let cleared = if cut { [255, 255, 255, 0] } else { [0; 4] };
+                let initial = if already_clear {
+                    cleared
+                } else {
+                    [10, 20, 30, 255]
+                };
+                editor.document = Document::new(5, 5, initial).unwrap();
+                let selected = Some(Selection::elliptical(1, 1, 3, 3));
+                editor.document.set_selection(selected.clone());
+                *editor.clipboard.lock().unwrap() = Some(Box::new(MemoryClipboard {
+                    image: None,
+                    fail: false,
+                }));
+                if cut {
+                    editor.copy(true, false);
+                } else {
+                    editor.start_document_edit(DocumentEdit::Delete);
+                }
+                wait_for_files(&mut editor, &ctx);
+                assert!(editor.document.selection().is_none());
+                assert_eq!(editor.document.pixels()[0], initial);
+                assert_eq!(editor.document.pixels()[12], cleared);
+                assert_eq!(editor.document.dirty(), !already_clear);
+                assert_eq!(editor.document.history().count(), 1);
+                editor.undo();
+                assert_eq!(editor.document.selection(), selected);
+                assert_eq!(editor.document.pixels(), &vec![initial; 25]);
+                assert!(!editor.document.dirty());
+                editor.redo();
+                assert!(editor.document.selection().is_none());
+                assert_eq!(editor.document.pixels()[12], cleared);
+            }
+        }
+    }
+    #[test]
     fn oversized_paste_waits_for_choice_and_expands_in_one_undo_step() {
         let ctx = egui::Context::default();
         for new_layer in [false, true] {
@@ -4014,7 +4055,14 @@ mod tests {
             editor.start_document_edit(edit);
             assert!(editor.document.layers() == before.layers());
             wait_for_files(&mut editor, &ctx);
-            assert_eq!(editor.document.selection(), Some(selection.clone()));
+            assert_eq!(
+                editor.document.selection(),
+                if edit == DocumentEdit::Delete {
+                    None
+                } else {
+                    Some(selection.clone())
+                }
+            );
             assert_eq!(editor.document.history().count(), count + 1);
             if matches!(edit, DocumentEdit::Flatten | DocumentEdit::MergeDown) {
                 assert_eq!(editor.document.layers().len(), 1);
@@ -4888,7 +4936,8 @@ mod tests {
         frame(&mut editor, &ctx, vec![]);
         frame(&mut editor, &ctx, vec![egui::Event::Cut]);
         wait_for_files(&mut editor, &ctx);
-        assert_eq!(editor.document.pixels()[0], [0; 4]);
+        assert_eq!(editor.document.pixels()[0], [255, 255, 255, 0]);
+        assert!(editor.document.selection().is_none());
         frame(
             &mut editor,
             &ctx,
@@ -4903,7 +4952,11 @@ mod tests {
         wait_for_files(&mut editor, &ctx);
         assert_eq!(editor.document.layers().len(), 1);
         assert!(editor.tool == Tool::Move);
-        assert_eq!(editor.document.composite()[0], [255; 4]);
+        let selected = editor.document.selection().unwrap();
+        assert_eq!(
+            editor.document.pixels()[(selected.y * editor.document.width + selected.x) as usize],
+            [255; 4]
+        );
         assert_eq!(editor.document.history().count(), 2);
         editor.undo();
         assert_eq!(editor.document.layers().len(), 1);

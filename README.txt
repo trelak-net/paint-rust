@@ -1456,3 +1456,11 @@ Backspace fills with primary color; Shift+Backspace uses secondary. Polygon poin
 editing and text fields retain their own Backspace behavior. Tests cover each
 paste shortcut, active-layer replacement, layer limits, alpha, clipping, undo and
 both fill colors.
+
+Erase and cut selection behavior
+-------------------------------
+Delete clears selected pixels to transparent black; Cut copies their original
+RGBA before replacing them with transparent white. Both deselect on successful
+publication. Undo restores the pixels and boundary together, including a
+selection-only history entry when the pixels already match the cleared value.
+Clipboard failures and cancellation preserve the original document.
