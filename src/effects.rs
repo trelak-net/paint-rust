@@ -1,11 +1,17 @@
 mod blurs;
 mod distort;
+mod object;
 mod stylize;
 use crate::document::{Pixel, Selection};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 #[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum Effect {
+    DropShadow {
+        radius: u32,
+        offset: [i32; 2],
+        color: Pixel,
+    },
     SurfaceBlur {
         radius: u32,
         threshold: u8,
@@ -130,6 +136,9 @@ impl Effect {
                     && range(angle, -180.0, 180.0)
             }
             Self::SurfaceBlur { radius, threshold } => radius <= 10 && threshold > 0,
+            Self::DropShadow { radius, offset, .. } => {
+                radius <= 64 && offset.into_iter().all(|v| (-200..=200).contains(&v))
+            }
             Self::AutoLevels(v) => range(v, 0.0, 5.0),
             Self::BrightnessContrast {
                 brightness,
@@ -191,6 +200,7 @@ impl Effect {
             | Self::FrostedGlass { .. }
             | Self::Crystalize { .. }
             | Self::Pixelate(_) => "Distort",
+            Self::DropShadow { .. } => "Object",
             Self::AddNoise { .. } => "Noise",
             Self::RedEye(_) | Self::Vignette { .. } | Self::Sharpen(_) => "Photo",
             Self::EdgeDetect | Self::Emboss(_) => "Stylize",
@@ -213,6 +223,7 @@ impl Effect {
             Self::ZoomBlur { .. } => "Zoom blur",
             Self::FragmentBlur { .. } => "Fragment blur",
             Self::SurfaceBlur { .. } => "Surface blur",
+            Self::DropShadow { .. } => "Drop shadow",
             Self::Exposure { .. } => "Exposure",
             Self::Bulge(_) => "Bulge",
             Self::Twist(_) => "Twist",
@@ -392,6 +403,11 @@ pub fn render(
         Effect::SurfaceBlur { radius, threshold } => {
             blurs::surface(source, width, height, radius, threshold, cancel)?
         }
+        Effect::DropShadow {
+            radius,
+            offset,
+            color,
+        } => object::shadow(source, width, height, radius, offset, color, cancel)?,
         Effect::GaussianBlur(radius) => blurs::gaussian(source, width, height, radius, cancel)?,
         Effect::MotionBlur {
             distance,
@@ -541,7 +557,8 @@ pub fn render(
                         let steps = f64::from(levels.clamp(2, 32) - 1);
                         (f64::from(*channel) * steps / 255.0).round() * 255.0 / steps
                     }
-                    Effect::SurfaceBlur { .. }
+                    Effect::DropShadow { .. }
+                    | Effect::SurfaceBlur { .. }
                     | Effect::RadialBlur { .. }
                     | Effect::ZoomBlur { .. }
                     | Effect::FragmentBlur { .. }

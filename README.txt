@@ -1152,3 +1152,13 @@ omits source descriptive metadata. Animation editing, palette selection and
 dithering controls remain pending. Quantization is bounded by the document size,
 but the codec does not expose cancellation within its palette-building pass.
 Tests cover the alpha boundary, matte, first-frame import and cancelled writes.
+
+Drop shadow
+-----------
+Effects > Object > Drop shadow blurs the source alpha, applies a selected shadow
+color and opacity, offsets the result and composites the original pixels above
+it. The output is clipped to the canvas and current selection. Radius is bounded
+to 64 pixels and offsets to 200 pixels on each axis. Hidden source RGB cannot tint
+the shadow; zero shadow opacity preserves exact bytes. Parameters are remembered,
+and preview/cancel/undo follow the common filter workflow. External reference
+edge behavior and large-image performance remain pending.

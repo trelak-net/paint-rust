@@ -2481,6 +2481,15 @@ impl Editor {
                                 changed |= ui.add(egui::Slider::new(shadows,-100..=100).text("Shadows")).changed();
                                 changed |= ui.add(egui::Slider::new(highlights,-100..=100).text("Highlights")).changed();
                             }
+                            Effect::DropShadow { radius, offset, color } => {
+                                changed |= ui.add(egui::Slider::new(radius,0..=64).text("Blur radius (px)")).changed();
+                                changed |= ui.add(egui::Slider::new(&mut offset[0],-200..=200).text("Offset X (px)")).changed();
+                                changed |= ui.add(egui::Slider::new(&mut offset[1],-200..=200).text("Offset Y (px)")).changed();
+                                ui.label("Shadow color and opacity");
+                                let mut rgba=Rgba::from_rgba_unmultiplied(color[0],color[1],color[2],color[3]);
+                                if rgba.edit(ui).changed() { *color=rgba.to_srgba_unmultiplied(); changed=true; }
+                                ui.small("The shadow is clipped to the canvas and selection.");
+                            }
                             Effect::SurfaceBlur { radius, threshold } => {
                                 changed |= ui.add(egui::Slider::new(radius,0..=10).text("Radius (px)")).changed();
                                 changed |= ui.add(egui::Slider::new(threshold,1..=255).text("Color threshold")).changed();
@@ -3040,6 +3049,11 @@ impl Editor {
                                 radius: 3,
                                 threshold: 30,
                             },
+                            Effect::DropShadow {
+                                radius: 4,
+                                offset: [4, 4],
+                                color: [0, 0, 0, 128],
+                            },
                             Effect::GaussianBlur(3),
                             Effect::MotionBlur {
                                 distance: 10,
@@ -3081,7 +3095,9 @@ impl Editor {
                             ui.separator();
                         }
                         if title == "Effects" {
-                            for category in ["Blurs", "Distort", "Noise", "Photo", "Stylize"] {
+                            for category in
+                                ["Blurs", "Distort", "Noise", "Object", "Photo", "Stylize"]
+                            {
                                 ui.menu_button(category, |ui| {
                                     for &effect in effects
                                         .iter()

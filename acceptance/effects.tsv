@@ -11,7 +11,7 @@ Crystalize	Distort	partial	Seeded Voronoi cells and size control	Reference algor
 Curves	Adjustment	partial	RGB/per-channel point editor, numeric controls, cubic LUT and preview	Luminance mode, presets and external reference cases
 Dents	Distort	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
 Black and White	Adjustment	partial	Grayscale with weighted RGB luminance	Exact transfer function, ranges, color space and reference output audit
-Drop Shadow	Object	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Drop Shadow	Object	partial	Gaussian alpha shadow with color, opacity and XY offset behind source	External reference ranges, edge behavior and large-image performance audit
 Edge Detect	Stylize	partial	Sobel magnitude with premultiplied input; source alpha retained	External reference output, ranges and color-space audit
 Emboss	Stylize	partial	Directional grayscale Sobel relief; source alpha retained	External reference output, ranges and color-space audit
 Exposure	Adjustment	partial	Linear-sRGB EV gain, offset and gamma with bounded LUT	External reference algorithm/ranges and working-space comparison
