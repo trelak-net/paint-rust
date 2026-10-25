@@ -12,7 +12,11 @@ import time
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=Path("/tmp/paint-rust-layout-smoke"))
+    parser.add_argument("--theme", choices=("system", "light", "dark"), default="system")
+    parser.add_argument("--scale", type=float)
     args = parser.parse_args()
+    if args.scale is not None and not 0.5 <= args.scale <= 3:
+        parser.error("Scale must be between 0.5 and 3")
     root = Path(__file__).resolve().parents[1]
     binary = root / "target/release/paint-rust"
     if not binary.is_file():
@@ -26,13 +30,18 @@ def main():
     with tempfile.TemporaryDirectory(prefix="paint-rust-ui-") as base:
         env = os.environ.copy()
         env.pop("WAYLAND_DISPLAY", None)
+        if args.scale is not None:
+            env["WINIT_X11_SCALE_FACTOR"] = str(args.scale)
         for key in ("XDG_CONFIG_HOME", "XDG_CACHE_HOME", "XDG_STATE_HOME"):
             env[key] = str(Path(base) / key)
             Path(env[key]).mkdir()
         settings = Path(env["XDG_CONFIG_HOME"]) / "net.trelak.PaintRust/workspace.txt"
         settings.parent.mkdir()
         settings.write_text("workspace-v1\n1\n1\n1\n1\n1\n")
+        preferences = settings.with_name("preferences.txt")
+        preferences.write_text(f"preferences-v1\n{args.theme} 1 12 1 1 0 0\n")
         saved = []
+        saved_preferences = []
         with (args.output / "editor.log").open("w") as log:
             for attempt in range(2):
                 app = subprocess.Popen(
@@ -55,6 +64,9 @@ def main():
                             if app.wait(timeout=10) != 0:
                                 raise RuntimeError("Editor failed during shutdown")
                             saved.append(settings.read_text())
+                            saved_preferences.append(preferences.read_text())
+                            if not saved_preferences[-1].splitlines()[1].startswith(args.theme + " "):
+                                raise RuntimeError("Theme preference was not preserved")
                             if len(saved[-1].splitlines()[2].split()) != 5:
                                 raise RuntimeError("Floating panel geometry was not saved")
                             break
@@ -69,8 +81,11 @@ def main():
                         app.wait(timeout=5)
         if saved[0] != saved[1]:
             raise RuntimeError("Panel layout changed after restart")
+        if saved_preferences[0] != saved_preferences[1]:
+            raise RuntimeError("Preferences or recent files changed after restart")
+        (args.output / "preferences.txt").write_text(saved_preferences[0])
         (args.output / "workspace.txt").write_text(saved[0])
-    print(f"Two native launches and clean exits; layout stable. Artifacts: {args.output}")
+    print(f"Two native launches and clean exits; layout, preferences and recent files stable. Artifacts: {args.output}")
 
 
 if __name__ == "__main__":

@@ -150,7 +150,8 @@ independent tasks; do not silently reduce the required scope.
 [ ] Disk-full, corrupted-input, interrupted-save and low-memory scenarios.
 [ ] Session recovery across multiple documents.
 11. Distribution and preferences
-[ ] Persistent preferences, recent files and file drop.
+[x] Persistent theme/grid/brush preferences, recent-file menu and file-drop queue.
+[ ] Remaining preferences and full cross-session effect parameter persistence.
 [ ] English/Polish localization and user documentation.
 [ ] Installation/update validation across Linux desktop environments.
 12. Final acceptance

@@ -1,7 +1,7 @@
 Capability	Label	Status	Expected shortcut	Current shortcut	Current implementation or gap
 File.New	New...	supported	Ctrl+N	Ctrl+N	Available; see workflow cases
 File.Open	Open...	supported	Ctrl+O	Ctrl+O	Available; see workflow cases
-File.OpenRecent	Open Recent	missing	-	-	Not implemented
+File.OpenRecent	Open Recent	supported	-	-	Sixteen successful open/save paths, deduplication, clear action and restart persistence
 File.Acquire	Acquire	missing	-	-	Not implemented
 File.FromScannerOrCamera	FromScannerOrCamera	missing	-	-	Not implemented
 File.Save	Save	partial	Ctrl+S	Ctrl+S	Project/raster save routing, decoded preview and confirmed undoable flattening; remaining codecs pending

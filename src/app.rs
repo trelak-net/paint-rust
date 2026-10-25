@@ -6,6 +6,7 @@ mod file_operations;
 mod histogram;
 mod lasso;
 mod panels;
+mod preferences;
 mod thumbnails;
 mod transform_handles;
 mod workspace;
@@ -84,6 +85,8 @@ struct EffectDialog {
 }
 
 pub struct Editor {
+    preferences: preferences::Preferences,
+    system_theme: Option<egui::Theme>,
     panel_layout: panels::Layout,
     color_panel: colors::ColorPanel,
     layer_thumbnails: thumbnails::LayerThumbnails,
@@ -176,6 +179,16 @@ impl Editor {
         if let Err(error) = editor.color_panel.load() {
             editor.status = format!("Using default palette: {error}");
         }
+        match preferences::Preferences::load() {
+            Ok(settings) => {
+                editor.brush_size = settings.brush_size;
+                editor.brush_options = settings.brush;
+                editor.pixel_grid = settings.pixel_grid;
+                editor.preferences = settings;
+            }
+            Err(error) => editor.status = format!("Using default preferences: {error}"),
+        }
+        editor.apply_theme(&cc.egui_ctx);
         editor.appearance = Some(crate::appearance::connect(&cc.egui_ctx));
         editor
             .open_queue
@@ -276,6 +289,8 @@ impl Editor {
             suppress_stroke: false,
             stroke_button: egui::PointerButton::Primary,
             appearance: None,
+            preferences: Default::default(),
+            system_theme: None,
             clipboard: Default::default(),
             recovery: None,
             recoverable: Vec::new(),
@@ -2571,11 +2586,10 @@ impl Editor {
         if let Some(receiver) = &self.appearance
             && let Some(theme) = receiver.try_iter().last()
         {
-            ctx.set_theme(theme);
-            ctx.send_viewport_cmd(egui::ViewportCommand::SetTheme(match theme {
-                egui::Theme::Light => egui::SystemTheme::Light,
-                egui::Theme::Dark => egui::SystemTheme::Dark,
-            }));
+            self.system_theme = Some(theme);
+            if self.preferences.theme == preferences::Theme::System {
+                self.apply_theme(ctx);
+            }
         }
         if !ctx.input(|i| i.focused) {
             self.finish_stroke();
@@ -2657,6 +2671,7 @@ impl Editor {
                 if ui.add(Icon::SaveAs.button("Save as…")).clicked() {
                     self.save(true);
                 }
+                self.recent_menu(ui);
                 ui.menu_button("Export", |ui| {
                     for format in [
                         files::RasterFormat::Png,
@@ -2886,6 +2901,7 @@ impl Editor {
                     });
                 }
                 ui.menu_button("View", |ui| {
+                    self.preferences_menu(ui);
                     ui.checkbox(&mut self.panel_layout.floating, "Floating panels");
                     ui.checkbox(&mut self.pixel_grid, "Pixel grid (at 800% and above)");
                     for (index, name) in panels::NAMES.iter().enumerate() {
@@ -2986,6 +3002,12 @@ impl Editor {
 
 impl eframe::App for Editor {
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
+        self.preferences.brush_size = self.brush_size;
+        self.preferences.brush = self.brush_options;
+        self.preferences.pixel_grid = self.pixel_grid;
+        if let Err(error) = self.preferences.save() {
+            eprintln!("Could not save preferences: {error}");
+        }
         self.clear_recovery();
         self.clear_inactive_recovery();
         if let Err(error) = self.color_panel.save() {

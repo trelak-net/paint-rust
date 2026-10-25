@@ -1002,3 +1002,16 @@ Cancel or failure preserves the document and its previous path; a pending close
 does not proceed. Tests cover all six raster formats, decoded pixel identity,
 undo/redo, cancellation and failed writes. Raster files omit document metadata;
 retain a layered project separately when that information is required.
+
+Preferences and recent files
+----------------------------
+View > Theme selects System, Light or Dark. An explicit theme overrides desktop
+notifications; System follows the latest desktop preference. Normal shutdown
+atomically saves the theme, pixel-grid visibility, brush size/hardness/opacity/
+antialias/blending and up to sixteen recent successful open/save paths. Recent
+entries can be reopened or cleared from the Recent menu. Paths with spaces,
+Unicode and line breaks are encoded safely; unsupported non-UTF-8 paths still
+open normally but are omitted from history. Preferences are size/range checked.
+Two launches each at dark/100% and light/200% verified stable panel layout,
+preferences and recent files. The native smoke script accepts --theme and --scale.
+Further preference controls, localization and effect persistence remain pending.

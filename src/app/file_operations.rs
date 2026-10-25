@@ -353,6 +353,7 @@ impl Editor {
                     });
             }
             Ok(Outcome::Opened(document, path)) => {
+                self.preferences.remember(&path);
                 self.install_document(*document, Some(path));
                 self.status = "Image opened".into();
             }
@@ -509,6 +510,7 @@ impl Editor {
     }
 
     fn complete_save(&mut self, path: PathBuf, ctx: &egui::Context) {
+        self.preferences.remember(&path);
         self.document.mark_saved();
         self.status = format!("Saved {}", path.display());
         self.path = Some(path);
