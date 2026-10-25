@@ -141,6 +141,7 @@ impl Editor {
             ui.heading("Layers");
         }
         ui.horizontal_wrapped(|ui| {
+            ui.spacing_mut().button_padding = egui::vec2(5.0, 3.0);
             if ui
                 .add_enabled(self.document.can_add_layer(), egui::Button::new("Add"))
                 .clicked()
@@ -169,56 +170,65 @@ impl Editor {
                 self.texture_dirty = true;
             }
         });
-        ui.horizontal(|ui| {
-            let active = self.document.active_layer();
+        ui.menu_button("Layer actions", |ui| {
+            ui.horizontal(|ui| {
+                let active = self.document.active_layer();
+                if ui
+                    .add_enabled(
+                        active + 1 < self.document.layers().len(),
+                        egui::Button::new("Move up"),
+                    )
+                    .clicked()
+                {
+                    ui.close();
+                    self.document.move_layer(true);
+                    self.texture_dirty = true;
+                }
+                if ui
+                    .add_enabled(active > 0, egui::Button::new("Move down"))
+                    .clicked()
+                {
+                    ui.close();
+                    self.document.move_layer(false);
+                    self.texture_dirty = true;
+                }
+            });
             if ui
                 .add_enabled(
-                    active + 1 < self.document.layers().len(),
-                    egui::Button::new("Move up"),
+                    self.document.can_add_layer(),
+                    egui::Button::new("Import image…"),
+                )
+                .on_hover_text("Add an image or a project's visible image as a new layer")
+                .clicked()
+            {
+                ui.close();
+                self.import_layer();
+            }
+            if ui
+                .add_enabled(
+                    self.document.can_merge_down(),
+                    egui::Button::new("Merge down"),
+                )
+                .on_hover_text("Merge into the layer below, retaining its properties (Ctrl+M)")
+                .clicked()
+            {
+                ui.close();
+                self.start_document_edit(DocumentEdit::MergeDown);
+            }
+            if ui
+                .add_enabled(
+                    self.document.can_flatten(),
+                    egui::Button::new("Flatten image"),
+                )
+                .on_hover_text(
+                    "Replace all layers with the visible image. Undo restores the layers.",
                 )
                 .clicked()
             {
-                self.document.move_layer(true);
-                self.texture_dirty = true;
-            }
-            if ui
-                .add_enabled(active > 0, egui::Button::new("Move down"))
-                .clicked()
-            {
-                self.document.move_layer(false);
-                self.texture_dirty = true;
+                ui.close();
+                self.start_document_edit(DocumentEdit::Flatten);
             }
         });
-        if ui
-            .add_enabled(
-                self.document.can_add_layer(),
-                egui::Button::new("Import image…"),
-            )
-            .on_hover_text("Add an image or a project's visible image as a new layer")
-            .clicked()
-        {
-            self.import_layer();
-        }
-        if ui
-            .add_enabled(
-                self.document.can_merge_down(),
-                egui::Button::new("Merge down"),
-            )
-            .on_hover_text("Merge into the layer below, retaining its properties (Ctrl+M)")
-            .clicked()
-        {
-            self.start_document_edit(DocumentEdit::MergeDown);
-        }
-        if ui
-            .add_enabled(
-                self.document.can_flatten(),
-                egui::Button::new("Flatten image"),
-            )
-            .on_hover_text("Replace all layers with the visible image. Undo restores the layers.")
-            .clicked()
-        {
-            self.start_document_edit(DocumentEdit::Flatten);
-        }
         ui.separator();
         self.layer_thumbnails.update(ui.ctx(), &self.document);
         let mut reorder = None;
