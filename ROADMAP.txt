@@ -88,7 +88,8 @@ independent tasks; do not silently reduce the required scope.
 [x] Sequential Save All with raster confirmation and cancellation/error guards.
 2. Workspace
 [x] Movable, hideable panels with layout persistence and reset.
-[ ] Complete menu/toolbar organization and contextual options.
+[x] Separate main menu and quick-action toolbar; shared layer actions and complete raster export menu.
+[ ] Remaining menu commands, keyboard map and contextual-option parity.
 [ ] Light/dark/high-DPI and compact-window acceptance checks.
 3. Colors and navigation
 [x] Numeric RGB/HSV/alpha/HEX editing, palette persistence and defaults.

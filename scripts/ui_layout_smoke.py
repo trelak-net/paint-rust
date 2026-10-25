@@ -16,9 +16,18 @@ def main():
     parser.add_argument("--theme", choices=("system", "light", "dark"), default="system")
     parser.add_argument("--scale", type=float)
     parser.add_argument("--rulers", action="store_true")
+    parser.add_argument("--size", help="Requested native window size, e.g. 800x600")
     args = parser.parse_args()
     if args.scale is not None and not 0.5 <= args.scale <= 3:
         parser.error("Scale must be between 0.5 and 3")
+    size = None
+    if args.size:
+        try:
+            size = tuple(int(value) for value in args.size.lower().split("x"))
+            if len(size) != 2 or not all(200 <= value <= 8192 for value in size):
+                raise ValueError()
+        except ValueError:
+            parser.error("Size must be WIDTHxHEIGHT with dimensions from 200 to 8192")
     root = Path(__file__).resolve().parents[1]
     binary = root / "target/release/paint-rust"
     if not binary.is_file():
@@ -62,6 +71,8 @@ def main():
                         )
                         if found.returncode == 0:
                             window = found.stdout.splitlines()[-1]
+                            if size:
+                                subprocess.run(["xdotool", "windowsize", window, str(size[0]), str(size[1])], check=True, timeout=5)
                             time.sleep(2)
                             subprocess.run(["import", "-window", window, str(args.output / f"launch-{attempt}.png")], check=True, timeout=10)
                             # WM close preserves normal shutdown and settings persistence.

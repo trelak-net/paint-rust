@@ -10,6 +10,7 @@ mod panels;
 mod preferences;
 mod rulers;
 mod thumbnails;
+mod toolbar;
 mod transform_handles;
 mod workspace;
 use crate::icons::Icon;
@@ -1788,20 +1789,25 @@ impl Editor {
                 | Tool::Rectangle
                 | Tool::Ellipse
         ) {
-            ui.add(
-                egui::Slider::new(&mut self.brush_size, 1.0..=128.0)
-                    .suffix(" px")
-                    .text("Brush size"),
+            toolbar::slider(
+                ui,
+                egui::Slider::new(&mut self.brush_size, 1.0..=128.0).suffix(" px"),
+                "Brush size",
             );
         }
         if matches!(
             self.tool,
             Tool::Brush | Tool::Eraser | Tool::Clone | Tool::Recolor
         ) {
-            ui.add(egui::Slider::new(&mut self.brush_options.hardness, 0.0..=1.0).text("Hardness"));
-            ui.add(
-                egui::Slider::new(&mut self.brush_options.opacity, 0.0..=1.0)
-                    .text("Stroke opacity"),
+            toolbar::slider(
+                ui,
+                egui::Slider::new(&mut self.brush_options.hardness, 0.0..=1.0),
+                "Hardness",
+            );
+            toolbar::slider(
+                ui,
+                egui::Slider::new(&mut self.brush_options.opacity, 0.0..=1.0),
+                "Stroke opacity",
             );
             ui.checkbox(&mut self.brush_options.antialias, "Antialias");
             if matches!(self.tool, Tool::Brush | Tool::Clone) {
@@ -2821,31 +2827,7 @@ impl Editor {
             if !enabled || self.gesture_preview.is_some() {
                 ui.disable();
             }
-            ui.horizontal_wrapped(|ui| {
-                if ui
-                    .add(Icon::New.button("New"))
-                    .on_hover_text("Ctrl+N")
-                    .clicked()
-                {
-                    self.request(Action::New, ctx);
-                }
-                if ui
-                    .add(Icon::Open.button("Open…"))
-                    .on_hover_text("Ctrl+O")
-                    .clicked()
-                {
-                    self.request(Action::Open, ctx);
-                }
-                if ui
-                    .add(Icon::Save.button("Save"))
-                    .on_hover_text("Ctrl+S")
-                    .clicked()
-                {
-                    self.save(false);
-                }
-                if ui.add(Icon::SaveAs.button("Save as…")).clicked() {
-                    self.save(true);
-                }
+            egui::MenuBar::new().ui(ui, |ui| {
                 ui.menu_button("File", |ui| {
                     if ui.button("New    Ctrl+N").clicked() {
                         self.request(Action::New, ctx);
@@ -2856,6 +2838,18 @@ impl Editor {
                         ui.close();
                     }
                     self.recent_menu(ui);
+                    if !self.recoverable.is_empty() && ui.button("Recover…").clicked() {
+                        self.request(Action::Recovery, ctx);
+                    }
+                    ui.menu_button("Export", |ui| {
+                        for format in files::RasterFormat::ALL {
+                            if ui.add(Icon::SaveAs.button(format.label())).clicked() {
+                                self.export_image(format);
+                                ui.close();
+                            }
+                        }
+                    });
+
                     ui.separator();
                     if ui.button("Save    Ctrl+S").clicked() {
                         self.save(false);
@@ -2879,38 +2873,28 @@ impl Editor {
                         ui.close();
                     }
                 });
-                ui.menu_button("Export", |ui| {
-                    for format in [
-                        files::RasterFormat::Png,
-                        files::RasterFormat::Jpeg,
-                        files::RasterFormat::Bmp,
-                        files::RasterFormat::WebP,
-                        files::RasterFormat::Tiff,
-                        files::RasterFormat::Tga,
-                    ] {
-                        if ui.add(Icon::SaveAs.button(format.label())).clicked() {
-                            self.export_image(format);
-                            ui.close();
-                        }
-                    }
-                });
-                ui.separator();
-                if ui
-                    .add_enabled(self.document.can_undo(), Icon::Undo.button("Undo"))
-                    .clicked()
-                {
-                    self.undo();
-                }
-                if ui
-                    .add_enabled(self.document.can_redo(), Icon::Redo.button("Redo"))
-                    .clicked()
-                {
-                    self.redo();
-                }
-                if !self.recoverable.is_empty() && ui.button("Recover…").clicked() {
-                    self.request(Action::Recovery, ctx);
-                }
                 ui.menu_button("Edit", |ui| {
+                    if ui
+                        .add_enabled(
+                            self.document.can_undo(),
+                            Icon::Undo.button("Undo    Ctrl+Z"),
+                        )
+                        .clicked()
+                    {
+                        self.undo();
+                        ui.close();
+                    }
+                    if ui
+                        .add_enabled(
+                            self.document.can_redo(),
+                            Icon::Redo.button("Redo    Ctrl+Y"),
+                        )
+                        .clicked()
+                    {
+                        self.redo();
+                        ui.close();
+                    }
+                    ui.separator();
                     if ui.add(Icon::Copy.button("Copy    Ctrl+C")).clicked() {
                         self.copy(false, false);
                         ui.close();
@@ -2967,6 +2951,9 @@ impl Editor {
                             ui.close();
                         }
                     }
+                });
+                ui.menu_button("Layers", |ui| {
+                    self.layer_menu_contents(ui);
                 });
                 ui.menu_button("Selection", |ui| {
                     if ui.button("Free transform pixels…").clicked() {
@@ -3118,6 +3105,14 @@ impl Editor {
                 ];
                 for (title, effects) in effect_groups {
                     ui.menu_button(title, |ui| {
+                        if title == "Adjustments"
+                            && ui
+                                .add(Icon::Invert.button("Invert colors    Ctrl+Shift+I"))
+                                .clicked()
+                        {
+                            self.start_document_edit(DocumentEdit::Invert);
+                            ui.close();
+                        }
                         if title == "Effects" {
                             let name = self.last_effect.map(Effect::name).unwrap_or("last effect");
                             if ui
@@ -3201,19 +3196,78 @@ impl Editor {
                         ui.close();
                     }
                 });
-                if ui.add(Icon::Invert.button("Invert colors")).clicked() {
-                    self.start_document_edit(DocumentEdit::Invert);
+            });
+            ui.horizontal_wrapped(|ui| {
+                if ui
+                    .add(Icon::New.button("New"))
+                    .on_hover_text("Ctrl+N")
+                    .clicked()
+                {
+                    self.request(Action::New, ctx);
+                }
+                if ui
+                    .add(Icon::Open.button("Open…"))
+                    .on_hover_text("Ctrl+O")
+                    .clicked()
+                {
+                    self.request(Action::Open, ctx);
+                }
+                if ui
+                    .add(Icon::Save.button("Save"))
+                    .on_hover_text("Ctrl+S")
+                    .clicked()
+                {
+                    self.save(false);
+                }
+                if ui.add(Icon::SaveAs.button("Save as…")).clicked() {
+                    self.save(true);
+                }
+                ui.separator();
+                if ui
+                    .add_enabled(self.document.can_undo(), Icon::Undo.button("Undo"))
+                    .clicked()
+                {
+                    self.undo();
+                }
+                if ui
+                    .add_enabled(self.document.can_redo(), Icon::Redo.button("Redo"))
+                    .clicked()
+                {
+                    self.redo();
+                }
+                ui.separator();
+                if ui
+                    .add(Icon::Cut.button("Cut"))
+                    .on_hover_text("Ctrl+X")
+                    .clicked()
+                {
+                    self.copy(true, false);
+                }
+                if ui
+                    .add(Icon::Copy.button("Copy"))
+                    .on_hover_text("Ctrl+C")
+                    .clicked()
+                {
+                    self.copy(false, false);
+                }
+                if ui
+                    .add(Icon::Paste.button("Paste"))
+                    .on_hover_text("Ctrl+V")
+                    .clicked()
+                {
+                    self.paste();
                 }
             });
             ui.horizontal_wrapped(|ui| {
                 ui.strong("Tool options");
                 self.tool_options(ui);
                 ui.separator();
-                ui.add(
+                toolbar::slider(
+                    ui,
                     egui::Slider::new(&mut self.zoom, 0.01..=64.0)
-                        .text("Zoom")
                         .logarithmic(true)
                         .custom_formatter(|v, _| format!("{:.0}%", v * 100.0)),
+                    "Zoom",
                 );
                 if ui.add(Icon::ActualSize.button("100%")).clicked() {
                     self.zoom = 1.0;

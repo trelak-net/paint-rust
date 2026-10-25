@@ -141,6 +141,92 @@ impl Editor {
             self.color.b()
         ));
     }
+    pub(super) fn layer_menu_contents(&mut self, ui: &mut egui::Ui) {
+        for (label, duplicate) in [("Add layer", false), ("Duplicate layer", true)] {
+            if ui
+                .add_enabled(self.document.can_add_layer(), egui::Button::new(label))
+                .clicked()
+            {
+                self.document.add_layer(duplicate);
+                self.texture_dirty = true;
+                ui.close();
+            }
+        }
+        if ui
+            .add_enabled(
+                self.document.layers().len() > 1,
+                egui::Button::new("Delete layer"),
+            )
+            .clicked()
+        {
+            self.document.remove_layer();
+            self.texture_dirty = true;
+            ui.close();
+        }
+        ui.separator();
+        ui.horizontal(|ui| {
+            let active = self.document.active_layer();
+            if ui
+                .add_enabled(
+                    active + 1 < self.document.layers().len(),
+                    egui::Button::new("Move up"),
+                )
+                .clicked()
+            {
+                ui.close();
+                self.document.move_layer(true);
+                self.texture_dirty = true;
+            }
+            if ui
+                .add_enabled(active > 0, egui::Button::new("Move down"))
+                .clicked()
+            {
+                ui.close();
+                self.document.move_layer(false);
+                self.texture_dirty = true;
+            }
+        });
+        if ui
+            .add_enabled(
+                self.document.can_add_layer(),
+                egui::Button::new("Import image…"),
+            )
+            .on_hover_text("Add an image or a project's visible image as a new layer")
+            .clicked()
+        {
+            ui.close();
+            self.import_layer();
+        }
+        if ui
+            .add_enabled(
+                self.document.can_merge_down(),
+                egui::Button::new("Merge down"),
+            )
+            .on_hover_text("Merge into the layer below, retaining its properties (Ctrl+M)")
+            .clicked()
+        {
+            ui.close();
+            self.start_document_edit(DocumentEdit::MergeDown);
+        }
+        if ui
+            .add_enabled(
+                self.document.can_flatten(),
+                egui::Button::new("Flatten image"),
+            )
+            .on_hover_text("Replace all layers with the visible image. Undo restores the layers.")
+            .clicked()
+        {
+            ui.close();
+            self.start_document_edit(DocumentEdit::Flatten);
+        }
+
+        ui.separator();
+        if ui.button("Layer properties…").clicked() {
+            let layer = &self.document.layers()[self.document.active_layer()];
+            self.layer_properties = Some((layer.name.clone(), layer.opacity, layer.blend_mode));
+            ui.close();
+        }
+    }
     fn layers_panel(&mut self, ui: &mut egui::Ui) {
         if !self.panel_layout.floating {
             ui.heading("Layers");
@@ -176,63 +262,7 @@ impl Editor {
             }
         });
         ui.menu_button("Layer actions", |ui| {
-            ui.horizontal(|ui| {
-                let active = self.document.active_layer();
-                if ui
-                    .add_enabled(
-                        active + 1 < self.document.layers().len(),
-                        egui::Button::new("Move up"),
-                    )
-                    .clicked()
-                {
-                    ui.close();
-                    self.document.move_layer(true);
-                    self.texture_dirty = true;
-                }
-                if ui
-                    .add_enabled(active > 0, egui::Button::new("Move down"))
-                    .clicked()
-                {
-                    ui.close();
-                    self.document.move_layer(false);
-                    self.texture_dirty = true;
-                }
-            });
-            if ui
-                .add_enabled(
-                    self.document.can_add_layer(),
-                    egui::Button::new("Import image…"),
-                )
-                .on_hover_text("Add an image or a project's visible image as a new layer")
-                .clicked()
-            {
-                ui.close();
-                self.import_layer();
-            }
-            if ui
-                .add_enabled(
-                    self.document.can_merge_down(),
-                    egui::Button::new("Merge down"),
-                )
-                .on_hover_text("Merge into the layer below, retaining its properties (Ctrl+M)")
-                .clicked()
-            {
-                ui.close();
-                self.start_document_edit(DocumentEdit::MergeDown);
-            }
-            if ui
-                .add_enabled(
-                    self.document.can_flatten(),
-                    egui::Button::new("Flatten image"),
-                )
-                .on_hover_text(
-                    "Replace all layers with the visible image. Undo restores the layers.",
-                )
-                .clicked()
-            {
-                ui.close();
-                self.start_document_edit(DocumentEdit::Flatten);
-            }
+            self.layer_menu_contents(ui);
         });
         ui.separator();
         self.layer_thumbnails.update(ui.ctx(), &self.document);

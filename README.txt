@@ -1214,3 +1214,13 @@ retain their existing behavior. The chosen mode is saved in preferences; older
 preferences default to Normal and invalid mode indices are rejected. Tests compare
 non-Normal brush results to layer compositing and cover Undo/Redo. A native dark
 200% scaling check verifies the mode menu wraps without clipping and survives restart.
+
+Menu and toolbar layout
+-----------------------
+The main menu occupies its own row, followed by common file/edit actions and
+contextual tool controls. File > Export uses the shared codec inventory, including
+GIF. Layers exposes shared layer actions and properties even with its panel hidden;
+Edit includes Undo/Redo and Adjustments includes color inversion. Brush and zoom
+sliders reserve their complete labels before wrapping. Tests cover clipping in
+a narrow toolbar; native 800x600/light and 200%/dark checks cover startup and
+persistence. Compact floating-panel overlap is tracked separately.
