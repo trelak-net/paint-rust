@@ -36,3 +36,9 @@ Undo selections
 Selection changes can be undone and redone alongside image edits. Selecting,
 deselecting, moving or transforming a selection boundary does not make a saved
 image dirty. Press Ctrl+D to deselect; Ctrl+Shift+A is also supported.
+
+Choose a paste destination
+Ctrl+V pastes into the active layer. Ctrl+Shift+V creates a new layer, and
+Ctrl+Alt+V creates a new image sized to the clipboard. Pasted pixels are selected
+and the Move tool activates. Backspace fills the selection with primary color;
+Shift+Backspace uses secondary color.

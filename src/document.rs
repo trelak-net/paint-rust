@@ -672,6 +672,57 @@ impl Document {
         (!cancel.load(Ordering::Relaxed)).then_some((rect.width, rect.height, pixels))
     }
 
+    pub fn paste_active_cancellable(
+        &mut self,
+        width: u32,
+        height: u32,
+        pixels: &[Pixel],
+        cancel: &std::sync::atomic::AtomicBool,
+    ) -> Result<bool, String> {
+        use std::sync::atomic::Ordering;
+        Self::validate_size(width, height)?;
+        if self.editing() || pixels.len() != width as usize * height as usize {
+            return Err("Invalid or busy paste destination".into());
+        }
+        if cancel.load(Ordering::Relaxed) {
+            return Err(crate::files::CANCELLED.into());
+        }
+        let (x, y) = self.selection.as_ref().map(|s| (s.x, s.y)).unwrap_or((
+            self.width.saturating_sub(width) / 2,
+            self.height.saturating_sub(height) / 2,
+        ));
+        let clipped_width = width.min(self.width - x);
+        let clipped_height = height.min(self.height - y);
+        if clipped_width == 0 || clipped_height == 0 {
+            return Err("Paste origin is outside the canvas".into());
+        }
+        self.begin("Paste pixels");
+        let destination = Arc::make_mut(&mut self.layers[self.active].pixels);
+        for row in 0..clipped_height {
+            if cancel.load(Ordering::Relaxed) {
+                self.cancel();
+                return Err(crate::files::CANCELLED.into());
+            }
+            let source = row as usize * width as usize;
+            let target = (row + y) as usize * self.width as usize + x as usize;
+            destination[target..target + clipped_width as usize]
+                .copy_from_slice(&pixels[source..source + clipped_width as usize]);
+        }
+        if cancel.load(Ordering::Relaxed) {
+            self.cancel();
+            return Err(crate::files::CANCELLED.into());
+        }
+        self.selection = Some(Selection {
+            x,
+            y,
+            width: clipped_width,
+            height: clipped_height,
+            mask: None,
+            ellipse: None,
+        });
+        Ok(self.commit())
+    }
+
     pub fn paste_layer(
         &mut self,
         width: u32,

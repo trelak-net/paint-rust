@@ -560,6 +560,12 @@ impl Editor {
     }
 
     fn paste(&mut self) {
+        self.paste_with_mode(false);
+    }
+    fn paste_new_layer(&mut self) {
+        self.paste_with_mode(true);
+    }
+    fn paste_with_mode(&mut self, new_layer: bool) {
         self.finish_stroke();
         let clipboard = self.clipboard.clone();
         let mut document = self.document.snapshot();
@@ -573,14 +579,22 @@ impl Editor {
             if cancel.load(std::sync::atomic::Ordering::Relaxed) {
                 return Err(files::CANCELLED.into());
             }
-            document.paste_layer(width, height, &pixels)?;
+            if new_layer {
+                document.paste_layer(width, height, &pixels)?;
+            } else {
+                document.paste_active_cancellable(width, height, &pixels, cancel)?;
+            }
             if cancel.load(std::sync::atomic::Ordering::Relaxed) {
                 return Err(files::CANCELLED.into());
             }
-            let label = if width > document.width || height > document.height {
-                "Paste layer (image clipped to canvas)"
-            } else {
-                "Paste layer"
+            let label = match (
+                new_layer,
+                width > document.width || height > document.height,
+            ) {
+                (true, true) => "Paste layer (image clipped to canvas)",
+                (true, false) => "Paste layer",
+                (false, true) => "Paste pixels (image clipped to canvas)",
+                (false, false) => "Paste pixels",
             };
             Ok(Outcome::Edited(Box::new(document), label.into(), true))
         });
@@ -972,6 +986,7 @@ impl Editor {
             // Its release event remains available for image clipboard handling.
             } else if i.events.iter().any(|event| matches!(event,egui::Event::Key{key:Key::V,pressed:false,modifiers,..} if modifiers.command && modifiers.alt && modifiers.shift)) {Some(29)
             } else if i.events.iter().any(|event| matches!(event,egui::Event::Key{key:Key::V,pressed:false,modifiers,..} if modifiers.command && modifiers.alt)) { Some(27)
+            } else if i.events.iter().any(|event| matches!(event,egui::Event::Key{key:Key::V,pressed:false,modifiers,..} if modifiers.command && modifiers.shift)) {Some(32)
             } else if i.events.iter().any(|event| matches!(event,egui::Event::Key{key:Key::V,pressed:false,modifiers,..} if modifiers.command)) { Some(13)
             } else if i.consume_key(egui::Modifiers::COMMAND | egui::Modifiers::SHIFT, Key::Tab) {
                 Some(16)
@@ -985,6 +1000,8 @@ impl Editor {
                 Some(19)
             } else if i.consume_key(egui::Modifiers::COMMAND, Key::F) {
                 Some(18)
+            } else if i.consume_key(egui::Modifiers::SHIFT,Key::Backspace) {Some(33)
+            } else if i.consume_key(egui::Modifiers::NONE,Key::Backspace) {Some(31)
             } else if i.consume_key(egui::Modifiers::NONE, Key::F4) {
                 Some(26)
             } else if i.consume_key(egui::Modifiers::COMMAND | egui::Modifiers::ALT, Key::M) {
@@ -1068,6 +1085,13 @@ impl Editor {
             }
         });
         match command {
+            Some(32) => self.paste_new_layer(),
+            Some(31) => {
+                self.start_document_edit(DocumentEdit::Fill(self.color.to_srgba_unmultiplied()))
+            }
+            Some(33) => self.start_document_edit(DocumentEdit::Fill(
+                self.secondary_color.to_srgba_unmultiplied(),
+            )),
             Some(28) => self.copy_selection_geometry(),
             Some(29) => self.paste_selection_geometry(CombineMode::Replace),
             Some(30) => self.copy(false, true),
@@ -3082,13 +3106,14 @@ impl Editor {
                         ui.close();
                     }
                     if ui
-                        .add(Icon::Paste.button("Paste as layer    Ctrl+V"))
+                        .add(Icon::Paste.button("Paste    Ctrl+V"))
                         .clicked()
                     {
                         self.paste();
                         ui.close();
                     }
                     ui.separator();
+                    if ui.button("Paste into new layer    Ctrl+Shift+V").clicked() {self.paste_new_layer();ui.close();}
                     if ui.button("Copy selection geometry    Ctrl+Alt+Shift+C").clicked() {self.copy_selection_geometry();ui.close();}
                     ui.menu_button("Paste selection geometry",|ui| {
                         for mode in [CombineMode::Replace,CombineMode::Add,CombineMode::Subtract,CombineMode::Intersect,CombineMode::Xor] {
@@ -3096,8 +3121,8 @@ impl Editor {
                         }
                     });
                     if ui.button("Paste into new image    Ctrl+Alt+V").clicked() {self.paste_new_image();ui.close();}
-                    if ui.button("Fill selection with primary").clicked() {self.start_document_edit(DocumentEdit::Fill(self.color.to_srgba_unmultiplied()));ui.close();}
-                    if ui.button("Fill selection with secondary").clicked() {self.start_document_edit(DocumentEdit::Fill(self.secondary_color.to_srgba_unmultiplied()));ui.close();}
+                    if ui.button("Fill selection with primary    Backspace").clicked() {self.start_document_edit(DocumentEdit::Fill(self.color.to_srgba_unmultiplied()));ui.close();}
+                    if ui.button("Fill selection with secondary    Shift+Backspace").clicked() {self.start_document_edit(DocumentEdit::Fill(self.secondary_color.to_srgba_unmultiplied()));ui.close();}
                 });
                 ui.menu_button("Image", |ui| {
                     for (label, canvas) in [("Resize image…", false), ("Canvas size…", true)] {
@@ -4696,6 +4721,65 @@ mod tests {
     }
 
     #[test]
+    fn paste_shortcuts_distinguish_active_and_new_layers_and_fill_shortcuts_use_both_colors() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.document = Document::new(3, 3, [20, 30, 40, 255]).unwrap();
+        *editor.clipboard.lock().unwrap() = Some(Box::new(MemoryClipboard {
+            image: Some((1, 1, vec![[255, 0, 0, 0]])),
+            fail: false,
+        }));
+        let paste = |shift| egui::Event::Key {
+            key: Key::V,
+            physical_key: None,
+            pressed: false,
+            repeat: false,
+            modifiers: egui::Modifiers {
+                command: true,
+                ctrl: true,
+                shift,
+                ..Default::default()
+            },
+        };
+        frame(&mut editor, &ctx, vec![paste(false)]);
+        wait_for_files(&mut editor, &ctx);
+        assert_eq!(editor.document.layers().len(), 1);
+        assert_eq!(editor.document.pixels()[4], [255, 0, 0, 0]);
+        assert!(editor.tool == Tool::Move);
+        assert!(!editor.move_selection_only);
+        frame(&mut editor, &ctx, vec![paste(true)]);
+        wait_for_files(&mut editor, &ctx);
+        assert_eq!(editor.document.layers().len(), 2);
+        assert_eq!(editor.document.pixels()[4], [255, 0, 0, 0]);
+        assert_eq!(editor.document.history().count(), 2);
+        editor.undo();
+        assert_eq!(editor.document.layers().len(), 1);
+        editor.undo();
+        assert_eq!(editor.document.pixels(), &[[20, 30, 40, 255]; 9]);
+        assert!(!editor.document.dirty());
+        editor.color = Rgba::from_rgba_unmultiplied(10, 20, 30, 37);
+        editor.secondary_color = Rgba::from_rgba_unmultiplied(40, 50, 60, 83);
+        for (shift, pixel) in [(false, [10, 20, 30, 37]), (true, [40, 50, 60, 83])] {
+            frame(
+                &mut editor,
+                &ctx,
+                vec![egui::Event::Key {
+                    key: Key::Backspace,
+                    physical_key: None,
+                    pressed: true,
+                    repeat: false,
+                    modifiers: egui::Modifiers {
+                        shift,
+                        ..Default::default()
+                    },
+                }],
+            );
+            wait_for_files(&mut editor, &ctx);
+            assert_eq!(editor.document.pixels(), &[pixel; 9]);
+        }
+    }
+
+    #[test]
     fn native_cut_event_and_paste_release_preserve_image_and_history() {
         let ctx = egui::Context::default();
         let mut editor = Editor::blank(&ctx);
@@ -4727,7 +4811,8 @@ mod tests {
             }],
         );
         wait_for_files(&mut editor, &ctx);
-        assert_eq!(editor.document.layers().len(), 2);
+        assert_eq!(editor.document.layers().len(), 1);
+        assert!(editor.tool == Tool::Move);
         assert_eq!(editor.document.composite()[0], [255; 4]);
         assert_eq!(editor.document.history().count(), 2);
         editor.undo();

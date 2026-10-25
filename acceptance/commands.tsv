@@ -15,8 +15,8 @@ Edit.Redo	Redo	supported	Ctrl+Y	Ctrl+Y; Ctrl+Shift+Z	Available; see workflow cas
 Edit.Cut	Cut	supported	Ctrl+X	Ctrl+X	Available; see workflow cases
 Edit.Copy	Copy	supported	Ctrl+C	Ctrl+C	Available; see workflow cases
 Edit.CopyMerged	Copy Merged	supported	Ctrl+Shift+C	Ctrl+Shift+C	Merged image clipboard command and native copy-event shortcut
-Edit.Paste	Paste	partial	Ctrl+V	Ctrl+V	Currently creates a new layer; active-layer paste and oversize prompt pending
-Edit.PasteInToNewLayer	Paste into New Layer	partial	Ctrl+Shift+V	-	Current Paste creates a layer; dedicated shortcut pending
+Edit.Paste	Paste	partial	Ctrl+V	Ctrl+V	Exact RGBA replacement on active layer, selected result and Move tool; oversize prompt and viewport placement pending
+Edit.PasteInToNewLayer	Paste into New Layer	partial	Ctrl+Shift+V	Ctrl+Shift+V	Dedicated layer paste with selected result and Move tool; oversize prompt pending
 Edit.PasteInToNewImage	Paste into New Image	supported	Ctrl+Alt+V	Ctrl+Alt+V	Exact clipboard dimensions and RGBA in a new unsaved tab; existing work preserved, cancellation guarded
 Edit.CopySelection	Copy Selection	supported	Ctrl+Alt+Shift+C	Ctrl+Alt+Shift+C	Bounded polygon-list JSON text; exact binary masks and external clipboard fixture
 Edit.PasteSelection	Paste Selection	partial	-	Ctrl+Alt+Shift+V	Polygon-list JSON with five combination modes, canvas clipping and cancellable publication; undoable selection changes without image dirty flags
@@ -26,7 +26,7 @@ Edit.Exclude	Exclude	partial	-	-	Selection tool and Paste selection submenu; und
 Edit.Intersect	Intersect	partial	-	-	Selection tool and Paste selection submenu; undoable selection changes without image dirty flags
 Edit.Xor	Xor	partial	-	-	Selection tool and Paste selection submenu; undoable selection changes without image dirty flags
 Edit.EraseSelection	Erase Selection	supported	Delete	Delete	Available; see workflow cases
-Edit.FillSelection	Fill Selection	supported	-	-	Primary/secondary RGBA replacement within selection on active layer; cancellable one-step undo
+Edit.FillSelection	Fill Selection	supported	Backspace	Backspace; Shift+Backspace	Primary/secondary RGBA replacement within selection on active layer; cancellable one-step undo
 Edit.InvertSelection	Invert Selection	supported	Ctrl+I	Ctrl+I	Available; see workflow cases
 Edit.SelectAll	Select All	supported	Ctrl+A	Ctrl+A	Available; see workflow cases
 Edit.Deselect	Deselect	supported	Ctrl+D	Ctrl+D; Ctrl+Shift+A	Undoable deselection without changing image saved state

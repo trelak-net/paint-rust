@@ -514,6 +514,10 @@ impl Editor {
                             self.document.set_selection(selection);
                         }
                         self.texture_dirty |= changed;
+                        if operation == "paste image" {
+                            self.tool = Tool::Move;
+                            self.move_selection_only = false;
+                        }
                         self.status = if changed || selection_changed {
                             format!("{label} completed")
                         } else {

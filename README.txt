@@ -72,7 +72,7 @@ Features
 - Open PNG, JPEG, BMP and WebP; export PNG, JPEG, BMP or lossless WebP with a decoded preview.
 - Add, duplicate, reorder, hide and delete layers; edit names, opacity and blend mode.
 - Flatten the visible image into one layer, with undo restoring every original layer.
-- Copy/cut active-layer pixels or copy the merged image; paste images as new layers.
+- Copy/cut active-layer pixels or copy the merged image; paste images into the active layer, a new layer or a new image.
 - Import an image or a project composite as a named layer in the current document.
 - Place multiline text with a live preview, adjustable size/color and explicit Apply.
 - Save editable layers in a versioned .prust project.
@@ -96,7 +96,9 @@ Ctrl+A: select all           Ctrl+Shift+A: deselect
 Delete: clear selected pixels (or the whole active layer without a selection)
 Ctrl+Shift+X: crop all layers to the selection
 Ctrl+C: copy active pixels   Ctrl+X: cut active pixels
-Ctrl+V: paste image as a new layer
+Ctrl+V: paste into the active layer
+Ctrl+Shift+V: paste into a new layer
+Ctrl+Alt+V: paste into a new image
 Escape: cancel the current stroke
 
 Use Command instead of Ctrl on macOS.
@@ -1439,3 +1441,17 @@ steps interleave with pixel edits and survive disk-backed history storage.
 Ctrl+D deselects; Ctrl+Shift+A remains an alternative. Regression checks cover
 single-step gestures, mixed image/selection history, saved revisions, branching,
 preview cancellation, clipboard modes and disk restoration.
+
+Paste destinations and fill shortcuts
+-------------------------------------
+Ctrl+V now replaces RGBA on the active layer. Ctrl+Shift+V creates a new layer;
+Ctrl+Alt+V creates a new image. The pasted rectangle becomes selected and Move
+pixels activates. Clipboard pixels, including transparent RGB, are copied exactly.
+Existing selection geometry determines placement but does not clip the pasted
+rectangle. Without a selection, placement is centered. Oversized data is currently
+clipped with an explicit completion label; a canvas-size choice is still pending.
+Paste is one undoable operation that restores both pixels and the prior selection.
+Backspace fills with primary color; Shift+Backspace uses secondary. Polygon point
+editing and text fields retain their own Backspace behavior. Tests cover each
+paste shortcut, active-layer replacement, layer limits, alpha, clipping, undo and
+both fill colors.
