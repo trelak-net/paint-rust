@@ -1162,3 +1162,14 @@ to 64 pixels and offsets to 200 pixels on each axis. Hidden source RGB cannot ti
 the shadow; zero shadow opacity preserves exact bytes. Parameters are remembered,
 and preview/cancel/undo follow the common filter workflow. External reference
 edge behavior and large-image performance remain pending.
+
+PDN metadata interoperability
+----------------------------
+The five-layer 17x13 metadata fixture includes Unicode names (Polish, Japanese
+and an emoji), multiline string metadata, visibility/background flags, hidden
+RGB and alpha/opacity boundary values. A native Windows re-save preserves every
+layer byte and property. A second fixture renames the top layer in the native
+properties dialog, preserves the remaining data and round-trips through this
+editor again. tests/pdn.rs checks both external results; regenerate
+the input with examples/pdn_metadata_probe.rs. This validates the supported PDN3
+deferred-BGRA8 subset, not every historical container or pixel layout.

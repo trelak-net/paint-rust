@@ -150,8 +150,8 @@ independent tasks; do not silently reduce the required scope.
 [x] Persist validated effect parameters and the last effect across restarts.
 [ ] Complete external preview/cancel parity audit.
 9. Files and color management
-[ ] Mandatory PDN import/export with real external interoperability fixtures.
-[ ] Preserve layer names, visibility, opacity, blend modes and metadata.
+[x] Mandatory PDN3 deferred-BGRA8 import/export with external interoperability fixtures.
+[x] Preserve layer names, visibility, opacity, blend modes and string metadata.
 [x] Decoded-output export preview, byte count, JPEG quality and JPEG/BMP matte controls.
 [x] TIFF and TGA import/export with alpha and decoded export previews.
 [x] GIF first-frame import and single-frame export with explicit transparency policy.
@@ -186,5 +186,7 @@ PDN progress (2026-10-25)
 [x] Independent older and modern file fixtures plus Windows metadata-constructor probe.
 [x] Open/re-save Rust-produced two-layer and fourteen-blend-mode files in the native Windows application.
 Resolved: the interactive session is available again; native re-save preserves all
-layer pixels and properties. Expanded edit/multi-layer scenarios remain required.
+layer pixels and properties. A five-layer Unicode/metadata/alpha-edge fixture
+also survives an external re-save and native layer rename. Further pixel-editing
+scenarios and historical variants remain required.
 [ ] Expand PDN compatibility beyond the documented deferred-BGRA8 PDN3 subset.

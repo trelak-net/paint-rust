@@ -155,3 +155,57 @@ fn merge_down_matches_external_result_and_retains_lower_properties() {
         }
     }
 }
+
+#[test]
+fn external_resave_preserves_unicode_metadata_hidden_rgb_and_opacity_edges() {
+    let input =
+        paint_rust::files::open(std::path::Path::new("tests/fixtures/pdn/MetadataInput.pdn"))
+            .unwrap();
+    let native = paint_rust::files::open(std::path::Path::new(
+        "tests/fixtures/pdn/MetadataNativeResaved.pdn",
+    ))
+    .unwrap();
+    assert_eq!((native.width, native.height), (17, 13));
+    assert_eq!(native.layers().len(), 5);
+    for (index, (a, b)) in input.layers().iter().zip(native.layers()).enumerate() {
+        assert_eq!(a.name, b.name, "layer {index} name");
+        assert_eq!(a.pixels(), b.pixels(), "layer {index} pixels");
+        assert_eq!(a.visible, b.visible, "layer {index} visibility");
+        assert_eq!(a.opacity, b.opacity, "layer {index} opacity");
+        assert_eq!(a.blend_mode, b.blend_mode, "layer {index} blend");
+        assert_eq!(a.is_background, b.is_background, "layer {index} background");
+        assert_eq!(a.metadata, b.metadata, "layer {index} metadata");
+    }
+    for (key, value) in &input.metadata {
+        assert_eq!(native.metadata.get(key), Some(value));
+    }
+}
+
+#[test]
+fn external_layer_rename_preserves_other_properties_and_metadata() {
+    let original =
+        paint_rust::files::open(std::path::Path::new("tests/fixtures/pdn/MetadataInput.pdn"))
+            .unwrap();
+    let edited = paint_rust::files::open(std::path::Path::new(
+        "tests/fixtures/pdn/MetadataNativeEdited.pdn",
+    ))
+    .unwrap();
+    assert_eq!(edited.layers().len(), 5);
+    assert_eq!(edited.layers()[4].name, "Edited top layer");
+    for (index, (a, b)) in original.layers().iter().zip(edited.layers()).enumerate() {
+        let mut expected = a.clone();
+        if index == 4 {
+            expected.name = "Edited top layer".into();
+        }
+        assert!(expected == *b, "layer {index} changed beyond its name");
+    }
+    for (key, value) in &original.metadata {
+        assert_eq!(edited.metadata.get(key), Some(value));
+    }
+    let directory = tempfile::tempdir().unwrap();
+    let saved = directory.path().join("edited.pdn");
+    paint_rust::files::save_project(&edited, &saved).unwrap();
+    let reopened = paint_rust::files::open(&saved).unwrap();
+    assert!(edited.layers() == reopened.layers());
+    assert_eq!(edited.metadata, reopened.metadata);
+}
