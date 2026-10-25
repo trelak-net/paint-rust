@@ -30,11 +30,11 @@ Edit.FillSelection	Fill Selection	supported	Backspace	Backspace; Shift+Backspace
 Edit.InvertSelection	Invert Selection	supported	Ctrl+I	Ctrl+I	Available; see workflow cases
 Edit.SelectAll	Select All	supported	Ctrl+A	Ctrl+A	Available; see workflow cases
 Edit.Deselect	Deselect	supported	Ctrl+D	Ctrl+D; Ctrl+Shift+A	Undoable deselection without changing image saved state
-View.ZoomIn	Zoom In	partial	Ctrl+Add	-	Zoom tool and Ctrl+wheel; ratio sequence/shortcuts pending
-View.ZoomOut	Zoom Out	partial	Ctrl+Subtract	-	Zoom tool and Ctrl+wheel; ratio sequence/shortcuts pending
+View.ZoomIn	Zoom In	partial	Ctrl+Add	Ctrl++; Ctrl+=	Menu and keyboard discrete steps with viewport-center anchoring; external ratio audit pending
+View.ZoomOut	Zoom Out	partial	Ctrl+Subtract	Ctrl+-	Menu and keyboard discrete steps with viewport-center anchoring; external ratio audit pending
 View.ZoomToWindow	Zoom to Window	supported	Ctrl+B	Ctrl+B	Fit image in the available canvas viewport
 View.ZoomToSelection	Zoom to Selection	supported	Ctrl+Shift+B	Ctrl+Shift+B	Fit and center the selection bounds without editing pixels
-View.ActualSize	Actual Size	partial	Ctrl+D0	-	100% button; shortcut pending
+View.ActualSize	Actual Size	supported	Ctrl+D0	Ctrl+0	Menu, toolbar and shortcut share viewport-center anchoring
 View.Grid	Pixel grid	partial	-	-	Visible-region pixel grid; persistence pending
 View.Rulers	Rulers	partial	-	-	Pixel rulers, pointer markers and persistence; physical units pending
 View.Pixels	Pixels	missing	-	-	Not implemented

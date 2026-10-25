@@ -45,3 +45,6 @@ Shift+Backspace uses secondary color.
 
 If pasted pixels extend beyond the canvas, choose Expand canvas to keep them all,
 Keep canvas to clip them, or Cancel. Expansion and paste undo together.
+
+Zoom in with Ctrl++ (or Ctrl+=), out with Ctrl+-, and return to actual size
+with Ctrl+0. The View menu offers the same commands.

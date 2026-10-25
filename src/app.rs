@@ -978,7 +978,10 @@ impl Editor {
             }
         });
         let command = ctx.input_mut(|i| {
-            if i.consume_key(egui::Modifiers::COMMAND | egui::Modifiers::ALT | egui::Modifiers::SHIFT,Key::C) {Some(28)
+            if i.consume_key(egui::Modifiers::COMMAND, Key::Plus) || i.consume_key(egui::Modifiers::COMMAND, Key::Equals) {Some(34)
+            } else if i.consume_key(egui::Modifiers::COMMAND, Key::Minus) {Some(35)
+            } else if i.consume_key(egui::Modifiers::COMMAND, Key::Num0) {Some(36)
+            } else if i.consume_key(egui::Modifiers::COMMAND | egui::Modifiers::ALT | egui::Modifiers::SHIFT,Key::C) {Some(28)
             } else if i.consume_key(egui::Modifiers::COMMAND | egui::Modifiers::SHIFT,Key::C) {Some(30)
             } else if i.events.iter().any(|event| matches!(event,egui::Event::Copy)) {Some(if i.modifiers.alt && i.modifiers.shift {28}else if i.modifiers.shift {30}else{11})
             } else if i.events.iter().any(|event| matches!(event,egui::Event::Cut)) { Some(12)
@@ -1085,6 +1088,9 @@ impl Editor {
             }
         });
         match command {
+            Some(34) => self.step_view_zoom(true),
+            Some(35) => self.step_view_zoom(false),
+            Some(36) => self.set_view_zoom(1.0),
             Some(32) => self.paste_new_layer(),
             Some(31) => {
                 self.start_document_edit(DocumentEdit::Fill(self.color.to_srgba_unmultiplied()))
@@ -3393,6 +3399,10 @@ impl Editor {
                     });
                 }
                 ui.menu_button("View", |ui| {
+                    for (label, direction) in [("Zoom in    Ctrl++", true), ("Zoom out    Ctrl+-", false)] {
+                        if ui.button(label).clicked() { self.step_view_zoom(direction); ui.close(); }
+                    }
+                    if ui.button("Actual size    Ctrl+0").clicked() { self.set_view_zoom(1.0); ui.close(); }
                     self.preferences_menu(ui);
                     ui.checkbox(&mut self.preferences.rulers, "Pixel rulers");
                     if ui.button("Fit image    Ctrl+B").clicked() {
@@ -3501,7 +3511,7 @@ impl Editor {
                     "Zoom",
                 );
                 if ui.add(Icon::ActualSize.button("100%")).clicked() {
-                    self.zoom = 1.0;
+                    self.set_view_zoom(1.0);
                 }
                 if ui.add(Icon::Fit.button("Fit")).clicked() {
                     self.fit_canvas = true;
@@ -3606,6 +3616,49 @@ impl eframe::App for Editor {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn zoom_commands_preserve_view_center_and_never_edit_document() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.canvas_viewport = Rect::from_min_size(Pos2::ZERO, Vec2::new(100.0, 100.0));
+        editor.canvas_offset = Vec2::new(150.0, 150.0);
+        let center = (editor.canvas_offset + Vec2::splat(50.0)) / editor.zoom;
+        editor.step_view_zoom(true);
+        assert_eq!(editor.zoom, 1.5);
+        assert_eq!(
+            (editor.canvas_offset + Vec2::splat(50.0)) / editor.zoom,
+            center
+        );
+        editor.step_view_zoom(false);
+        assert_eq!(editor.zoom, 1.0);
+        editor.set_view_zoom(0.01);
+        editor.step_view_zoom(false);
+        assert_eq!(editor.zoom, 0.01);
+        editor.set_view_zoom(64.0);
+        editor.step_view_zoom(true);
+        assert_eq!(editor.zoom, 64.0);
+        for (key, expected) in [
+            (Key::Num0, 1.0),
+            (Key::Plus, 1.5),
+            (Key::Minus, 1.0),
+            (Key::Equals, 1.5),
+        ] {
+            frame(
+                &mut editor,
+                &ctx,
+                vec![egui::Event::Key {
+                    key,
+                    physical_key: None,
+                    pressed: true,
+                    repeat: false,
+                    modifiers: egui::Modifiers::COMMAND,
+                }],
+            );
+            assert_eq!(editor.zoom, expected);
+        }
+        assert!(!editor.document.dirty());
+        assert!(!editor.document.can_undo());
+    }
     #[test]
     fn erase_and_cut_restore_selection_in_one_undo_even_without_pixel_changes() {
         let ctx = egui::Context::default();

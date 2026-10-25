@@ -33,7 +33,37 @@ fn ticks(offset: f32, span: f32, zoom: f32, extent: u32) -> Vec<(f32, u32, bool)
         .collect()
 }
 
+const ZOOM_STEPS: &[f32] = &[
+    0.01, 0.02, 0.03, 0.04, 0.05, 0.0625, 0.0833, 0.125, 0.1667, 0.25, 0.3333, 0.5, 0.6667, 1.0,
+    1.5, 2.0, 3.0, 4.0, 6.0, 8.0, 12.0, 16.0, 24.0, 32.0, 48.0, 64.0,
+];
 impl Editor {
+    pub(super) fn set_view_zoom(&mut self, zoom: f32) {
+        let zoom = zoom.clamp(0.01, 64.0);
+        let anchor = self.canvas_viewport.size().max(Vec2::ZERO) / 2.0;
+        self.canvas_offset =
+            ((self.canvas_offset + anchor) * (zoom / self.zoom) - anchor).max(Vec2::ZERO);
+        self.zoom = zoom;
+        self.fit_canvas = false;
+    }
+    pub(super) fn step_view_zoom(&mut self, increase: bool) {
+        let zoom = if increase {
+            ZOOM_STEPS
+                .iter()
+                .copied()
+                .find(|z| *z > self.zoom + 0.00001)
+                .unwrap_or(64.0)
+        } else {
+            ZOOM_STEPS
+                .iter()
+                .rev()
+                .copied()
+                .find(|z| *z < self.zoom - 0.00001)
+                .unwrap_or(0.01)
+        };
+        self.set_view_zoom(zoom);
+    }
+
     pub(super) fn zoom_to_selection(&mut self) {
         let Some(selection) = self.document.selection() else {
             self.fit_canvas = true;
