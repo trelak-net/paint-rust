@@ -14,7 +14,10 @@ fn main() -> Result<(), String> {
     let bytes = files::encode_raster_bytes(
         document.pixels(),
         (document.width, document.height),
-        files::RasterOptions::new(format),
+        files::RasterOptions {
+            dpi: document.resolution(),
+            ..files::RasterOptions::new(format)
+        },
         &std::sync::atomic::AtomicBool::new(false),
     )?;
     files::save_encoded_raster(&bytes, &output, &std::sync::atomic::AtomicBool::new(false))

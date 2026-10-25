@@ -1696,10 +1696,13 @@ containers. The first displayed frame is decoded in Rust using jxl-oxide, with
 Little CMS for ICC conversion to sRGB. Codestream orientation is applied once.
 RGB, grayscale and straight alpha are converted to the editor's RGBA8 workspace;
 16-bit SDR inputs are quantized after color conversion. Source descriptive
-metadata is omitted and physical resolution currently defaults to 96 DPI.
+metadata is omitted. Physical resolution is read from EXIF density metadata;
+files without it default to 96 DPI. Still-image trailing metadata is supported;
+animation import reads metadata available with the first displayed frame.
 
 Limits: 16,384 pixels per side, the document pixel limit, 256 MiB of compressed
-input consumed for the first frame and a 256 MiB decoder grid allocation budget.
+input consumed for a still image or the first animation frame, and a 256 MiB
+decoder grid allocation budget.
 The allocation tracker does not cap all metadata or process memory. Cancellation
 is checked during input and output conversion, and before/after frame rendering;
 the decoder's internal render call is not interruptible. HDR tone mapping and
@@ -1707,8 +1710,8 @@ associated-alpha input remain unsupported and produce explicit errors.
 
 JPEG XL lossless RGBA8 export is available through Save As and Export. It declares
 sRGB in its codestream and supports one-pixel dimensions. The preview decodes the
-exact bytes saved; physical resolution currently reopens at 96 DPI. Source metadata
-is omitted. The encoder runs in a background worker; cancellation is checked
+exact bytes saved; a minimal EXIF box stores independent X/Y DPI in the JPEG XL
+container. Source descriptive metadata is omitted. The encoder runs in a background worker; cancellation is checked
 before and after its internal encode call. Lossy encoding remains pending.
 The Linux desktop entry includes image/jxl. Decoder documentation:
 https://docs.rs/jxl-oxide/0.12.6/jxl_oxide/

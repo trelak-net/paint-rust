@@ -556,10 +556,7 @@ fn encode_raster_options(
             .encode(&mut encoded)
             .map_err(|error| format!("JPEG XL encode failed: {error:?}"))?;
         check_cancel(cancel)?;
-        writer
-            .write_all(&encoded)
-            .map_err(|error| error.to_string())?;
-        return Ok(());
+        return crate::jpeg_xl::write_container(&encoded, options.dpi, writer);
     }
     if options.format == RasterFormat::Gif {
         return crate::gif_export::encode(bytes, size, writer, options.gif_dither, cancel);

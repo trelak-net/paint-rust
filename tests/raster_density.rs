@@ -22,6 +22,7 @@ fn supported_rasters_preserve_independent_fractional_density_without_dirtying_im
         RasterFormat::Bmp,
         RasterFormat::WebP,
         RasterFormat::Tiff,
+        RasterFormat::JpegXl,
     ] {
         let path = dir.path().join(format!("density.{}", format.extension()));
         files::save_raster_cancellable(&doc, &path, format, &cancel).unwrap();

@@ -26,3 +26,8 @@ thin-export.jxl: an original 1x257 RGBA ramp with pixel i equal to
 [(37*i)%256, (91*i)%256, (17*i+200)%256, (51*i)%256], exported by the same encoder.
 Independent ImageMagick/libjxl decoding matches all 1028 bytes exactly. These
 checks include fully transparent hidden RGB and a group-boundary transition.
+
+resolution-export.jxl: the original 300x150 uniform-color, 300 DPI document from
+examples/resolution_probe.rs exported through examples/raster_export.rs. It stores
+only application-owned EXIF X/Y resolution and unit tags in a JPEG XL container.
+ImageMagick independently reports 300x150 pixels and 300x300 PixelsPerInch.

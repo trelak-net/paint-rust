@@ -84,7 +84,7 @@ impl Editor {
             } else if matches!(dialog.options.format,files::RasterFormat::Bmp | files::RasterFormat::Tga | files::RasterFormat::Gif | files::RasterFormat::Dds) {
                 "Colors use sRGB; this format is saved without an embedded profile."
             } else { "Colors use sRGB; an ICC profile is embedded. Source EXIF, location and author tags are omitted." });
-            if matches!(dialog.options.format, files::RasterFormat::Dds | files::RasterFormat::Gif | files::RasterFormat::Tga | files::RasterFormat::JpegXl) {
+            if matches!(dialog.options.format, files::RasterFormat::Dds | files::RasterFormat::Gif | files::RasterFormat::Tga) {
                 ui.small("Physical resolution is not stored in this format; reopening uses 96 DPI.");
             } else {
                 ui.small(format!("Physical resolution: {:.2} × {:.2} DPI.", dialog.options.dpi.x, dialog.options.dpi.y));

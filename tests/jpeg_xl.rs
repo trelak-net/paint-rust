@@ -173,3 +173,87 @@ fn independently_decoded_exports_remain_exact() {
         );
     }
 }
+
+fn container_box(kind: &[u8; 4], payload: &[u8]) -> Vec<u8> {
+    let mut bytes = ((payload.len() + 8) as u32).to_be_bytes().to_vec();
+    bytes.extend(kind);
+    bytes.extend(payload);
+    bytes
+}
+#[test]
+fn trailing_density_metadata_is_read_and_private_xml_is_not_reexported() {
+    use files::{RasterFormat, RasterOptions};
+    let dpi = paint_rust::resolution::Dpi {
+        x: 300.125,
+        y: 150.75,
+    };
+    let cancel = AtomicBool::new(false);
+    let output = files::encode_raster_bytes(
+        &pixels(),
+        (4, 3),
+        RasterOptions {
+            dpi,
+            ..RasterOptions::new(RasterFormat::JpegXl)
+        },
+        &cancel,
+    )
+    .unwrap();
+    let exif_length = u32::from_be_bytes(output[32..36].try_into().unwrap()) as usize;
+    let mut reordered = output[..32].to_vec();
+    reordered.extend(&output[32 + exif_length..]);
+    reordered.extend(container_box(b"free", &vec![0; 5000]));
+    reordered.extend(container_box(b"xml ", b"private-user-name"));
+    reordered.extend(&output[32..32 + exif_length]);
+    let document = files::decode_raster_bytes(&reordered, RasterFormat::JpegXl, &cancel).unwrap();
+    assert_eq!(document.resolution(), dpi);
+    assert_eq!(document.pixels(), pixels());
+    assert!(!document.dirty());
+    let clean = files::encode_raster_bytes(
+        document.pixels(),
+        (4, 3),
+        RasterOptions {
+            dpi: document.resolution(),
+            ..RasterOptions::new(RasterFormat::JpegXl)
+        },
+        &cancel,
+    )
+    .unwrap();
+    assert!(!clean.windows(17).any(|bytes| bytes == b"private-user-name"));
+}
+#[test]
+fn codestream_quarter_turn_swaps_density_axes_without_exif_rotation() {
+    let dpi = paint_rust::resolution::Dpi { x: 300.0, y: 150.0 };
+    let mut bytes = b"\0\0\0\x0cJXL \r\n\x87\n\0\0\0\x14ftypjxl \0\0\0\0jxl ".to_vec();
+    let mut exif = vec![0; 4];
+    exif.extend(paint_rust::raster_density::exif(dpi));
+    bytes.extend(container_box(b"Exif", &exif));
+    bytes.extend(container_box(
+        b"jxlc",
+        include_bytes!("fixtures/jxl/oriented-lossless.jxl"),
+    ));
+    let document =
+        files::decode_raster_bytes(&bytes, files::RasterFormat::JpegXl, &AtomicBool::new(false))
+            .unwrap();
+    assert_eq!((document.width, document.height), (3, 4));
+    assert_eq!(
+        document.resolution(),
+        paint_rust::resolution::Dpi { x: 150.0, y: 300.0 }
+    );
+}
+
+#[test]
+fn externally_verified_density_export_is_clean_on_import() {
+    let document = files::open(Path::new("tests/fixtures/jxl/resolution-export.jxl")).unwrap();
+    assert_eq!((document.width, document.height), (300, 150));
+    assert_eq!(
+        document.resolution(),
+        paint_rust::resolution::Dpi { x: 300.0, y: 300.0 }
+    );
+    assert!(!document.dirty());
+    assert!(
+        document
+            .pixels()
+            .iter()
+            .all(|pixel| *pixel == [40, 80, 120, 255])
+    );
+}
