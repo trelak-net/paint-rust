@@ -1301,3 +1301,14 @@ conversion and each pass. Radius zero preserves exact bytes. Regression checks
 compare optimized results with direct neighborhoods on varied partial-alpha
 pixels, and cover isolated defects, selected-area publication and bounds. More
 structuring elements, channel options and external comparisons remain pending.
+
+Noise reduction, outlines and relief
+------------------------------------
+Reduce noise blends an alpha-weighted neighborhood median with source RGB.
+Outline converts local RGB range to dark contours on a white background; radius
+and intensity control detail. Relief adds directional Sobel luminance shading to
+source color, retaining its channel differences until clipping. All three preserve
+source alpha and hidden RGB, support selection clipping and persist parameters.
+Tests cover isolated noise, strength blending, flat areas, edge contrast, opposite
+lighting directions, hidden pixels and parameter validation. Exact external
+algorithms and large-image measurements remain pending.

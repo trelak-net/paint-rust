@@ -1,4 +1,5 @@
 mod blurs;
+mod detail;
 mod distort;
 mod morphology;
 mod object;
@@ -12,6 +13,18 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 #[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum Effect {
+    ReduceNoise {
+        radius: u32,
+        strength: f32,
+    },
+    Relief {
+        angle: f32,
+        strength: f32,
+    },
+    Outline {
+        radius: u32,
+        intensity: f32,
+    },
     Morphology {
         radius: u32,
         operation: MorphologyOperation,
@@ -145,6 +158,13 @@ impl Effect {
         let range = |v: f32, min: f32, max: f32| v.is_finite() && (min..=max).contains(&v);
         match self {
             Self::Move(_) | Self::Shape(_) | Self::Gradient(_) | Self::FreeTransform(_) => false,
+            Self::ReduceNoise { radius, strength } => radius <= 10 && range(strength, 0.0, 1.0),
+            Self::Relief { angle, strength } => {
+                range(angle, -180.0, 180.0) && range(strength, 0.0, 3.0)
+            }
+            Self::Outline { radius, intensity } => {
+                (1..=10).contains(&radius) && range(intensity, 0.0, 4.0)
+            }
             Self::Morphology { radius, .. } => radius <= 64,
             Self::Dents { scale, amount, .. } => {
                 range(scale, 1.0, 1000.0) && range(amount, 0.0, 200.0)
@@ -268,13 +288,15 @@ impl Effect {
             | Self::Crystalize { .. }
             | Self::Pixelate(_) => "Distort",
             Self::DropShadow { .. } => "Object",
-            Self::AddNoise { .. } => "Noise",
+            Self::AddNoise { .. } | Self::ReduceNoise { .. } => "Noise",
             Self::Glow { .. }
             | Self::SoftenPortrait { .. }
             | Self::RedEye(_)
             | Self::Vignette { .. }
             | Self::Sharpen(_) => "Photo",
-            Self::EdgeDetect | Self::Emboss(_) => "Stylize",
+            Self::EdgeDetect | Self::Emboss(_) | Self::Outline { .. } | Self::Relief { .. } => {
+                "Stylize"
+            }
             Self::Move(_) | Self::Shape(_) | Self::Gradient(_) | Self::FreeTransform(_) => {
                 "Geometry"
             }
@@ -290,6 +312,9 @@ impl Effect {
     }
     pub fn name(self) -> &'static str {
         match self {
+            Self::ReduceNoise { .. } => "Reduce noise",
+            Self::Relief { .. } => "Relief",
+            Self::Outline { .. } => "Outline",
             Self::Morphology { .. } => "Morphology",
             Self::Dents { .. } => "Dents",
             Self::PolarInversion { .. } => "Polar inversion",
@@ -466,6 +491,9 @@ pub fn render(
         return None;
     }
     let mut output = match effect {
+        Effect::ReduceNoise { .. } | Effect::Relief { .. } | Effect::Outline { .. } => {
+            detail::render(source, width, height, effect, cancel)?
+        }
         Effect::Morphology { radius, operation } => {
             morphology::render(source, width, height, radius, operation, cancel)?
         }
@@ -710,7 +738,10 @@ pub fn render(
                         let steps = f64::from(levels.clamp(2, 32) - 1);
                         (f64::from(*channel) * steps / 255.0).round() * 255.0 / steps
                     }
-                    Effect::Morphology { .. }
+                    Effect::ReduceNoise { .. }
+                    | Effect::Relief { .. }
+                    | Effect::Outline { .. }
+                    | Effect::Morphology { .. }
                     | Effect::Dents { .. }
                     | Effect::PolarInversion { .. }
                     | Effect::TileReflection { .. }

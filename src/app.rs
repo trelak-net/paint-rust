@@ -2531,6 +2531,18 @@ impl Editor {
                                 changed |= ui.add(egui::Slider::new(shadows,-100..=100).text("Shadows")).changed();
                                 changed |= ui.add(egui::Slider::new(highlights,-100..=100).text("Highlights")).changed();
                             }
+                            Effect::ReduceNoise {radius,strength} => {
+                                changed |= ui.add(egui::Slider::new(radius,0..=10).text("Radius (px)")).changed();
+                                changed |= ui.add(egui::Slider::new(strength,0.0..=1.0).text("Strength")).changed();
+                            }
+                            Effect::Relief {angle,strength} => {
+                                changed |= ui.add(egui::Slider::new(angle,-180.0..=180.0).text("Angle (degrees)")).changed();
+                                changed |= ui.add(egui::Slider::new(strength,0.0..=3.0).text("Strength")).changed();
+                            }
+                            Effect::Outline {radius,intensity} => {
+                                changed |= ui.add(egui::Slider::new(radius,1..=10).text("Radius (px)")).changed();
+                                changed |= ui.add(egui::Slider::new(intensity,0.0..=4.0).text("Intensity")).changed();
+                            }
                             Effect::Morphology {radius,operation} => {
                                 changed |= ui.add(egui::Slider::new(radius,0..=64).text("Radius (px)")).changed();
                                 egui::ComboBox::from_label("Operation").selected_text(operation.label()).show_ui(ui,|ui| {
@@ -3143,6 +3155,9 @@ impl Editor {
                                 softness: 0.5,
                                 warmth: 0.1,
                             },
+                            Effect::ReduceNoise {radius:1,strength:0.75},
+                            Effect::Relief {angle:45.0,strength:1.0},
+                            Effect::Outline {radius:1,intensity:1.0},
                             Effect::Morphology {radius:1,operation:paint_rust::effects::MorphologyOperation::Dilate},
                             Effect::Dents {scale:40.0,amount:10.0,seed:1},
                             Effect::PolarInversion {amount:1.0,center:[0.5,0.5]},

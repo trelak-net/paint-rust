@@ -31,14 +31,14 @@ Median Blur	Blurs	partial	Sliding alpha-weighted RGB histogram; radius and perce
 Morphology	Distort	partial	Square-neighborhood dilate/erode/open/close with premultiplied color and alpha extrema	External reference channels, kernels, ranges and large-image memory audit
 Motion Blur	Blurs	partial	Bilinear premultiplied sampling, angle, distance and centered mode	External reference output, ranges and color-space audit
 Oil Painting	Artistic	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
-Outline	Stylize	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Outline	Stylize	partial	Local RGB extrema contours with radius and intensity; source alpha retained	External reference algorithm/ranges and large-image performance audit
 Pencil Sketch	Artistic	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
 Pixelate	Distort	partial	Alpha-weighted block averaging	Exact transfer function, ranges, color space and reference output audit
 Polar Inversion	Distort	partial	Adjustable radial inversion around a normalized center; replicated edges	External reference kernels/ranges, edge modes and large-image performance audit
 Posterize	Adjustment	partial	Shared channel quantization control	Exact transfer function, ranges, color space and reference output audit
 Radial Blur	Blurs	partial	Centered angular sampling with adjustable normalized center; premultiplied bilinear samples	External reference output, quality controls and large-image performance audit
-Reduce Noise	Noise	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
-Relief	Stylize	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Reduce Noise	Noise	partial	Alpha-weighted median denoising with radius and blend strength	External reference algorithm/ranges and large-image performance audit
+Relief	Stylize	partial	Directional Sobel shading added to source color with strength control	External reference algorithm/ranges and large-image performance audit
 Rotate / Zoom	Layer transform	partial	Affine translation, scale, rotation and flips; perspective tilt missing	Exact transfer function, ranges, color space and reference output audit
 Sepia	Adjustment	partial	Weighted luminance tint	Exact transfer function, ranges, color space and reference output audit
 Sharpen	Photo	partial	Unsharp-style detail boost	Exact transfer function, ranges, color space and reference output audit
