@@ -465,7 +465,7 @@ A failed write keeps the entry in RAM and reports the error, allowing RAM use to
 exceed its normal target rather than silently losing undo. Reads validate file
 length and a checksum before changing the document or either history stack. A
 failed read leaves the current edit and history untouched, allowing retry.
-Branching after undo releases obsolete redo files. Disk usage is not capped;
+Branching after undo releases obsolete redo files. The desktop workspace caps compressed undo payloads at 1 GiB;
 large sessions require free cache space. Stored snapshots are full states compressed losslessly with zlib. The desktop editor
 stores them and restores disk-backed history in background jobs. RAM-only undo
 remains immediate. Editing is disabled while a history job is pending; the window
@@ -1260,7 +1260,11 @@ storage for the entire workspace, including after switching or opening tabs.
 Resume in History retries storage. A failed document remains in RAM with an error;
 other documents can still spill. The panel reports aggregate undo RAM usage.
 This is not a total process-memory limit: current pixels, previews, textures,
-metadata and temporary worker allocations are separate. Disk usage is not capped.
+metadata and temporary worker allocations are separate. Compressed undo payloads
+share a 1 GiB disk budget across documents. Filesystem allocation overhead, project
+files and recovery snapshots are separate. Reaching the disk budget keeps all
+remaining undo states in RAM and reports the reason. Closing documents or dropping
+redo states releases their files; Resume history storage retries explicitly.
 Regression checks cover inactive histories, exact undo/redo, guarded publication,
 cancellation after a private partial batch and persistent workspace pause.
 
@@ -1491,3 +1495,7 @@ Format references:
 https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dds-header
 https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dds-pixelformat
 https://learn.microsoft.com/en-us/windows/win32/direct3d10/d3d10-graphics-programming-guide-resources-block-compression
+
+Undo disk quotas are enforced while compressed bytes are written, before a
+snapshot replaces its RAM state. Tests exercise exhaustion within a multi-state
+history, zero quota, cross-document sharing, full undo/redo and successful retry.

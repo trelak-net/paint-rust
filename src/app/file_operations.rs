@@ -43,21 +43,44 @@ impl Editor {
     }
 
     pub(super) fn store_workspace_history_async(&mut self, budget: usize, retry: bool) {
-        if self.file_job.is_some() || self.document.editing() || self.selection_transform.is_some()
+        self.store_workspace_history_with_limits_async(
+            budget,
+            workspace::HISTORY_DISK_BUDGET,
+            retry,
+        );
+    }
+    pub(super) fn store_workspace_history_with_limits_async(
+        &mut self,
+        budget: usize,
+        disk_budget: u64,
+        retry: bool,
+    ) {
+        if self.file_job.is_some()
+            || self.document.editing()
+            || self.selection_transform.is_some()
+            || self.paste_confirmation.is_some()
         {
             return;
         }
         self.history_storage_paused = false;
         let share = budget / (self.documents.len() + 1);
+        let mut disk_remaining = disk_budget.saturating_sub(self.workspace_history_disk_bytes());
         let mut documents = self.history_storage_inputs(budget, retry);
         if documents.is_empty() {
             return;
         }
         self.start_cancellable_file_job("store undo history", move |cancel| {
             for (_, document) in &mut documents {
-                if !document.store_history_with_budget_cancellable(share, cancel) {
+                let previous = document.history_disk_bytes();
+                if !document.store_history_with_limits_cancellable(
+                    share,
+                    previous.saturating_add(disk_remaining),
+                    cancel,
+                ) {
                     return Err(files::CANCELLED.into());
                 }
+                disk_remaining = disk_remaining
+                    .saturating_sub(document.history_disk_bytes().saturating_sub(previous));
             }
             if cancel.load(std::sync::atomic::Ordering::Relaxed) {
                 return Err(files::CANCELLED.into());

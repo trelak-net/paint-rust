@@ -1212,7 +1212,18 @@ impl Document {
         budget: usize,
         cancel: &std::sync::atomic::AtomicBool,
     ) -> bool {
-        self.spill_history_cancellable(budget, history::temporary_file, cancel)
+        self.spill_history_cancellable(budget, history::temporary_file, cancel, u64::MAX)
+    }
+
+    /// Limit compressed history payload bytes without dropping undo states.
+    pub fn store_history_with_limits_cancellable(
+        &mut self,
+        ram_budget: usize,
+        disk_budget: u64,
+        cancel: &std::sync::atomic::AtomicBool,
+    ) -> bool {
+        let available = disk_budget.saturating_sub(self.history_disk_bytes());
+        self.spill_history_cancellable(ram_budget, history::temporary_file, cancel, available)
     }
 
     fn trim_history(&mut self) {
@@ -1226,7 +1237,12 @@ impl Document {
         budget: usize,
         create: impl FnMut() -> std::io::Result<std::fs::File>,
     ) {
-        self.spill_history_cancellable(budget, create, &std::sync::atomic::AtomicBool::new(false));
+        self.spill_history_cancellable(
+            budget,
+            create,
+            &std::sync::atomic::AtomicBool::new(false),
+            u64::MAX,
+        );
     }
 
     fn spill_history_cancellable(
@@ -1234,6 +1250,7 @@ impl Document {
         budget: usize,
         mut create: impl FnMut() -> std::io::Result<std::fs::File>,
         cancel: &std::sync::atomic::AtomicBool,
+        mut disk_remaining: u64,
     ) -> bool {
         if cancel.load(std::sync::atomic::Ordering::Relaxed) {
             return false;
@@ -1248,7 +1265,12 @@ impl Document {
             let Some(entry) = entry else {
                 break;
             };
-            if let Err(error) = entry.spill(&mut self.history_pool, &mut create, cancel) {
+            if let Err(error) = entry.spill_limited(
+                &mut self.history_pool,
+                &mut create,
+                cancel,
+                &mut disk_remaining,
+            ) {
                 if cancel.load(std::sync::atomic::Ordering::Relaxed) {
                     return false;
                 }

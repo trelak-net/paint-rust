@@ -113,16 +113,44 @@ fn checksum(data: &[u8], cancel: &AtomicBool) -> io::Result<u64> {
     Ok(hash.finish())
 }
 
+struct LimitedFile<'a> {
+    file: File,
+    remaining: &'a mut u64,
+}
+impl Write for LimitedFile<'_> {
+    fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+        if bytes.len() as u64 > *self.remaining {
+            return Err(io::Error::other("Undo disk budget reached"));
+        }
+        let written = self.file.write(bytes)?;
+        *self.remaining -= written as u64;
+        Ok(written)
+    }
+    fn flush(&mut self) -> io::Result<()> {
+        self.file.flush()
+    }
+}
+
 impl Blob {
+    #[cfg(test)]
     fn write(data: &[u8], file: File, cancel: &AtomicBool) -> io::Result<Arc<Self>> {
+        let mut remaining = u64::MAX;
+        Self::write_limited(data, file, cancel, &mut remaining)
+    }
+    fn write_limited(
+        data: &[u8],
+        file: File,
+        cancel: &AtomicBool,
+        remaining: &mut u64,
+    ) -> io::Result<Arc<Self>> {
         check_cancel(cancel)?;
-        let mut encoder = ZlibEncoder::new(file, Compression::fast());
+        let mut encoder = ZlibEncoder::new(LimitedFile { file, remaining }, Compression::fast());
         for chunk in data.chunks(64 * 1024) {
             check_cancel(cancel)?;
             encoder.write_all(chunk)?;
         }
         check_cancel(cancel)?;
-        let mut file = encoder.finish()?;
+        let mut file = encoder.finish()?.file;
         file.flush()?;
         file.sync_data()?;
         let checksum = checksum(data, cancel)?;
@@ -205,11 +233,22 @@ impl Entry {
         }
     }
 
+    #[cfg(test)]
     pub(super) fn spill(
+        &mut self,
+        pool: &mut Pool,
+        create: impl FnMut() -> io::Result<File>,
+        cancel: &AtomicBool,
+    ) -> io::Result<()> {
+        let mut remaining = u64::MAX;
+        self.spill_limited(pool, create, cancel, &mut remaining)
+    }
+    pub(super) fn spill_limited(
         &mut self,
         pool: &mut Pool,
         mut create: impl FnMut() -> io::Result<File>,
         cancel: &AtomicBool,
+        remaining: &mut u64,
     ) -> io::Result<()> {
         check_cancel(cancel)?;
         let Self::Memory(snapshot) = self else {
@@ -222,7 +261,8 @@ impl Entry {
             let blob = if let Some(blob) = cached(&pool.pixels, &layer.pixels) {
                 blob
             } else {
-                let blob = Blob::write(layer.pixels.as_flattened(), create()?, cancel)?;
+                let blob =
+                    Blob::write_limited(layer.pixels.as_flattened(), create()?, cancel, remaining)?;
                 *blob.decoded_pixels.lock().expect("new history buffer") =
                     Arc::downgrade(&layer.pixels);
                 register(&mut pool.pixels, &layer.pixels, &blob);
@@ -234,7 +274,7 @@ impl Entry {
             Some(if let Some(blob) = cached(&pool.masks, &mask.pixels) {
                 blob
             } else {
-                let blob = Blob::write(&mask.pixels, create()?, cancel)?;
+                let blob = Blob::write_limited(&mask.pixels, create()?, cancel, remaining)?;
                 *blob.decoded_mask.lock().expect("new history mask") = Arc::downgrade(&mask.pixels);
                 register(&mut pool.masks, &mask.pixels, &blob);
                 blob

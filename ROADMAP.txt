@@ -189,6 +189,7 @@ independent tasks; do not silently reduce the required scope.
 [ ] Monitor profiles, CMYK/high-bit-depth conversion and PDN-specific color metadata.
 10. Reliability and performance
 [x] Shared workspace undo RAM budget, inactive-document storage and global cancellation pause.
+[x] Shared 1 GiB compressed undo disk quota with RAM fallback, explicit retry and no history eviction.
 [ ] Bounded foreground work, large-document/multi-document benchmarks.
 [ ] Disk-full, corrupted-input, interrupted-save and low-memory scenarios.
 [x] Recover all snapshots into separate unsaved tabs; skip corrupt copies and retain failed recovery data.

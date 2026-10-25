@@ -360,6 +360,10 @@ impl Editor {
             "All documents: {:.1} / 128 MiB undo RAM",
             self.workspace_history_bytes() as f64 / (1024.0 * 1024.0)
         ));
+        ui.small(format!(
+            "All documents: {:.1} / 1024 MiB compressed undo disk",
+            self.workspace_history_disk_bytes() as f64 / (1024.0 * 1024.0)
+        ));
         if let Some(error) = self.workspace_history_error() {
             ui.small(error);
         }

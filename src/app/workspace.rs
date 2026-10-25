@@ -1,5 +1,7 @@
 use super::*;
 
+pub(super) const HISTORY_DISK_BUDGET: u64 = 1024 * 1024 * 1024;
+
 pub(super) const HISTORY_RAM_BUDGET: usize = 128 * 1024 * 1024;
 
 pub(super) struct DocumentSlot {
@@ -13,6 +15,15 @@ pub(super) struct DocumentSlot {
     recovery: Option<paint_rust::recovery::Recovery>,
 }
 impl Editor {
+    pub(super) fn workspace_history_disk_bytes(&self) -> u64 {
+        self.document.history_disk_bytes()
+            + self
+                .documents
+                .iter()
+                .map(|slot| slot.document.history_disk_bytes())
+                .sum::<u64>()
+    }
+
     pub(super) fn workspace_history_bytes(&self) -> usize {
         self.document.history_bytes()
             + self
@@ -409,6 +420,31 @@ mod tests {
         }
     }
 
+    #[test]
+    fn workspace_disk_limit_is_shared_and_preserves_every_document_history() {
+        let ctx = egui::Context::default();
+        let mut editor = history_workspace(&ctx);
+        editor.store_workspace_history_with_limits_async(0, 100, false);
+        finish_job(&mut editor, &ctx);
+        assert!(editor.workspace_history_disk_bytes() <= 100);
+        assert!(editor.workspace_history_error().is_some());
+        assert!(editor.workspace_history_bytes() > 0);
+        for id in editor.document_order.clone() {
+            editor.activate_document(id);
+            assert_eq!(editor.document.history().count(), 5);
+            for _ in 0..5 {
+                assert!(editor.document.undo());
+            }
+            assert!(!editor.document.dirty());
+            for _ in 0..5 {
+                assert!(editor.document.redo());
+            }
+        }
+        editor.store_workspace_history_with_limits_async(0, 1_000_000, true);
+        finish_job(&mut editor, &ctx);
+        assert!(editor.workspace_history_error().is_none());
+        assert_eq!(editor.workspace_history_bytes(), 0);
+    }
     #[test]
     fn workspace_budget_stores_inactive_history_without_losing_undo_or_views() {
         let ctx = egui::Context::default();
