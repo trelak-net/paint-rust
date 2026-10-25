@@ -132,6 +132,8 @@ pub struct Editor {
     text_dialog: Option<TextDialog>,
     text_font: Option<(ab_glyph::FontArc, String)>,
     effect_dialog: Option<EffectDialog>,
+    last_effect: Option<Effect>,
+    effect_parameters: std::collections::HashMap<std::mem::Discriminant<Effect>, Effect>,
     gesture_preview: Option<EffectDialog>,
     transform_drag: Option<transform_handles::TransformDrag>,
     new_width: u32,
@@ -237,6 +239,8 @@ impl Editor {
             text_dialog: None,
             text_font: None,
             effect_dialog: None,
+            last_effect: None,
+            effect_parameters: Default::default(),
             gesture_preview: None,
             transform_drag: None,
             new_width: 960,
@@ -672,6 +676,14 @@ impl Editor {
     }
 
     fn begin_effect(&mut self, ctx: &egui::Context, effect: Effect) {
+        let effect = if effect.repeatable() {
+            self.effect_parameters
+                .get(&std::mem::discriminant(&effect))
+                .copied()
+                .unwrap_or(effect)
+        } else {
+            effect
+        };
         self.transform_drag = None;
         self.finish_stroke();
         let preview = crate::preview::EffectPreview::new(
@@ -687,6 +699,11 @@ impl Editor {
     }
 
     fn apply_effect(&mut self, effect: Effect) {
+        if effect.repeatable() {
+            self.last_effect = Some(effect);
+            self.effect_parameters
+                .insert(std::mem::discriminant(&effect), effect);
+        }
         let changed = self.document.commit();
         if changed && matches!(effect, Effect::FreeTransform(_)) {
             self.document.set_selection(None);
@@ -813,6 +830,10 @@ impl Editor {
                 Some(16)
             } else if i.consume_key(egui::Modifiers::COMMAND, Key::Tab) {
                 Some(15)
+            } else if i.consume_key(egui::Modifiers::COMMAND | egui::Modifiers::SHIFT, Key::F) {
+                Some(19)
+            } else if i.consume_key(egui::Modifiers::COMMAND, Key::F) {
+                Some(18)
             } else if i.consume_key(egui::Modifiers::COMMAND, Key::M) {
                 Some(17)
             } else if i.consume_key(egui::Modifiers::COMMAND, Key::W) {
@@ -883,6 +904,12 @@ impl Editor {
             }
         });
         match command {
+            Some(18) => self.repeat_effect(),
+            Some(19) => {
+                if let Some(effect) = self.last_effect {
+                    self.begin_effect(ctx, effect);
+                }
+            }
             Some(17) => {
                 if self.document.can_merge_down() {
                     self.start_document_edit(DocumentEdit::MergeDown);
@@ -2518,6 +2545,32 @@ impl Editor {
                 ];
                 for (title, effects) in effect_groups {
                     ui.menu_button(title, |ui| {
+                        if title == "Effects" {
+                            let name = self.last_effect.map(Effect::name).unwrap_or("last effect");
+                            if ui
+                                .add_enabled(
+                                    self.last_effect.is_some(),
+                                    egui::Button::new(format!("Repeat {name}    Ctrl+F")),
+                                )
+                                .clicked()
+                            {
+                                self.repeat_effect();
+                                ui.close();
+                            }
+                            if ui
+                                .add_enabled(
+                                    self.last_effect.is_some(),
+                                    egui::Button::new("Last effect settings…    Ctrl+Shift+F"),
+                                )
+                                .clicked()
+                            {
+                                if let Some(effect) = self.last_effect {
+                                    self.begin_effect(ctx, effect);
+                                }
+                                ui.close();
+                            }
+                            ui.separator();
+                        }
                         for &effect in effects {
                             if ui.button(effect.name()).clicked() {
                                 self.begin_effect(ctx, effect);
@@ -4547,5 +4600,75 @@ mod tests {
         wait_for_files(&mut editor, &ctx);
         assert!(editor.text_dialog.is_none());
         assert!(!editor.document.dirty());
+    }
+    #[test]
+    fn repeating_effect_preserves_selection_and_cancelled_settings_do_not_replace_parameters() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        editor.document = Document::new(2, 1, [80, 100, 120, 255]).unwrap();
+        let selection = Selection {
+            x: 1,
+            y: 0,
+            width: 1,
+            height: 1,
+            mask: None,
+            ellipse: None,
+        };
+        editor.document.set_selection(Some(selection.clone()));
+        let effect = Effect::BrightnessContrast {
+            brightness: 20,
+            contrast: 0,
+        };
+        editor.begin_effect(&ctx, effect);
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        while !editor.effect_dialog.as_ref().unwrap().preview.ready {
+            frame(&mut editor, &ctx, vec![]);
+            assert!(std::time::Instant::now() < deadline);
+            std::thread::sleep(std::time::Duration::from_millis(2));
+        }
+        editor.apply_effect(effect);
+        editor.effect_dialog = None;
+        let once = editor.document.pixels().to_vec();
+        assert_eq!(editor.last_effect, Some(effect));
+        editor.repeat_effect();
+        wait_for_files(&mut editor, &ctx);
+        assert_eq!(editor.document.pixels()[0], [80, 100, 120, 255]);
+        assert!(editor.document.pixels()[1][0] > once[1][0]);
+        assert_eq!(editor.document.history().count(), 2);
+        assert_eq!(editor.document.selection(), Some(selection));
+        editor.undo();
+        assert_eq!(editor.document.pixels(), once);
+        editor.begin_effect(
+            &ctx,
+            Effect::BrightnessContrast {
+                brightness: 0,
+                contrast: 0,
+            },
+        );
+        assert_eq!(editor.effect_dialog.as_ref().unwrap().effect, effect);
+        editor.effect_dialog.as_mut().unwrap().effect = Effect::BrightnessContrast {
+            brightness: 90,
+            contrast: 0,
+        };
+        frame(
+            &mut editor,
+            &ctx,
+            vec![egui::Event::Key {
+                key: Key::Escape,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers::NONE,
+            }],
+        );
+        assert!(editor.effect_dialog.is_none());
+        assert_eq!(editor.last_effect, Some(effect));
+        assert_eq!(
+            editor.effect_parameters[&std::mem::discriminant(&effect)],
+            effect
+        );
+        assert_eq!(editor.document.pixels(), once);
+        editor.apply_effect(Effect::FreeTransform(Default::default()));
+        assert_eq!(editor.last_effect, Some(effect));
     }
 }

@@ -163,6 +163,37 @@ impl Editor {
         });
     }
 
+    pub(super) fn repeat_effect(&mut self) {
+        let Some(effect) = self.last_effect else {
+            return;
+        };
+        if self.file_job.is_some() || self.text_dialog.is_some() || self.effect_dialog.is_some() {
+            return;
+        }
+        self.finish_stroke();
+        let mut document = self.document.snapshot();
+        document.set_selection(self.document.selection());
+        self.start_cancellable_file_job("repeat effect", move |cancel| {
+            let pixels = paint_rust::effects::render(
+                document.pixels(),
+                document.width,
+                document.height,
+                document.selection(),
+                effect,
+                cancel,
+            )
+            .ok_or(files::CANCELLED)?;
+            document.begin(effect.name());
+            document.publish_preview(pixels)?;
+            document.commit();
+            Ok(Outcome::Edited(
+                Box::new(document),
+                effect.name().into(),
+                false,
+            ))
+        });
+    }
+
     pub(super) fn load_text_font(&mut self, path: PathBuf) {
         if self.text_dialog.is_none() {
             return;

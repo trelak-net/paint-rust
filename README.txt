@@ -861,3 +861,9 @@ The text dialog can load a local TTF, OTF or TTC font file (the first face of a
 collection). Font files are limited to 16 MiB and are read in a background worker.
 Invalid files leave the current draft intact. The chosen font is reused for new
 text within the current application session; font files are not bundled in projects.
+
+Ctrl+F repeats the last applied adjustment or filter on the active layer using
+the current selection. Ctrl+Shift+F reopens its settings. Each adjustment/filter
+remembers its last-applied parameters during the session. Cancelling a dialog
+does not replace these values. Geometric transforms and drawing gestures do not
+replace the last repeatable effect. Repeating runs in a cancellable worker.

@@ -120,7 +120,8 @@ independent tasks; do not silently reduce the required scope.
 8. Adjustments and effects
 [ ] Levels, curves, hue and complete adjustment inventory.
 [ ] Complete blur, distortion, noise and stylization inventory.
-[ ] Repeat last effect, parameter persistence and preview/cancel parity.
+[x] Repeat last effect and restore last-applied parameters within the session.
+[ ] Persist effect parameters across restarts and complete preview/cancel parity audit.
 9. Files and color management
 [ ] Mandatory PDN import/export with real external interoperability fixtures.
 [ ] Preserve layer names, visibility, opacity, blend modes and metadata.

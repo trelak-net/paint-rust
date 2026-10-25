@@ -17,6 +17,12 @@ pub enum Effect {
     Sharpen(f32),
 }
 impl Effect {
+    pub fn repeatable(self) -> bool {
+        !matches!(
+            self,
+            Self::Move(_) | Self::Shape(_) | Self::Gradient(_) | Self::FreeTransform(_)
+        )
+    }
     pub fn name(self) -> &'static str {
         match self {
             Self::Move(parameters) => {
