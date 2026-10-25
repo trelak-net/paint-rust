@@ -1,0 +1,30 @@
+Parameter group	Status	Current implementation or gap
+Antialiasing	partial	Text has antialias toggle; drawing/selection controls pending
+Blend Mode	partial	Fourteen layer modes; full drawing blend controls pending
+Brush Fill	missing	Pattern and fill styles
+Brush Hardness	missing	Soft brush/eraser coverage
+Brush Pressure	missing	Tablet pressure mapping
+Brush Size	partial	Diameter control; keyboard increments and exact ranges pending
+Brush Spacing	missing	Dab spacing
+Brush Type	missing	Brush type choices
+Color Picker Behavior	missing	Post-pick tool behavior
+Flood Mode	supported	Connected/global matching
+Gamma Mode	missing	Gradient/drawing working-space choice
+Gradient	partial	Five geometries and three modes; endpoint editing pending
+Input Path Smoothing	missing	Input stroke smoothing
+Line Curve Shape Type	partial	Straight line only
+Pen Dash Style	missing	Dash patterns
+Pen End Cap	missing	End caps and arrows
+Pen Start Cap	missing	Start caps and arrows
+Pixel Sample Mode	missing	Picker sample radius/averaging
+Radius	missing	Rounded shape radius
+Recolor Tool Sampling Mode	missing	Recolor sampling behavior
+Sample Image Or Layer	partial	Fill/color selection only; picker/clone pending
+Selection Combine Mode	supported	Five boolean combination modes
+Selection Draw Mode	partial	Free drawing; fixed ratio/size pending
+Selection Rendering Quality	missing	Selection-edge quality choice
+Shape Draw Type	partial	Outline or fill; combined mode pending
+Shape Type	partial	Rectangle and ellipse
+Resampling	partial	Nearest/bilinear; full interpolation inventory pending
+Text	partial	Font file, size, alignment, spacing and antialias controls
+Tolerance	partial	Numeric control; exact reference metric pending

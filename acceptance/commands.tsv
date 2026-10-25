@@ -1,0 +1,80 @@
+Capability	Label	Status	Expected shortcut	Current shortcut	Current implementation or gap
+File.New	New...	supported	Ctrl+N	Ctrl+N	Available; see workflow cases
+File.Open	Open...	supported	Ctrl+O	Ctrl+O	Available; see workflow cases
+File.OpenRecent	Open Recent	missing	-	-	Not implemented
+File.Acquire	Acquire	missing	-	-	Not implemented
+File.FromScannerOrCamera	FromScannerOrCamera	missing	-	-	Not implemented
+File.Save	Save	supported	Ctrl+S	Ctrl+S	Available; see workflow cases
+File.SaveAs	Save As...	supported	Ctrl+Shift+S	Ctrl+Shift+S	Available; see workflow cases
+File.SaveAll	Save All	missing	Ctrl+Alt+S	-	Not implemented
+File.Print	Print...	missing	Ctrl+P	-	Not implemented
+File.Close	Close	supported	Ctrl+W	Ctrl+W	Available; see workflow cases
+File.Exit	Exit	supported	-	OS window close	Available; see workflow cases
+Edit.Undo	Undo	supported	Ctrl+Z	Ctrl+Z	Available; see workflow cases
+Edit.Redo	Redo	supported	Ctrl+Y	Ctrl+Y; Ctrl+Shift+Z	Available; see workflow cases
+Edit.Cut	Cut	supported	Ctrl+X	Ctrl+X	Available; see workflow cases
+Edit.Copy	Copy	supported	Ctrl+C	Ctrl+C	Available; see workflow cases
+Edit.CopyMerged	Copy Merged	partial	Ctrl+Shift+C	-	Copy merged command in Edit; shortcut parity pending
+Edit.Paste	Paste	supported	Ctrl+V	Ctrl+V	Available; see workflow cases
+Edit.PasteInToNewLayer	Paste into New Layer	partial	Ctrl+Shift+V	-	Current Paste creates a layer; dedicated shortcut pending
+Edit.PasteInToNewImage	Paste into New Image	missing	Ctrl+Alt+V	-	Not implemented
+Edit.CopySelection	Copy Selection	missing	Ctrl+Alt+Shift+C	-	Not implemented
+Edit.PasteSelection	Paste Selection	missing	-	-	Not implemented
+Edit.Replace	Replace	partial	Ctrl+Alt+Shift+V	-	Selection tool combination control
+Edit.Union	Union	partial	-	-	Selection tool combination control
+Edit.Exclude	Exclude	partial	-	-	Selection tool combination control
+Edit.Intersect	Intersect	partial	-	-	Selection tool combination control
+Edit.Xor	Xor	partial	-	-	Selection tool combination control
+Edit.EraseSelection	Erase Selection	supported	Delete	Delete	Available; see workflow cases
+Edit.FillSelection	Fill Selection	missing	-	-	Not implemented
+Edit.InvertSelection	Invert Selection	supported	Ctrl+I	Ctrl+I	Available; see workflow cases
+Edit.SelectAll	Select All	supported	Ctrl+A	Ctrl+A	Available; see workflow cases
+Edit.Deselect	Deselect	partial	Ctrl+D	Ctrl+Shift+A	Available as Ctrl+Shift+A; shortcut alignment pending
+View.ZoomIn	Zoom In	partial	Ctrl+Add	-	Zoom tool and Ctrl+wheel; ratio sequence/shortcuts pending
+View.ZoomOut	Zoom Out	partial	Ctrl+Subtract	-	Zoom tool and Ctrl+wheel; ratio sequence/shortcuts pending
+View.ZoomToWindow	Zoom to Window	partial	Ctrl+B	-	Fit button; shortcut pending
+View.ZoomToSelection	Zoom to Selection	missing	Ctrl+Shift+B	-	Not implemented
+View.ActualSize	Actual Size	partial	Ctrl+D0	-	100% button; shortcut pending
+View.Grid	Pixel grid	partial	-	-	Visible-region pixel grid; persistence pending
+View.Rulers	Rulers	missing	-	-	Not implemented
+View.Pixels	Pixels	missing	-	-	Not implemented
+View.Inches	Inches	missing	-	-	Not implemented
+View.Centimeters	Centimeters	missing	-	-	Not implemented
+Image.Crop	Crop to Selection	supported	Ctrl+Shift+X	Ctrl+Shift+X	Available; see workflow cases
+Image.Resize	Resize...	partial	Ctrl+R	-	Nearest/bilinear sampling; physical resolution controls pending
+Image.CanvasSize	Canvas Size...	partial	Ctrl+Shift+R	-	Anchor-based canvas resize; full option audit pending
+Image.FlipHorizontal	Flip Horizontal	supported	-	-	Available; see workflow cases
+Image.FlipVertical	Flip Vertical	supported	-	-	Available; see workflow cases
+Image.Rotate90CW	Rotate 90° Clockwise	supported	Ctrl+H	-	Available; see workflow cases
+Image.Rotate90CCW	Rotate 90° Counter-Clockwise	supported	Ctrl+G	-	Available; see workflow cases
+Image.Rotate180	Rotate 180°	supported	-	-	Available; see workflow cases
+Image.ColorProfile	Color Profile...	missing	-	-	Not implemented
+Image.Flatten	Flatten	supported	Ctrl+Shift+F	-	Available; see workflow cases
+Layers.AddNewLayer	Add New Layer	supported	Ctrl+Shift+N	-	Available; see workflow cases
+Layers.DeleteLayer	Delete Layer	supported	Ctrl+Shift+Delete	-	Available; see workflow cases
+Layers.DuplicateLayer	Duplicate Layer	supported	Ctrl+Shift+D	-	Available; see workflow cases
+Layers.MergeLayerDown	Merge Layer Down	supported	Ctrl+M	Ctrl+M	Available; see workflow cases
+Layers.ToggleLayerVisibility	Toggle Layer Visibility	supported	Ctrl+,	-	Available; see workflow cases
+Layers.ImportFromFile	Import From File...	partial	-	-	Imports flattened composite; multi-layer import pending
+Layers.FlipHorizontal	Flip Horizontal	missing	-	-	Not implemented
+Layers.FlipVertical	Flip Vertical	missing	-	-	Not implemented
+Layers.Rotate180	Rotate 180°	missing	-	-	Not implemented
+Layers.RotateZoom	RotateZoom	partial	-	-	Selection free transform; layer-specific tilt/zoom dialog pending
+Layers.GoToTopLayer	Go to Top Layer	partial	Ctrl+Alt+PageUp	-	Click target layer; keyboard command pending
+Layers.GoToLayerAbove	Go to Layer Above	partial	Alt+PageUp	-	Click target layer; keyboard command pending
+Layers.GoToLayerBelow	Go to Layer Below	partial	Alt+PageDown	-	Click target layer; keyboard command pending
+Layers.GoToBottomLayer	Go to Bottom Layer	partial	Ctrl+Alt+PageDown	-	Click target layer; keyboard command pending
+Layers.MoveLayerToTop	Move Layer to Top	partial	-	-	Drag reordering; dedicated action pending
+Layers.MoveLayerUp	Move Layer Up	supported	-	-	Available; see workflow cases
+Layers.MoveLayerDown	Move Layer Down	supported	-	-	Available; see workflow cases
+Layers.MoveLayerToBottom	Move Layer to Bottom	partial	-	-	Drag reordering; dedicated action pending
+Layers.LayerProperties	Layer Properties...	supported	F4	-	Available; see workflow cases
+Help.HelpTopics	Documentation	missing	F1	-	Not implemented
+Help.ProjectWebsite	Project website	different	-	-	Project-specific destination or deferred extension integration; external product services are out of scope
+Help.ProjectSearch	Project search	different	-	-	Project-specific destination or deferred extension integration; external product services are out of scope
+Help.Donate	Donate	different	-	-	Project-specific destination or deferred extension integration; external product services are out of scope
+Help.Forum	Forum	different	-	-	Project-specific destination or deferred extension integration; external product services are out of scope
+Help.Tutorials	Tutorials	different	-	-	Project-specific destination or deferred extension integration; external product services are out of scope
+Help.Plugins	Plugins	different	-	-	Project-specific destination or deferred extension integration; external product services are out of scope
+Help.SendFeedback	Send feedback or bug report...	missing	-	-	Not implemented
+Help.About	About	missing	-	-	Not implemented

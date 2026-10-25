@@ -1,0 +1,18 @@
+Dialog	Status	Current implementation or gap
+Updates	missing	Distribution/update workflow pending
+Image size	partial	Pixel dimensions; physical resolution pending
+Resize	partial	Dimensions/aspect/sampling controls
+Save configuration	missing	Encoded preview and per-format options pending
+About	missing	Product and license dialog pending
+Canvas size	partial	Pixel dimensions, anchors and background options
+Color profile	missing	ICC interpretation and profile controls pending
+Save palette	partial	Native file picker and project palette format
+Task progress	partial	Cancellation and status; detailed progress reporting pending
+Unsaved changes	supported	Save/discard/cancel across documents
+Error details	partial	Status messages and worker failure handling; detailed error dialog pending
+Layer properties	partial	Name, opacity and blend mode; exact presentation pending
+New image	partial	Pixel dimensions and fill; unit/DPI settings pending
+Settings	partial	Panel/palette persistence; general preferences dialog pending
+Text	partial	Draft, font, alignment, spacing, preview/apply/cancel
+Effect settings	partial	Shared live-preview dialogs; filter inventory incomplete
+Recovery	supported	Candidate recovery flow with independent document sessions

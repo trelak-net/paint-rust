@@ -1,0 +1,55 @@
+Capability	Category	Status	Current implementation	Remaining validation or work
+Quantize	Color	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Red Eye Removal	Photo	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Add Noise	Noise	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Auto-Level	Adjustment	partial	Auto levels; selected nontransparent histogram, configurable tail clipping	Exact transfer function, ranges, color space and reference output audit
+Bokeh Blur	Blurs	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Brightness / Contrast	Adjustment	partial	CPU transfer curve and live preview	Exact transfer function, ranges, color space and reference output audit
+Bulge	Distort	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Clouds	Render	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Crystalize	Distort	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Curves	Adjustment	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Dents	Distort	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Black and White	Adjustment	partial	Grayscale with weighted RGB luminance	Exact transfer function, ranges, color space and reference output audit
+Drop Shadow	Object	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Edge Detect	Stylize	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Emboss	Stylize	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Exposure	Adjustment	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Fragment Blur	Blurs	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Frosted Glass	Distort	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Gaussian Blur	Blurs	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Glow	Photo	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Highlights / Shadows	Adjustment	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Hue / Saturation	Adjustment	partial	HSL hue, saturation and lightness controls	Exact transfer function, ranges, color space and reference output audit
+Ink Sketch	Artistic	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Invert Alpha	Adjustment	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Invert Colors	Adjustment	partial	RGB inversion; preserves alpha	Exact transfer function, ranges, color space and reference output audit
+Julia Fractal	Render	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Levels	Adjustment	partial	Master/R/G/B input and output endpoints plus gamma; histogram display pending	Exact transfer function, ranges, color space and reference output audit
+Mandelbrot Fractal	Render	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Median Blur	Blurs	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Morphology	Distort	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Motion Blur	Blurs	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Oil Painting	Artistic	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Outline	Stylize	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Pencil Sketch	Artistic	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Pixelate	Distort	partial	Alpha-weighted block averaging	Exact transfer function, ranges, color space and reference output audit
+Polar Inversion	Distort	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Posterize	Adjustment	partial	Shared channel quantization control	Exact transfer function, ranges, color space and reference output audit
+Radial Blur	Blurs	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Reduce Noise	Noise	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Relief	Stylize	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Rotate / Zoom	Layer transform	partial	Affine translation, scale, rotation and flips; perspective tilt missing	Exact transfer function, ranges, color space and reference output audit
+Sepia	Adjustment	partial	Weighted luminance tint	Exact transfer function, ranges, color space and reference output audit
+Sharpen	Photo	partial	Unsharp-style detail boost	Exact transfer function, ranges, color space and reference output audit
+Sketch Blur	Blurs	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Soften Portrait	Photo	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Square Blur	Blurs	partial	Box blur with replicated edges	Exact transfer function, ranges, color space and reference output audit
+Straighten	Photo	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Surface Blur	Blurs	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Temperature / Tint	Adjustment	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Tile Reflection	Distort	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Turbulence	Render	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Twist	Distort	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Vignette	Photo	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
+Zoom Blur	Blurs	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases

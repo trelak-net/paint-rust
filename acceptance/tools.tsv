@@ -1,0 +1,20 @@
+Capability	Status	Expected tool key	Current tool key	Current implementation	Remaining work
+Rectangle selection	partial	S	S	Combination and drag bounds	Fixed size/ratio, physical units and edge controls
+Ellipse selection	partial	S	S plus ellipse option	Combination and ellipse mask	Fixed size/ratio, physical units and edge controls
+Lasso	partial	S	Q	Freehand outline, combination and cancellation	Edge antialiasing and detailed reference coverage audit
+Color selection	partial	S	W	Tolerance, connected/global, active/merged sampling	Reference tolerance metric and antialiased edge behavior
+Move pixels	partial	M	M	Move/copy, affine handles and nudges	Complete interpolation, constraints and keyboard map
+Move selection	partial	M	M plus selection-only option	Translation of selection boundary	Independent rotation/scale of masks
+Zoom	partial	Z	Z	Anchored clicks, region zoom and Ctrl+wheel	Reference steps, 10000% upper range and full keyboard map
+Pan	partial	H	H	Pan tool, middle button and temporary Space	Full Escape/lost-capture rollback audit
+Brush	partial	B	B	Continuous hard capsule strokes	Hardness, spacing, antialiasing, blend/replace modes and pressure
+Eraser	partial	E	E	Hard continuous strokes	Coverage, hardness, spacing, antialiasing and pressure
+Pencil	partial	P	N	Single-pixel continuous primary/secondary strokes	Reference raster edge cases and blending options
+Color picker	partial	K	I	Single-pixel color sampling	Sampling radius, scope and post-pick behavior
+Fill	partial	F	F	Tolerance, connectivity, sampling and selection barriers	Reference tolerance matching and patterned fill
+Gradient	partial	G	G	Five geometries and blend/replace/transparency modes	Persistent endpoint editing and exact interpolation/color space
+Line/curve	partial	O	L	Straight line with constrained angles	Editable curves, joins, caps, dashes and arrows
+Shapes	partial	O	R / O	Rectangle and ellipse, outline or fill	Complete shape catalogue, combined outline/fill and editable handles
+Text	partial	T	T	File font selection, alignment, spacing and antialiasing	Installed-font browser, style controls, shaping and decoration
+Clone stamp	missing	L	-	None	Source anchor, alignment, layer identity and brush controls
+Recolor	missing	R	-	None	Color matching, sampling and brush controls

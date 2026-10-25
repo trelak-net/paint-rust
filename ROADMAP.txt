@@ -76,9 +76,10 @@ validation and a commit with the Generated-by trailer. Record blockers and conti
 independent tasks; do not silently reduce the required scope.
 
 0. Acceptance inventory
-[ ] Catalogue commands, shortcuts, tool parameters, dialogs and file formats.
-[ ] Build repeatable reference input/output cases and UI scenarios.
-[ ] Track supported, partial, missing and intentionally different behavior.
+[x] Catalogue commands, shortcuts, tool parameters, dialogs and file formats in acceptance/.
+[x] Define repeatable input/output and UI scenarios; native layout smoke script included.
+[ ] Complete external fixtures and execute every acceptance scenario.
+[x] Track supported, partial, missing and intentionally different behavior in acceptance/.
 1. Multiple documents
 [x] Independent document/history/path/view/recovery state.
 [x] Thumbnail tabs, switching, reordering, individual close and close all.
