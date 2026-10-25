@@ -34,3 +34,6 @@ MIT OR Apache-2.0, version 1. No external source artwork.
 
 icons/clone.svg and icons/recolor.svg: original project tool artwork, version 1,
 2026-10-25, MIT OR Apache-2.0. No external source artwork.
+
+icons/shapes.svg: original project catalogue icon, version 1, 2026-10-25,
+MIT OR Apache-2.0. No external source artwork.

@@ -101,7 +101,8 @@ independent tasks; do not silently reduce the required scope.
 [ ] Physical measurement units and document-resolution handling.
 4. Rendering
 [x] Brush/eraser antialiasing, hardness, stroke opacity and blend/replacement modes.
-[ ] Shape antialiasing and additional drawing blend modes.
+[x] Shape antialiasing and combined outline/fill with primary/secondary colors.
+[ ] Additional drawing blend modes and exact coverage comparisons.
 [ ] Eraser coverage, continuous strokes and tablet pressure.
 [ ] Reference comparisons on opaque and transparent layers.
 5. Selection and transforms
@@ -115,7 +116,8 @@ independent tasks; do not silently reduce the required scope.
 [ ] Independent clone source-layer identity, merged sampling and recolor shading parity.
 [x] Fill tolerance, connected/global modes and active/merged sampling within selection boundaries.
 [x] Linear, reflected, radial, diamond and conical gradients; blend, replace and transparency modes.
-[ ] Editable curves, shape catalogue and outline/fill options.
+[x] Eighteen-shape catalogue with combined outline/fill and antialiasing.
+[ ] Editable path curves, remaining shape catalogue and persistent shape handles.
 [x] Text alignment, letter/line spacing and antialias controls.
 [x] Background loading of local TTF/OTF/TTC fonts with session reuse.
 [x] Searchable installed-font browser with available styles and collection face indices.

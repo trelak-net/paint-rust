@@ -13,10 +13,71 @@ pub enum Shape {
     Line,
     Rectangle,
     Ellipse,
+    RoundedRectangle,
+    Triangle,
+    RightTriangle,
+    Diamond,
+    Pentagon,
+    Hexagon,
+    Octagon,
+    Star,
+    ArrowRight,
+    ArrowLeft,
+    ArrowUp,
+    ArrowDown,
+    Trapezoid,
+    Parallelogram,
+    Heart,
+}
+impl Shape {
+    pub const ALL: [Self; 18] = [
+        Self::Line,
+        Self::Rectangle,
+        Self::Ellipse,
+        Self::RoundedRectangle,
+        Self::Triangle,
+        Self::RightTriangle,
+        Self::Diamond,
+        Self::Pentagon,
+        Self::Hexagon,
+        Self::Octagon,
+        Self::Star,
+        Self::ArrowRight,
+        Self::ArrowLeft,
+        Self::ArrowUp,
+        Self::ArrowDown,
+        Self::Trapezoid,
+        Self::Parallelogram,
+        Self::Heart,
+    ];
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Line => "Line",
+            Self::Rectangle => "Rectangle",
+            Self::Ellipse => "Ellipse",
+            Self::RoundedRectangle => "Rounded rectangle",
+            Self::Triangle => "Triangle",
+            Self::RightTriangle => "Right triangle",
+            Self::Diamond => "Diamond",
+            Self::Pentagon => "Pentagon",
+            Self::Hexagon => "Hexagon",
+            Self::Octagon => "Octagon",
+            Self::Star => "Star",
+            Self::ArrowRight => "Right arrow",
+            Self::ArrowLeft => "Left arrow",
+            Self::ArrowUp => "Up arrow",
+            Self::ArrowDown => "Down arrow",
+            Self::Trapezoid => "Trapezoid",
+            Self::Parallelogram => "Parallelogram",
+            Self::Heart => "Heart",
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ShapeStyle {
+    pub antialias: bool,
+    pub outline: Option<Pixel>,
     pub color: Pixel,
     pub width: f32,
     pub filled: bool,
@@ -1199,6 +1260,7 @@ impl Document {
                 paint,
                 options,
             },
+            &std::sync::atomic::AtomicBool::new(false),
         );
     }
 

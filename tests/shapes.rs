@@ -2,6 +2,8 @@ use paint_rust::document::{Document, Shape, ShapeStyle};
 
 fn style(filled: bool) -> ShapeStyle {
     ShapeStyle {
+        antialias: false,
+        outline: None,
         color: [25, 70, 160, 255],
         width: 2.0,
         filled,
@@ -60,7 +62,7 @@ fn shape_kernels_reject_cancelled_or_invalid_requests() {
     use paint_rust::shapes::{Parameters, render};
     use std::sync::atomic::AtomicBool;
     let source = [[17; 4]; 64];
-    for shape in [Shape::Line, Shape::Rectangle, Shape::Ellipse] {
+    for shape in Shape::ALL {
         let parameters = Parameters {
             shape,
             from: (1.0, 1.0),
@@ -122,6 +124,108 @@ fn row_bounded_strokes_match_full_canvas_capsule_coverage() {
                     );
                 }
             }
+        }
+    }
+}
+
+#[test]
+fn catalog_shapes_reverse_drag_and_cancel_without_changing_source() {
+    use std::sync::atomic::AtomicBool;
+    let source = vec![[17, 31, 49, 0]; 64 * 64];
+    for shape in Shape::ALL.into_iter().filter(|s| *s != Shape::Line) {
+        for antialias in [false, true] {
+            let style = ShapeStyle {
+                antialias,
+                outline: Some([240, 20, 30, 200]),
+                color: [10, 50, 200, 160],
+                width: 3.0,
+                filled: true,
+            };
+            let params = paint_rust::shapes::Parameters {
+                shape,
+                from: (8.25, 8.25),
+                to: (55.75, 55.75),
+                style,
+            };
+            let output =
+                paint_rust::shapes::render(&source, 64, 64, None, params, &AtomicBool::new(false))
+                    .unwrap();
+            let reverse = paint_rust::shapes::render(
+                &source,
+                64,
+                64,
+                None,
+                paint_rust::shapes::Parameters {
+                    from: params.to,
+                    to: params.from,
+                    ..params
+                },
+                &AtomicBool::new(false),
+            )
+            .unwrap();
+            assert_eq!(output, reverse, "{}", shape.label());
+            assert!(output.iter().any(|p| p[3] > 0), "{}", shape.label());
+            assert_eq!(output[0], source[0]);
+            assert!(
+                paint_rust::shapes::render(&source, 64, 64, None, params, &AtomicBool::new(true))
+                    .is_none()
+            );
+        }
+    }
+}
+
+#[test]
+fn antialias_and_combined_outline_fill_preserve_coverage_and_hollow_pixels() {
+    use std::sync::atomic::AtomicBool;
+    let source = vec![[77, 88, 99, 0]; 32 * 32];
+    let params = paint_rust::shapes::Parameters {
+        shape: Shape::Rectangle,
+        from: (4.25, 4.25),
+        to: (27.75, 27.75),
+        style: ShapeStyle {
+            color: [0, 0, 255, 255],
+            outline: Some([255, 0, 0, 255]),
+            antialias: true,
+            width: 3.0,
+            filled: true,
+        },
+    };
+    let filled =
+        paint_rust::shapes::render(&source, 32, 32, None, params, &AtomicBool::new(false)).unwrap();
+    assert_eq!(filled[16 * 32 + 16], [0, 0, 255, 255]);
+    assert_eq!(filled[16 * 32 + 5], [255, 0, 0, 255]);
+    assert!(filled[16 * 32 + 4][3] > 0 && filled[16 * 32 + 4][3] < 255);
+    let hollow = paint_rust::shapes::render(
+        &source,
+        32,
+        32,
+        None,
+        paint_rust::shapes::Parameters {
+            style: ShapeStyle {
+                filled: false,
+                ..params.style
+            },
+            ..params
+        },
+        &AtomicBool::new(false),
+    )
+    .unwrap();
+    assert_eq!(hollow[16 * 32 + 16], source[16 * 32 + 16]);
+    let selection = paint_rust::document::Selection::elliptical(10, 10, 8, 8);
+    let selected = paint_rust::shapes::render(
+        &source,
+        32,
+        32,
+        Some(&selection),
+        params,
+        &AtomicBool::new(false),
+    )
+    .unwrap();
+    assert_eq!(selected[10 * 32 + 10], source[10 * 32 + 10]);
+    assert_eq!(selected[14 * 32 + 14], [0, 0, 255, 255]);
+    for (index, pixel) in selected.iter().enumerate() {
+        if !(10..18).contains(&(index % 32)) || !(10..18).contains(&(index / 32)) {
+            assert_eq!(*pixel, source[index]);
         }
     }
 }

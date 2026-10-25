@@ -1,5 +1,5 @@
 Parameter group	Status	Current implementation or gap
-Antialiasing	partial	Text, brush and eraser toggles; shapes/selection pending
+Antialiasing	partial	Text, brush, eraser and shape toggles; selection edges pending
 Blend Mode	partial	Fourteen layer modes; brush source-over/replace; additional drawing modes pending
 Brush Fill	missing	Pattern and fill styles
 Brush Hardness	supported	Soft brush/eraser coverage with stroke opacity
@@ -23,8 +23,8 @@ Sample Image Or Layer	partial	Fill/color selection only; picker/clone pending
 Selection Combine Mode	supported	Five boolean combination modes
 Selection Draw Mode	partial	Free drawing; fixed ratio/size pending
 Selection Rendering Quality	missing	Selection-edge quality choice
-Shape Draw Type	partial	Outline or fill; combined mode pending
-Shape Type	partial	Rectangle and ellipse
+Shape Draw Type	partial	Outline, fill or combined primary-outline/secondary-fill
+Shape Type	partial	Eighteen geometries including polygons, star, arrows, rounded rectangle and heart
 Resampling	partial	Nearest/bilinear; full interpolation inventory pending
 Text	partial	Font file, size, alignment, spacing and antialias controls
 Tolerance	partial	Numeric control; exact reference metric pending

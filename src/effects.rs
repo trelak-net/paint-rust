@@ -84,11 +84,7 @@ impl Effect {
                     "Move pixels"
                 }
             }
-            Self::Shape(parameters) => match parameters.shape {
-                crate::document::Shape::Line => "Line",
-                crate::document::Shape::Rectangle => "Rectangle",
-                crate::document::Shape::Ellipse => "Ellipse",
-            },
+            Self::Shape(parameters) => parameters.shape.label(),
             Self::Gradient(_) => "Gradient",
             Self::FreeTransform(_) => "Free transform",
             Self::BrightnessContrast { .. } => "Brightness / Contrast",

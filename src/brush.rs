@@ -50,6 +50,7 @@ pub(crate) fn render(
     dimensions: (u32, u32),
     selection: Option<&Selection>,
     segment: Segment,
+    cancel: &std::sync::atomic::AtomicBool,
 ) {
     let Segment {
         from,
@@ -84,6 +85,9 @@ pub(crate) fn render(
         .ceil()
         .clamp(0.0, f64::from(height)) as u32;
     for y in min_y..max_y {
+        if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+            return;
+        }
         let py = f64::from(y) + 0.5;
         let (a, b) = if dy.abs() > f64::EPSILON {
             (
@@ -97,6 +101,9 @@ pub(crate) fn render(
         let min_x = (ax.min(bx) - band).floor().max(0.0) as u32;
         let max_x = (ax.max(bx) + band).ceil().clamp(0.0, f64::from(width)) as u32;
         for x in min_x..max_x {
+            if x.is_multiple_of(256) && cancel.load(std::sync::atomic::Ordering::Relaxed) {
+                return;
+            }
             if selection.is_some_and(|s| !s.contains(x as usize, y as usize)) {
                 continue;
             }
@@ -159,7 +166,10 @@ pub(crate) fn render(
     }
 }
 
-fn composite(dst: Pixel, src: Pixel, amount: u8, blend: bool, erase: bool) -> Pixel {
+pub(crate) fn composite(dst: Pixel, src: Pixel, amount: u8, blend: bool, erase: bool) -> Pixel {
+    if amount == 0 {
+        return dst;
+    }
     let coverage = f64::from(amount) / 255.0;
     if erase {
         let mut output = dst;

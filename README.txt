@@ -1035,3 +1035,17 @@ resolution are not implemented yet. View > Fit image (Ctrl+B) fits the full canv
 Fit selection (Ctrl+Shift+B) fits and centers selection bounds without editing
 pixels. Tests verify tick spacing, nonpainting bands and selection fitting. Two
 native launches with --rulers verified stable layout and preference persistence.
+
+Shape catalogue and coverage
+---------------------------
+Shapes (U) offers eighteen geometries: line, rectangle, ellipse, rounded rectangle,
+triangle, right triangle, diamond, pentagon, hexagon, octagon, star, four arrow
+directions, trapezoid, parallelogram and heart. Rectangle/Ellipse shortcuts remain
+available. Shapes support outline, fill and combined primary-outline/secondary-
+fill modes; right drag swaps the colors. Optional signed-distance antialiasing
+blends edge coverage in premultiplied color. Line antialiasing uses the continuous
+brush kernel. Hard legacy rectangle/ellipse rendering remains available when
+new options are off. Previews, selection masks, cancellation and one-step undo
+are shared with the existing gesture workflow. Tests cover all geometries, reverse
+drag, combined colors, hidden RGB, selection boundaries and secondary gestures.
+Persistent handles, editable curves and exact reference coverage remain pending.

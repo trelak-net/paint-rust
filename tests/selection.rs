@@ -34,6 +34,8 @@ fn brush_fill_shapes_and_invert_respect_the_selection() {
                     (0.0, 0.0),
                     (8.0, 8.0),
                     ShapeStyle {
+                        antialias: false,
+                        outline: None,
                         color: [0, 0, 0, 255],
                         width: 1.0,
                         filled: true,

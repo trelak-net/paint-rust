@@ -26,6 +26,7 @@ use std::path::PathBuf;
 
 #[derive(Clone, Copy, PartialEq)]
 enum Tool {
+    Shapes,
     Clone,
     Recolor,
     Lasso,
@@ -119,6 +120,9 @@ pub struct Editor {
     clone_offset: Option<(i32, i32)>,
     clone_aligned: bool,
     shape_filled: bool,
+    shape_outline: bool,
+    shape_antialias: bool,
+    shape_kind: Shape,
     move_selection_only: bool,
     ellipse_selection: bool,
     selection_mode: CombineMode,
@@ -245,6 +249,9 @@ impl Editor {
             clone_offset: None,
             clone_aligned: true,
             shape_filled: false,
+            shape_outline: false,
+            shape_antialias: false,
+            shape_kind: Shape::RoundedRectangle,
             move_selection_only: false,
             ellipse_selection: false,
             selection_mode: CombineMode::Replace,
@@ -936,6 +943,7 @@ impl Editor {
                 Some(6)
             } else if !i.modifiers.command && !self.document.editing() && self.last_point.is_none()
             {
+                if i.key_pressed(Key::U) { self.tool = Tool::Shapes; }
                 if i.key_pressed(Key::C) { self.tool = Tool::Clone; }
                 if i.key_pressed(Key::J) { self.tool = Tool::Recolor; }
                 if i.key_pressed(Key::Q) { self.tool = Tool::Lasso; }
@@ -1426,6 +1434,7 @@ impl Editor {
                         | Tool::Fill
                         | Tool::Picker
                         | Tool::Line
+                        | Tool::Shapes
                         | Tool::Rectangle
                         | Tool::Ellipse
                         | Tool::Gradient
@@ -1528,6 +1537,7 @@ impl Editor {
                                 );
                             }
                             Tool::Line => self.document.begin("Line"),
+                            Tool::Shapes => self.document.begin(self.shape_kind.label()),
                             Tool::Rectangle => self.document.begin("Rectangle"),
                             Tool::Ellipse => self.document.begin("Ellipse"),
                             _ => self.document.begin(if self.tool == Tool::Eraser {
@@ -1589,6 +1599,7 @@ impl Editor {
                     }
                     let shape = match self.tool {
                         Tool::Line => Some(Shape::Line),
+                        Tool::Shapes => Some(self.shape_kind),
                         Tool::Rectangle => Some(Shape::Rectangle),
                         Tool::Ellipse => Some(Shape::Ellipse),
                         _ => None,
@@ -1619,7 +1630,19 @@ impl Editor {
                                 from: origin,
                                 to: end,
                                 style: ShapeStyle {
-                                    color: drawing_color.to_srgba_unmultiplied(),
+                                    antialias: self.shape_antialias,
+                                    outline: (self.shape_filled && self.shape_outline)
+                                        .then_some(drawing_color.to_srgba_unmultiplied()),
+                                    color: if self.shape_filled && self.shape_outline {
+                                        if drawing_button == egui::PointerButton::Secondary {
+                                            self.color
+                                        } else {
+                                            self.secondary_color
+                                        }
+                                    } else {
+                                        drawing_color
+                                    }
+                                    .to_srgba_unmultiplied(),
                                     width: self.brush_size,
                                     filled: self.shape_filled,
                                 },
@@ -1739,6 +1762,7 @@ impl Editor {
                 | Tool::Clone
                 | Tool::Recolor
                 | Tool::Line
+                | Tool::Shapes
                 | Tool::Rectangle
                 | Tool::Ellipse
         ) {
@@ -1836,8 +1860,29 @@ impl Editor {
             ui.small("Drag: Shift constrains direction; Ctrl copies pixels.");
             ui.small("Arrows: move 1 px. Shift+arrows: move 10 px.");
         }
-        if matches!(self.tool, Tool::Rectangle | Tool::Ellipse) {
+        if self.tool == Tool::Shapes {
+            egui::ComboBox::from_label("Shape")
+                .selected_text(self.shape_kind.label())
+                .show_ui(ui, |ui| {
+                    for shape in Shape::ALL {
+                        ui.selectable_value(&mut self.shape_kind, shape, shape.label());
+                    }
+                });
+        }
+        if matches!(
+            self.tool,
+            Tool::Line | Tool::Rectangle | Tool::Ellipse | Tool::Shapes
+        ) {
+            ui.checkbox(&mut self.shape_antialias, "Antialias shape");
+        }
+        if matches!(self.tool, Tool::Rectangle | Tool::Ellipse | Tool::Shapes) {
             ui.checkbox(&mut self.shape_filled, "Filled shape");
+            if self.shape_filled {
+                ui.checkbox(&mut self.shape_outline, "Outline and fill");
+            }
+            if self.shape_filled && self.shape_outline {
+                ui.small("Primary outline · Secondary fill · Right drag swaps colors");
+            }
             ui.small("Hold Shift for equal sides.");
         }
         if self.tool == Tool::Line {
@@ -1849,6 +1894,7 @@ impl Editor {
                 | Tool::Pencil
                 | Tool::Fill
                 | Tool::Line
+                | Tool::Shapes
                 | Tool::Rectangle
                 | Tool::Ellipse
                 | Tool::Picker
@@ -3438,6 +3484,7 @@ mod tests {
             Tool::Line,
             Tool::Rectangle,
             Tool::Ellipse,
+            Tool::Shapes,
             Tool::Gradient,
         ] {
             for cancel in [false, true] {
@@ -4727,6 +4774,7 @@ mod tests {
             Tool::Line,
             Tool::Rectangle,
             Tool::Ellipse,
+            Tool::Shapes,
             Tool::Move,
         ] {
             let ctx = egui::Context::default();

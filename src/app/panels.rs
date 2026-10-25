@@ -34,6 +34,7 @@ impl Editor {
                 (Tool::Line, Icon::Line, "Line", "L"),
                 (Tool::Rectangle, Icon::Rectangle, "Rectangle", "R"),
                 (Tool::Ellipse, Icon::Ellipse, "Ellipse", "O"),
+                (Tool::Shapes, Icon::Shapes, "Shapes", "U"),
             ];
             if self.panel_layout.floating {
                 let columns = ((ui.available_width() + 3.0) / 35.0)

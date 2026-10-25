@@ -1,3 +1,4 @@
+mod catalog;
 use crate::document::{Pixel, Selection, Shape, ShapeStyle};
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -117,6 +118,12 @@ pub fn render(
     {
         return None;
     }
+    if style.antialias
+        || style.outline.is_some()
+        || !matches!(shape, Shape::Line | Shape::Rectangle | Shape::Ellipse)
+    {
+        return catalog::render(source, (width, height), selection, parameters, cancel);
+    }
     let mut pixels = source.to_vec();
     if shape == Shape::Line || (from.0 - to.0).abs() < 1.0 || (from.1 - to.1).abs() < 1.0 {
         return stroke(
@@ -169,7 +176,7 @@ pub fn render(
                                 + ((py - cy) / (ry - thickness)).powi(2)
                                 >= 1.0)
                 }
-                Shape::Line => unreachable!(),
+                _ => unreachable!(),
             };
             if painted && selection.is_none_or(|s| s.contains(x as usize, y as usize)) {
                 pixels[y as usize * width as usize + x as usize] = style.color;
