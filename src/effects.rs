@@ -363,8 +363,14 @@ pub fn render(
     {
         return None;
     }
+    let luminance_table = match effect {
+        Effect::Curves(parameters) if parameters.luminance => {
+            Some(parameters.luminance_curve.table())
+        }
+        _ => None,
+    };
     let level_tables = match effect {
-        Effect::Curves(parameters) => Some(parameters.tables()),
+        Effect::Curves(parameters) if !parameters.luminance => Some(parameters.tables()),
         Effect::Levels(parameters) => Some(parameters.tables()?),
         Effect::AutoLevels(clip) => Some(
             crate::levels::automatic(source, width, selection.as_ref(), clip, cancel)?.tables()?,
@@ -482,6 +488,19 @@ pub fn render(
             }
             if effect == Effect::InvertAlpha {
                 output[i][3] = 255 - p[3];
+                continue;
+            }
+            if let Some(table) = &luminance_table {
+                if p[3] > 0 {
+                    let luma = (0.2126 * f64::from(p[0])
+                        + 0.7152 * f64::from(p[1])
+                        + 0.0722 * f64::from(p[2]))
+                    .round() as u8;
+                    let delta = i16::from(table[luma as usize]) - i16::from(luma);
+                    for c in 0..3 {
+                        output[i][c] = (i16::from(p[c]) + delta).clamp(0, 255) as u8;
+                    }
+                }
                 continue;
             }
             if let Some(tables) = &level_tables {

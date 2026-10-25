@@ -1173,3 +1173,14 @@ properties dialog, preserves the remaining data and round-trips through this
 editor again. tests/pdn.rs checks both external results; regenerate
 the input with examples/pdn_metadata_probe.rs. This validates the supported PDN3
 deferred-BGRA8 subset, not every historical container or pixel layout.
+
+Luminance curves and presets
+---------------------------
+Curves offers RGB-channel and Luminance modes with separate retained curves.
+Luminance uses weighted encoded RGB, looks up the new brightness and adds the
+resulting difference to each channel. Channel differences are retained until
+clipping; alpha and fully transparent RGB are unchanged. Presets provide Identity,
+Increase contrast, Lift shadows and Invert for the displayed curve. Mode and
+points persist across restarts; older settings default to RGB. The input
+histogram continues to describe RGB channels. Luminance/output histograms and
+external transfer-function comparisons remain pending.

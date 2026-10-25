@@ -112,6 +112,10 @@ impl Curve {
 }
 #[derive(Clone, Copy, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Curves {
+    #[serde(default)]
+    pub luminance: bool,
+    #[serde(default)]
+    pub luminance_curve: Curve,
     /// Master RGB followed by red, green and blue.
     pub channels: [Curve; 4],
 }

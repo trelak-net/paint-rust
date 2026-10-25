@@ -94,3 +94,67 @@ fn channels_compose_preserve_alpha_and_respect_masks_and_cancellation() {
     .unwrap();
     assert_eq!(output, [source[0], [42, 105, 55, 100]]);
 }
+
+#[test]
+fn luminance_mode_preserves_identity_chroma_and_alpha() {
+    let mut curves = Curves {
+        luminance: true,
+        ..Default::default()
+    };
+    let pixels = [[100, 120, 140, 37], [99, 88, 77, 0], [20, 20, 20, 255]];
+    assert_eq!(
+        effects::render(
+            &pixels,
+            3,
+            1,
+            None,
+            Effect::Curves(curves),
+            &AtomicBool::new(false)
+        )
+        .unwrap(),
+        pixels
+    );
+    curves.luminance_curve.move_point(0, 0, 20);
+    curves.luminance_curve.move_point(1, 255, 255);
+    let output = effects::render(
+        &pixels,
+        3,
+        1,
+        None,
+        Effect::Curves(curves),
+        &AtomicBool::new(false),
+    )
+    .unwrap();
+    assert!(output[0][0] > 100);
+    assert_eq!(output[0][1] - output[0][0], 20);
+    assert_eq!(output[0][2] - output[0][1], 20);
+    assert_eq!(output[0][3], 37);
+    assert_eq!(output[1], pixels[1]);
+    assert_eq!(output[2][0], output[2][1]);
+    assert_eq!(output[2][1], output[2][2]);
+    curves.channels[0].move_point(0, 0, 255);
+    assert_eq!(
+        effects::render(
+            &pixels,
+            3,
+            1,
+            None,
+            Effect::Curves(curves),
+            &AtomicBool::new(false)
+        )
+        .unwrap(),
+        output
+    );
+    let saved = serde_json::to_vec(&curves).unwrap();
+    assert_eq!(serde_json::from_slice::<Curves>(&saved).unwrap(), curves);
+}
+#[test]
+fn legacy_curve_settings_default_to_rgb_mode() {
+    let mut json = serde_json::to_value(Curves::default()).unwrap();
+    json.as_object_mut().unwrap().remove("luminance");
+    json.as_object_mut().unwrap().remove("luminance_curve");
+    assert_eq!(
+        serde_json::from_value::<Curves>(json).unwrap(),
+        Curves::default()
+    );
+}

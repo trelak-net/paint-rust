@@ -6,15 +6,50 @@ pub(super) fn controls(
     channel: &mut usize,
 ) -> bool {
     let before = *curves;
-    let names = ["RGB", "Red", "Green", "Blue"];
-    egui::ComboBox::from_label("Channel")
-        .selected_text(names[*channel])
-        .show_ui(ui, |ui| {
-            for (index, name) in names.iter().enumerate() {
-                ui.selectable_value(channel, index, *name);
+    ui.horizontal(|ui| {
+        ui.selectable_value(&mut curves.luminance, false, "RGB channels");
+        ui.selectable_value(&mut curves.luminance, true, "Luminance");
+    });
+    if curves.luminance {
+        ui.small("Changes brightness while retaining channel differences until clipping.");
+    } else {
+        let names = ["RGB", "Red", "Green", "Blue"];
+        egui::ComboBox::from_label("Channel")
+            .selected_text(names[*channel])
+            .show_ui(ui, |ui| {
+                for (index, name) in names.iter().enumerate() {
+                    ui.selectable_value(channel, index, *name);
+                }
+            });
+    }
+    let luminance = curves.luminance;
+    let curve = if luminance {
+        &mut curves.luminance_curve
+    } else {
+        &mut curves.channels[*channel]
+    };
+    ui.menu_button("Presets", |ui| {
+        for (label, points) in [
+            ("Identity", &[][..]),
+            ("Increase contrast", &[(64, 40), (192, 215)][..]),
+            ("Lift shadows", &[(64, 96), (192, 208)][..]),
+            ("Invert", &[(0, 255), (255, 0)][..]),
+        ] {
+            if ui.button(label).clicked() {
+                *curve = Default::default();
+                for &(x, y) in points {
+                    if x == 0 {
+                        curve.move_point(0, 0, y);
+                    } else if x == 255 {
+                        curve.move_point(curve.points().len() - 1, 255, y);
+                    } else {
+                        curve.insert(x, y);
+                    }
+                }
+                ui.close();
             }
-        });
-    let curve = &mut curves.channels[*channel];
+        }
+    });
     let (response, painter) = ui.allocate_painter(Vec2::splat(256.0), Sense::click_and_drag());
     let rect = response.rect.shrink(5.0);
     let position = |x: u8, y: u8| {
@@ -23,7 +58,7 @@ pub(super) fn controls(
             rect.bottom() - f32::from(y) / 255.0 * rect.height(),
         )
     };
-    let point_id = response.id.with(*channel);
+    let point_id = response.id.with((*channel, luminance));
     let mut selected = ui
         .data_mut(|data| data.get_temp::<usize>(point_id))
         .unwrap_or(0)
@@ -78,7 +113,7 @@ pub(super) fn controls(
             stroke,
         );
     }
-    let color = match *channel {
+    let color = match if luminance { 0 } else { *channel } {
         1 => Color32::from_rgb(240, 90, 90),
         2 => Color32::from_rgb(70, 190, 100),
         3 => Color32::from_rgb(90, 140, 255),

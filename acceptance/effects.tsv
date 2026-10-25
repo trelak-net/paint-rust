@@ -8,7 +8,7 @@ Brightness / Contrast	Adjustment	partial	CPU transfer curve and live preview	Exa
 Bulge	Distort	partial	Centered radial power warp with signed amount	Reference algorithm/ranges, center controls and color-space audit
 Clouds	Render	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
 Crystalize	Distort	partial	Seeded Voronoi cells and size control	Reference algorithm/ranges, center controls and color-space audit
-Curves	Adjustment	partial	RGB/per-channel point editor, numeric controls, cubic LUT and preview	Luminance mode, presets and external reference cases
+Curves	Adjustment	partial	RGB/per-channel and independent luminance curves, cubic LUT, presets and preview	External reference transfer function and output histogram
 Dents	Distort	missing	No implementation yet	Kernel, parameter UI, cancellation, preview, undo and reference cases
 Black and White	Adjustment	partial	Grayscale with weighted RGB luminance	Exact transfer function, ranges, color space and reference output audit
 Drop Shadow	Object	partial	Gaussian alpha shadow with color, opacity and XY offset behind source	External reference ranges, edge behavior and large-image performance audit
