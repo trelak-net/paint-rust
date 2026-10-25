@@ -379,6 +379,7 @@ impl Editor {
                 .add_filter("TIFF image", &["tif", "tiff"])
                 .add_filter("TGA image", &["tga"])
                 .add_filter("GIF image", &["gif"])
+                .add_filter("DDS texture", &["dds"])
                 .set_file_name(
                     self.path
                         .as_ref()
@@ -438,8 +439,8 @@ impl Editor {
             .add_filter(
                 "Images and projects",
                 &[
-                    "png", "jpg", "jpeg", "bmp", "webp", "tif", "tiff", "tga", "gif", "prust",
-                    "pdn",
+                    "png", "jpg", "jpeg", "bmp", "webp", "tif", "tiff", "tga", "gif", "dds",
+                    "prust", "pdn",
                 ],
             )
             .pick_file()
@@ -635,7 +636,7 @@ impl Editor {
                         "Projects and images",
                         &[
                             "prust", "pdn", "png", "jpg", "jpeg", "bmp", "webp", "tif", "tiff",
-                            "tga", "gif",
+                            "tga", "gif", "dds",
                         ],
                     )
                     .pick_files()

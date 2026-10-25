@@ -21,3 +21,5 @@ pub mod curves;
 pub mod fonts;
 
 pub mod color_management;
+
+pub mod dds;

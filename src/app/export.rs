@@ -77,7 +77,7 @@ impl Editor {
                 ui.small("Layers and metadata are not stored in this file. Use PRUST or PDN to keep an editable project. JPEG also loses transparency and image detail.");
                 ui.checkbox(&mut dialog.flatten_confirmed,"Save a flattened raster document");
             }
-            ui.small(if matches!(dialog.options.format,files::RasterFormat::Bmp | files::RasterFormat::Tga | files::RasterFormat::Gif) {
+            ui.small(if matches!(dialog.options.format,files::RasterFormat::Bmp | files::RasterFormat::Tga | files::RasterFormat::Gif | files::RasterFormat::Dds) {
                 "Colors use sRGB; this format is saved without an embedded profile."
             } else { "Colors use sRGB; an ICC profile is embedded. Source EXIF, location and author tags are omitted." });
             let mut changed=false;
@@ -87,6 +87,9 @@ impl Editor {
             if matches!(dialog.options.format,files::RasterFormat::Jpeg | files::RasterFormat::Bmp | files::RasterFormat::Gif) {
                 ui.horizontal(|ui| { ui.label("Transparency background"); changed |= ui.color_edit_button_srgb(&mut dialog.options.matte).changed(); });
                 ui.small("Transparency is composited onto this color before encoding.");
+            }
+            if dialog.options.format==files::RasterFormat::Dds {
+                ui.small("DDS saves one uncompressed RGBA8 surface. Mipmaps, texture arrays and cube maps are not written.");
             }
             if dialog.options.format==files::RasterFormat::Gif {
                 ui.small("GIF stores one frame and up to 256 colors. Alpha below 128 becomes transparent; remaining pixels use the background color. Inspect the preview for palette changes.");

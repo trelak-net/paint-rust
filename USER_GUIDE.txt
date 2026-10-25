@@ -61,3 +61,8 @@ kept. Failed snapshots remain available for individual retry or discard; other
 snapshots continue loading. Cancel stops the remaining queue. Recovered documents
 are unsaved and need a new save destination. Original tab order and view positions
 are not restored yet.
+
+DDS textures
+Open reads the top surface of supported RGB/RGBA and BC1/2/3 textures. Export
+saves a single uncompressed RGBA8 surface. Mipmaps, cube maps and texture arrays
+are not preserved; keep the source file when editing texture assets.

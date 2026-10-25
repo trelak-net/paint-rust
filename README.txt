@@ -1475,3 +1475,19 @@ replacement snapshot or explicit save is safe. Corrupt copies remain on disk and
 in the recovery list while other candidates continue. Cancellation stops the
 queue; summary status reports restored and failed counts. Original tab ordering,
 file destinations and viewport metadata remain outside the snapshot format.
+
+DDS textures
+------------
+DDS import reads the top surface of legacy RGB16/24/32, BC1/BC2/BC3, and supported
+DX10 RGBA8/BGRA8/BGRX8 or BC1/2/3 textures. Channel masks, row pitch, dimensions,
+alpha conventions and input bounds are validated. BC1 transparent indices and
+partial edge blocks are preserved. Cube maps, arrays, volumes, premultiplied alpha
+and other block formats are rejected. Mipmap editing and regeneration are pending.
+DDS Save/Export writes one uncompressed RGBA8 surface with exact channel bytes,
+including hidden RGB. Decoded export preview and undoable raster Save apply.
+No embedded ICC or source descriptive metadata is written. Synthetic independent
+ImageMagick fixtures verify BC1/BC3 decoding with exact alpha and RGB error <= 1.
+Format references:
+https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dds-header
+https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dds-pixelformat
+https://learn.microsoft.com/en-us/windows/win32/direct3d10/d3d10-graphics-programming-guide-resources-block-compression

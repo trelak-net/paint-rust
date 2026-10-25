@@ -181,7 +181,8 @@ independent tasks; do not silently reduce the required scope.
 [x] TIFF and TGA import/export with alpha and decoded export previews.
 [x] GIF first-frame import and single-frame export with explicit transparency policy.
 [x] Unified project/raster Save and Save As with confirmed flattening and undo.
-[ ] Remaining raster codecs and advanced export options.
+[x] DDS top-surface RGB/RGBA and BC1/2/3 import, lossless RGBA8 export and independent fixtures.
+[ ] Remaining raster codecs, DDS mipmaps/additional block formats and advanced export options.
 [x] Apply all eight EXIF orientations once on raster import.
 [x] Convert embedded raster RGB/grayscale ICC to sRGB and tag supported exports.
 [x] Explicit raster metadata policy: apply orientation, omit source descriptive tags.

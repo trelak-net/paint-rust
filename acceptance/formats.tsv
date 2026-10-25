@@ -10,6 +10,6 @@ TIFF	partial	First-page import; RGBA8 export and decoded preview	Compression con
 JPEG XL	missing	None	Codec, options, licensing and validation
 AVIF	missing	None	Codec, options, licensing and validation
 HEIC	missing	None	Codec/platform availability, licensing and validation
-DDS	missing	None	Compression, mipmaps, texture formats and validation
+DDS	partial	RGB16/24/32 and BC1/2/3 top-surface import; legacy/DX10 formats; RGBA8 export and preview	Compressed encoding, BC4–7, mipmaps, arrays/cubes, advanced options and broader external fixtures
 TGA	partial	Extension-aware import; RGBA export and decoded preview	Additional variants, metadata and external fixtures
 JPEG XR	missing	None	Codec, options, licensing and validation

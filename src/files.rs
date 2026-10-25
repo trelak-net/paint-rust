@@ -41,6 +41,19 @@ pub fn open_cancellable(path: &Path, cancel: &AtomicBool) -> Result<Document, St
     {
         return open_project_cancellable(path, cancel);
     }
+    if (read >= 4 && &header[..4] == b"DDS ")
+        || path
+            .extension()
+            .is_some_and(|e| e.eq_ignore_ascii_case("dds"))
+    {
+        return crate::dds::decode(
+            CancellableReader {
+                inner: File::open(path).map_err(|e| e.to_string())?,
+                cancel,
+            },
+            cancel,
+        );
+    }
     let dimensions = raster_reader(path, cancel)?
         .into_dimensions()
         .map_err(|e| e.to_string())?;
@@ -227,6 +240,7 @@ fn write_atomic(
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RasterFormat {
+    Dds,
     Gif,
     Tiff,
     Tga,
@@ -236,7 +250,7 @@ pub enum RasterFormat {
     WebP,
 }
 impl RasterFormat {
-    pub const ALL: [Self; 7] = [
+    pub const ALL: [Self; 8] = [
         Self::Png,
         Self::Jpeg,
         Self::Bmp,
@@ -244,6 +258,7 @@ impl RasterFormat {
         Self::Tiff,
         Self::Tga,
         Self::Gif,
+        Self::Dds,
     ];
     pub fn from_path(path: &Path) -> Option<Self> {
         let extension = path.extension()?;
@@ -258,6 +273,7 @@ impl RasterFormat {
     pub fn extension(self) -> &'static str {
         match self {
             Self::Gif => "gif",
+            Self::Dds => "dds",
             Self::Tiff => "tif",
             Self::Tga => "tga",
             Self::Jpeg => "jpg",
@@ -269,6 +285,7 @@ impl RasterFormat {
     pub fn extensions(self) -> &'static [&'static str] {
         match self {
             Self::Gif => &["gif"],
+            Self::Dds => &["dds"],
             Self::Tiff => &["tif", "tiff"],
             Self::Tga => &["tga"],
             Self::Jpeg => &["jpg", "jpeg"],
@@ -280,6 +297,7 @@ impl RasterFormat {
     pub fn image_format(self) -> image::ImageFormat {
         match self {
             Self::Gif => image::ImageFormat::Gif,
+            Self::Dds => image::ImageFormat::Dds,
             Self::Tiff => image::ImageFormat::Tiff,
             Self::Tga => image::ImageFormat::Tga,
             Self::Jpeg => image::ImageFormat::Jpeg,
@@ -291,6 +309,7 @@ impl RasterFormat {
     pub fn label(self) -> &'static str {
         match self {
             Self::Gif => "GIF (single frame)",
+            Self::Dds => "DDS (RGBA8)",
             Self::Tiff => "TIFF",
             Self::Tga => "TGA",
             Self::Jpeg => "JPEG",
@@ -335,6 +354,9 @@ pub fn decode_raster_bytes(
     cancel: &AtomicBool,
 ) -> Result<Document, String> {
     check_cancel(cancel)?;
+    if format == RasterFormat::Dds {
+        return crate::dds::decode(Cursor::new(bytes), cancel);
+    }
     let mut reader = ImageReader::with_format(Cursor::new(bytes), format.image_format());
     let mut limits = image::Limits::default();
     limits.max_alloc = Some(256 * 1024 * 1024);
@@ -394,6 +416,17 @@ fn encode_raster_options(
     if pixels.len() != size.0 as usize * size.1 as usize || !(1..=100).contains(&options.quality) {
         return Err("Invalid raster export pixels or quality.".into());
     }
+    if options.format == RasterFormat::Dds {
+        return crate::dds::encode(
+            pixels,
+            size,
+            CancellableWriter {
+                inner: writer,
+                cancel,
+            },
+            cancel,
+        );
+    }
     let opaque = matches!(options.format, RasterFormat::Jpeg | RasterFormat::Bmp);
     let mut bytes = Vec::with_capacity(pixels.len() * if opaque { 3 } else { 4 });
     for chunk in pixels.chunks(4096) {
@@ -432,6 +465,7 @@ fn encode_raster_options(
         cancel,
     };
     match options.format {
+        RasterFormat::Dds => unreachable!("DDS encoded above"),
         RasterFormat::Gif => {
             GifEncoder::new(writer).encode(&bytes, size.0, size.1, image::ExtendedColorType::Rgba8)
         }

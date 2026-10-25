@@ -1,0 +1,12 @@
+Original synthetic fixtures generated for this project (MIT OR Apache-2.0).
+Encoder and independent reference decoder: ImageMagick 7.1.2-34 Q16-HDRI.
+No third-party artwork is included.
+
+Generation commands:
+magick -size 8x8 gradient:red-blue -alpha set -channel A -evaluate set 60% +channel -define dds:compression=dxt5 -define dds:mipmaps=0 gradient-bc3.dds
+magick gradient-bc3.dds -depth 8 rgba:gradient-bc3.rgba
+magick -size 8x8 gradient:yellow-green -define dds:compression=dxt1 -define dds:mipmaps=0 gradient-bc1.dds
+magick gradient-bc1.dds -depth 8 rgba:gradient-bc1.rgba
+
+RGB565 expansion/interpolation can differ by one integer channel value between
+decoders. Tests require exact alpha and at most one unit RGB error.
