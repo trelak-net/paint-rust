@@ -35,3 +35,5 @@ mod gif_export;
 mod avif;
 mod heic;
 mod jpeg_xl;
+
+pub mod bezier;

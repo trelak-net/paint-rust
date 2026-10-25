@@ -1867,3 +1867,14 @@ are modified. These tests model specific syscall failures, not an actually full
 filesystem or sudden power loss. The existing cancellation test covers stopping
 before atomic replacement. Hard termination and crash-durability checks remain
 separate acceptance work.
+
+Cubic stroke renderer
+---------------------
+The Bezier geometry worker subdivides cubic curves until both controls lie
+within 0.2 image pixels of the finite chord. Checking the finite segment preserves
+collinear reversals and coincident-endpoint loops. Work is capped at 4096 segments
+and 16 subdivision levels; control coordinates are limited to +/-32768 pixels.
+Segments share one stroke-coverage buffer, so joins do not accumulate opacity.
+Selection clipping, antialiasing, blend mode and cancellation use the brush kernel.
+The geometry is excluded from repeat-effect settings. Interactive controls are
+a separate integration step.

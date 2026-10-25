@@ -148,7 +148,8 @@ independent tasks; do not silently reduce the required scope.
 [x] Linear, reflected, radial, diamond and conical gradients; blend, replace and transparency modes.
 [x] Thirty-three-shape catalogue with combined outline/fill and antialiasing; all 29 native menu forms covered.
 [x] Optional persistent shape drafts with resize/translation handles, numeric/style controls and one-step apply/cancel.
-[ ] Editable path curves, shape rotation handles and exact shape coverage comparisons.
+[x] Bounded adaptive cubic Bezier stroke renderer with shared alpha coverage, clipping and cancellation.
+[ ] Curve editing controls, shape rotation handles and exact shape coverage comparisons.
 [x] Text alignment, letter/line spacing and antialias controls.
 [x] Background loading of local TTF/OTF/TTC fonts with session reuse.
 [x] Searchable installed-font browser with available styles and collection face indices.

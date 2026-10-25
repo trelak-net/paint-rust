@@ -165,6 +165,8 @@ pub enum Effect {
     #[serde(skip)]
     Shape(crate::shapes::Parameters),
     #[serde(skip)]
+    Bezier(crate::bezier::Parameters),
+    #[serde(skip)]
     Gradient(crate::gradient::Gradient),
     #[serde(skip)]
     FreeTransform(crate::affine::FreeTransform),
@@ -189,7 +191,11 @@ impl Effect {
     pub fn valid_settings(self) -> bool {
         let range = |v: f32, min: f32, max: f32| v.is_finite() && (min..=max).contains(&v);
         match self {
-            Self::Move(_) | Self::Shape(_) | Self::Gradient(_) | Self::FreeTransform(_) => false,
+            Self::Move(_)
+            | Self::Shape(_)
+            | Self::Bezier(_)
+            | Self::Gradient(_)
+            | Self::FreeTransform(_) => false,
             Self::SketchBlur {
                 radius,
                 percentile,
@@ -354,9 +360,11 @@ impl Effect {
             Self::EdgeDetect | Self::Emboss(_) | Self::Outline { .. } | Self::Relief { .. } => {
                 "Stylize"
             }
-            Self::Move(_) | Self::Shape(_) | Self::Gradient(_) | Self::FreeTransform(_) => {
-                "Geometry"
-            }
+            Self::Move(_)
+            | Self::Shape(_)
+            | Self::Bezier(_)
+            | Self::Gradient(_)
+            | Self::FreeTransform(_) => "Geometry",
             _ => "Adjustments",
         }
     }
@@ -364,7 +372,11 @@ impl Effect {
     pub fn repeatable(self) -> bool {
         !matches!(
             self,
-            Self::Move(_) | Self::Shape(_) | Self::Gradient(_) | Self::FreeTransform(_)
+            Self::Move(_)
+                | Self::Shape(_)
+                | Self::Bezier(_)
+                | Self::Gradient(_)
+                | Self::FreeTransform(_)
         )
     }
     pub fn name(self) -> &'static str {
@@ -421,6 +433,7 @@ impl Effect {
                 }
             }
             Self::Shape(parameters) => parameters.shape.label(),
+            Self::Bezier(_) => "Bezier curve",
             Self::Gradient(_) => "Gradient",
             Self::FreeTransform(_) => "Free transform",
             Self::BrightnessContrast { .. } => "Brightness / Contrast",
@@ -485,6 +498,16 @@ pub fn render(
     };
     if let Effect::Move(parameters) = effect {
         return crate::movement::render(
+            source,
+            width,
+            height,
+            selection.as_ref(),
+            parameters,
+            cancel,
+        );
+    }
+    if let Effect::Bezier(parameters) = effect {
+        return crate::bezier::render(
             source,
             width,
             height,
@@ -862,6 +885,7 @@ pub fn render(
                     | Effect::Pixelate(_)
                     | Effect::FreeTransform(_)
                     | Effect::Gradient(_)
+                    | Effect::Bezier(_)
                     | Effect::Shape(_)
                     | Effect::Move(_) => continue,
                 };
