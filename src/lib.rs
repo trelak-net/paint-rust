@@ -25,3 +25,5 @@ pub mod color_management;
 pub mod dds;
 
 pub mod resample;
+
+pub mod resolution;

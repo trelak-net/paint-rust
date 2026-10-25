@@ -105,7 +105,8 @@ independent tasks; do not silently reduce the required scope.
 [x] Visible-region pixel grid at high zoom.
 [x] Pixel rulers with zoom/scroll-aware ticks, pointer markers and saved visibility.
 [x] Fit image and fit selection commands with keyboard shortcuts.
-[ ] Physical measurement units and document-resolution handling.
+[x] Undoable physical-resolution EXIF project metadata and native 300 DPI PDN round-trip fixture.
+[ ] Physical measurement UI, rulers and raster density tags.
 4. Rendering
 [x] Brush/eraser antialiasing, hardness, stroke opacity and blend/replacement modes.
 [x] Shape antialiasing and combined outline/fill with primary/secondary colors.

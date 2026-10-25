@@ -209,6 +209,7 @@ impl Layer {
 
 #[derive(Clone)]
 struct Snapshot {
+    metadata: std::collections::BTreeMap<String, String>,
     width: u32,
     height: u32,
     selection: Option<Selection>,
@@ -306,6 +307,26 @@ impl Document {
             next_revision: 1,
             saved_revision: 0,
         })
+    }
+
+    pub fn resolution(&self) -> crate::resolution::Dpi {
+        crate::resolution::read(&self.metadata)
+    }
+    pub fn set_resolution(&mut self, dpi: crate::resolution::Dpi) -> Result<bool, String> {
+        if self.editing() {
+            return Err("Finish the current edit first".into());
+        }
+        if !dpi.valid() {
+            return Err("Resolution must be between 1 and 10000 pixels per inch".into());
+        }
+        if self.resolution() == dpi {
+            return Ok(false);
+        }
+        let mut metadata = self.metadata.clone();
+        crate::resolution::write(&mut metadata, dpi)?;
+        self.begin("Image resolution");
+        self.metadata = metadata;
+        Ok(self.commit())
     }
 
     pub fn selection(&self) -> Option<Selection> {
@@ -442,12 +463,14 @@ impl Document {
         if self.width == replacement.width
             && self.height == replacement.height
             && self.layers == replacement.layers
+            && self.metadata == replacement.metadata
         {
             return Ok(false);
         }
         self.begin(label);
         self.width = replacement.width;
         self.height = replacement.height;
+        self.metadata = replacement.metadata;
         self.layers = replacement.layers;
         self.active = replacement.active;
         self.selection = None;
@@ -1157,6 +1180,7 @@ impl Document {
     pub fn begin(&mut self, label: &str) {
         if self.pending.is_none() {
             self.pending = Some(Snapshot {
+                metadata: self.metadata.clone(),
                 width: self.width,
                 height: self.height,
                 selection: self.selection.clone(),
@@ -1174,7 +1198,8 @@ impl Document {
         let Some(before) = self.pending.take() else {
             return false;
         };
-        let image_changed = before.layers != self.layers
+        let image_changed = before.metadata != self.metadata
+            || before.layers != self.layers
             || before.width != self.width
             || before.height != self.height;
         if !image_changed && before.selection == self.selection {
@@ -1321,6 +1346,7 @@ impl Document {
             self.width = before.width;
             self.height = before.height;
             self.selection = before.selection.clone();
+            self.metadata = before.metadata;
             self.layers = before.layers;
             self.active = before.active;
         }
@@ -1372,6 +1398,7 @@ impl Document {
         }
         self.cancel();
         let current = Snapshot {
+            metadata: self.metadata.clone(),
             width: std::mem::replace(&mut self.width, target.width),
             height: std::mem::replace(&mut self.height, target.height),
             selection: std::mem::replace(&mut self.selection, target.selection),
@@ -1380,6 +1407,7 @@ impl Document {
             revision: self.revision,
             label: target.label,
         };
+        self.metadata = target.metadata.clone();
         self.revision = target.revision;
         self.history_error = None;
         if redo {

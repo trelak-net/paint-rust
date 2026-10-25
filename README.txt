@@ -1530,3 +1530,14 @@ Reproducible benchmark:
 On the current Linux host, 2048-square to 1024-square gamma-corrected resizing took
 about 120 ms with bicubic and 144 ms with Lanczos. These are CPU kernel timings,
 not UI latency guarantees. The example also measures cancellation after 20 ms.
+
+Physical-resolution project metadata
+------------------------------------
+Document resolution uses standard EXIF XResolution/YResolution rationals and
+ResolutionUnit inside project string metadata. Defaults are 96 DPI; valid values
+range from 1 to 10000 DPI. Centimeter units are converted to dots per inch.
+PRUST, PDN and recovery snapshots preserve these tags and unrelated metadata.
+Metadata participates in image dirty state, undo/redo and cancellation, including
+disk-backed history. A synthetic 300 DPI PDN fixture was displayed as 1 x 0.5 inches
+in the native Windows editor and re-saved without changing its resolution or pixels.
+Raster density tags and physical-unit UI are separate implementation steps.

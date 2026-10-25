@@ -2222,6 +2222,7 @@ dependencies = [
  "ab_glyph",
  "arboard",
  "ashpd",
+ "base64",
  "eframe",
  "egui_extras",
  "flate2",
