@@ -118,7 +118,8 @@ pub fn render(
     {
         return None;
     }
-    if style.antialias
+    if style.paint_mode.is_some()
+        || style.antialias
         || style.outline.is_some()
         || !matches!(shape, Shape::Line | Shape::Rectangle | Shape::Ellipse)
     {

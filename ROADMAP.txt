@@ -112,6 +112,7 @@ independent tasks; do not silently reduce the required scope.
 [x] Brush/eraser antialiasing, hardness, stroke opacity and blend/replacement modes.
 [x] Shape antialiasing and combined outline/fill with primary/secondary colors.
 [x] Fourteen brush/clone color blend modes with persistent settings.
+[x] Fourteen paint blend modes for lines, shape fills/outlines, color gradients and text.
 [ ] Blend modes for remaining drawing tools and exact external coverage comparisons.
 [ ] Eraser coverage, continuous strokes and tablet pressure.
 [ ] Reference comparisons on opaque and transparent layers.

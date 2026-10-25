@@ -8,6 +8,7 @@ fn linear_gradient_hits_endpoints_and_replaces_older_preview() {
         (0.5, 0.5),
         (3.5, 0.5),
         GradientStyle {
+            blend_mode: Default::default(),
             start: [255, 0, 0, 255],
             end: [0, 0, 255, 255],
             shape: paint_rust::gradient::GradientShape::Linear,
@@ -27,6 +28,7 @@ fn linear_gradient_hits_endpoints_and_replaces_older_preview() {
         (3.5, 0.5),
         (0.5, 0.5),
         GradientStyle {
+            blend_mode: Default::default(),
             start: [255, 0, 0, 255],
             end: [0, 0, 255, 255],
             shape: paint_rust::gradient::GradientShape::Linear,
@@ -57,6 +59,7 @@ fn transparent_gradient_does_not_bleed_hidden_rgb_and_respects_selection() {
         (0.5, 0.5),
         (2.5, 0.5),
         GradientStyle {
+            blend_mode: Default::default(),
             start: [255, 0, 0, 255],
             end: [0, 0, 255, 0],
             shape: paint_rust::gradient::GradientShape::Linear,
@@ -76,6 +79,7 @@ fn radial_gradient_uses_distance_from_center() {
         (1.5, 1.5),
         (2.5, 1.5),
         GradientStyle {
+            blend_mode: Default::default(),
             start: [255; 4],
             end: [0, 0, 0, 255],
             shape: paint_rust::gradient::GradientShape::Radial,
@@ -97,6 +101,7 @@ fn gradient_renderer_rejects_invalid_inputs_and_cancellation() {
         from: (0.0, 0.0),
         to: (2.0, 2.0),
         style: GradientStyle {
+            blend_mode: Default::default(),
             start: [255; 4],
             end: [0; 4],
             shape: paint_rust::gradient::GradientShape::Radial,
@@ -142,6 +147,7 @@ fn gradient_shapes_follow_the_drag_axis_and_conical_angle() {
                 from: (1.5, 1.5),
                 to: (3.5, 1.5),
                 style: GradientStyle {
+                    blend_mode: Default::default(),
                     start: [0, 0, 0, 255],
                     end: [255; 4],
                     shape,
@@ -176,6 +182,7 @@ fn transparency_modulates_existing_alpha_and_replace_can_remove_pixels() {
         from: (0.5, 0.5),
         to: (2.5, 0.5),
         style: GradientStyle {
+            blend_mode: Default::default(),
             start: [255, 0, 0, 255],
             end: [0, 0, 255, 0],
             shape: GradientShape::Linear,
@@ -194,6 +201,7 @@ fn transparency_modulates_existing_alpha_and_replace_can_remove_pixels() {
         None,
         Gradient {
             style: GradientStyle {
+                blend_mode: Default::default(),
                 mode: M::Replace,
                 ..parameters.style
             },
@@ -210,6 +218,7 @@ fn transparency_modulates_existing_alpha_and_replace_can_remove_pixels() {
         None,
         Gradient {
             style: GradientStyle {
+                blend_mode: Default::default(),
                 mode: M::Blend,
                 ..parameters.style
             },
@@ -231,6 +240,7 @@ fn every_shape_handles_zero_length_and_extreme_finite_coordinates() {
             from: (0.5, 0.5),
             to: (0.5, 0.5),
             style: GradientStyle {
+                blend_mode: Default::default(),
                 start: [23, 45, 67, 255],
                 end: [255; 4],
                 shape,

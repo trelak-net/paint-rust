@@ -1788,6 +1788,10 @@ impl Editor {
                                 from: origin,
                                 to: end,
                                 style: ShapeStyle {
+                                    paint_mode: self
+                                        .brush_options
+                                        .blend
+                                        .then_some(self.brush_options.blend_mode),
                                     antialias: self.shape_antialias,
                                     outline: (self.shape_filled && self.shape_outline)
                                         .then_some(drawing_color.to_srgba_unmultiplied()),
@@ -1824,6 +1828,7 @@ impl Editor {
                             from: self.shape_origin.unwrap_or(point),
                             to: point,
                             style: GradientStyle {
+                                blend_mode: self.brush_options.blend_mode,
                                 start,
                                 end,
                                 shape: self.gradient_shape,
@@ -2076,6 +2081,26 @@ impl Editor {
             Tool::Line | Tool::Rectangle | Tool::Ellipse | Tool::Shapes
         ) {
             ui.checkbox(&mut self.shape_antialias, "Antialias shape");
+        }
+        if matches!(
+            self.tool,
+            Tool::Line | Tool::Rectangle | Tool::Ellipse | Tool::Shapes | Tool::Gradient
+        ) {
+            if self.tool != Tool::Gradient {
+                ui.checkbox(&mut self.brush_options.blend, "Blend color");
+            }
+            egui::ComboBox::from_label("Paint mode")
+                .selected_text(self.brush_options.blend_mode.name())
+                .show_ui(ui, |ui| {
+                    for mode in BlendMode::ALL {
+                        ui.selectable_value(&mut self.brush_options.blend_mode, mode, mode.name());
+                    }
+                });
+            ui.small(if self.tool == Tool::Gradient {
+                "Paint mode applies to Blend colors."
+            } else {
+                "Paint mode applies when Blend color is enabled."
+            });
         }
         if matches!(self.tool, Tool::Rectangle | Tool::Ellipse | Tool::Shapes) {
             ui.checkbox(&mut self.shape_filled, "Filled shape");
@@ -2353,178 +2378,207 @@ impl Editor {
                 keep = false;
             } else {
                 egui::Window::new("Text")
-                    .vscroll(true)
+                    .vscroll(false)
                     .max_height((ctx.content_rect().height() - 80.0).max(180.0))
                     .collapsible(false)
                     .resizable(true)
                     .default_width(320.0)
                     .show(ctx, |ui| {
-                        ui.horizontal_wrapped(|ui| {
-                            ui.label(format!("Font: {}", dialog.font_name));
-                            if ui
-                                .add_enabled(
-                                    self.file_job.is_none(),
-                                    egui::Button::new("Load font…"),
-                                )
-                                .clicked()
-                            {
-                                font_path = rfd::FileDialog::new()
-                                    .add_filter("Font", &["ttf", "otf", "ttc"])
-                                    .pick_file();
-                            }
-                        });
-                        egui::CollapsingHeader::new("Installed fonts").show(ui, |ui| {
-                            discover_fonts = ui
-                                .add_enabled(
-                                    self.file_job.is_none(),
-                                    egui::Button::new(if self.system_fonts.is_empty() {
-                                        "Find installed fonts"
-                                    } else {
-                                        "Refresh fonts"
-                                    }),
-                                )
-                                .clicked();
-                            let label = ui.label("Search family or style");
-                            ui.text_edit_singleline(&mut self.font_search)
-                                .labelled_by(label.id);
-                            let query = self.font_search.to_lowercase();
-                            let matching: Vec<_> = self
-                                .system_fonts
-                                .iter()
-                                .filter(|font| {
-                                    font.family.to_lowercase().contains(&query)
-                                        || font.style.to_lowercase().contains(&query)
-                                })
-                                .collect();
-                            egui::ScrollArea::vertical()
-                                .id_salt("installed-font-list")
-                                .max_height(150.0)
-                                .show(ui, |ui| {
-                                    for record in matching.iter().take(200) {
-                                        if ui
-                                            .add_enabled(
-                                                self.file_job.is_none(),
-                                                egui::Button::new(record.label()),
-                                            )
-                                            .on_hover_text(record.path.display().to_string())
-                                            .clicked()
-                                        {
-                                            font_record = Some((*record).clone());
-                                        }
+                        egui::ScrollArea::vertical()
+                            .max_height((ctx.content_rect().height() - 220.0).max(100.0))
+                            .show(ui, |ui| {
+                                ui.horizontal_wrapped(|ui| {
+                                    ui.label(format!("Font: {}", dialog.font_name));
+                                    if ui
+                                        .add_enabled(
+                                            self.file_job.is_none(),
+                                            egui::Button::new("Load font…"),
+                                        )
+                                        .clicked()
+                                    {
+                                        font_path = rfd::FileDialog::new()
+                                            .add_filter("Font", &["ttf", "otf", "ttc"])
+                                            .pick_file();
                                     }
                                 });
-                            if matching.len() > 200 {
-                                ui.small(format!(
-                                    "Showing 200 of {} matches; narrow the search.",
-                                    matching.len()
-                                ));
-                            }
-                        });
-                        ui.small("Choose a font containing all characters in your text.");
-                        let label = ui.label("Text content");
-                        let response = ui
-                            .add(
-                                egui::TextEdit::multiline(&mut dialog.content)
-                                    .desired_rows(4)
-                                    .char_limit(4096),
-                            )
-                            .labelled_by(label.id);
-                        if dialog.focus {
-                            response.request_focus();
-                            dialog.focus = false;
-                        }
-                        let mut changed = response.changed();
-                        let axes = paint_rust::text::variations::axes(
-                            &dialog.font,
-                            dialog.layout.font_index,
-                        );
-                        if !axes.is_empty() {
-                            egui::CollapsingHeader::new("Font variations").show(ui, |ui| {
-                                for axis in axes {
-                                    let mut value = dialog
-                                        .layout
-                                        .font_axes
-                                        .get(axis.tag)
-                                        .unwrap_or(axis.default_value);
-                                    let label = axis.name.unwrap_or_else(|| {
-                                        String::from_utf8_lossy(&axis.tag).into_owned()
-                                    });
-                                    if ui
-                                        .add(
-                                            egui::Slider::new(
-                                                &mut value,
-                                                axis.min_value..=axis.max_value,
-                                            )
-                                            .text(label),
+                                egui::CollapsingHeader::new("Installed fonts").show(ui, |ui| {
+                                    discover_fonts = ui
+                                        .add_enabled(
+                                            self.file_job.is_none(),
+                                            egui::Button::new(if self.system_fonts.is_empty() {
+                                                "Find installed fonts"
+                                            } else {
+                                                "Refresh fonts"
+                                            }),
                                         )
-                                        .changed()
-                                    {
-                                        changed |= dialog.layout.font_axes.set(axis.tag, value);
+                                        .clicked();
+                                    let label = ui.label("Search family or style");
+                                    ui.text_edit_singleline(&mut self.font_search)
+                                        .labelled_by(label.id);
+                                    let query = self.font_search.to_lowercase();
+                                    let matching: Vec<_> = self
+                                        .system_fonts
+                                        .iter()
+                                        .filter(|font| {
+                                            font.family.to_lowercase().contains(&query)
+                                                || font.style.to_lowercase().contains(&query)
+                                        })
+                                        .collect();
+                                    egui::ScrollArea::vertical()
+                                        .id_salt("installed-font-list")
+                                        .max_height(150.0)
+                                        .show(ui, |ui| {
+                                            for record in matching.iter().take(200) {
+                                                if ui
+                                                    .add_enabled(
+                                                        self.file_job.is_none(),
+                                                        egui::Button::new(record.label()),
+                                                    )
+                                                    .on_hover_text(
+                                                        record.path.display().to_string(),
+                                                    )
+                                                    .clicked()
+                                                {
+                                                    font_record = Some((*record).clone());
+                                                }
+                                            }
+                                        });
+                                    if matching.len() > 200 {
+                                        ui.small(format!(
+                                            "Showing 200 of {} matches; narrow the search.",
+                                            matching.len()
+                                        ));
                                     }
+                                });
+                                ui.small("Choose a font containing all characters in your text.");
+                                let label = ui.label("Text content");
+                                let response = ui
+                                    .add(
+                                        egui::TextEdit::multiline(&mut dialog.content)
+                                            .desired_rows(4)
+                                            .char_limit(4096),
+                                    )
+                                    .labelled_by(label.id);
+                                if dialog.focus {
+                                    response.request_focus();
+                                    dialog.focus = false;
                                 }
-                                if ui.button("Reset font variations").clicked() {
-                                    dialog.layout.font_axes = Default::default();
-                                    changed = true;
+                                let mut changed = response.changed();
+                                let axes = paint_rust::text::variations::axes(
+                                    &dialog.font,
+                                    dialog.layout.font_index,
+                                );
+                                if !axes.is_empty() {
+                                    egui::CollapsingHeader::new("Font variations").show(ui, |ui| {
+                                        for axis in axes {
+                                            let mut value = dialog
+                                                .layout
+                                                .font_axes
+                                                .get(axis.tag)
+                                                .unwrap_or(axis.default_value);
+                                            let label = axis.name.unwrap_or_else(|| {
+                                                String::from_utf8_lossy(&axis.tag).into_owned()
+                                            });
+                                            if ui
+                                                .add(
+                                                    egui::Slider::new(
+                                                        &mut value,
+                                                        axis.min_value..=axis.max_value,
+                                                    )
+                                                    .text(label),
+                                                )
+                                                .changed()
+                                            {
+                                                changed |=
+                                                    dialog.layout.font_axes.set(axis.tag, value);
+                                            }
+                                        }
+                                        if ui.button("Reset font variations").clicked() {
+                                            dialog.layout.font_axes = Default::default();
+                                            changed = true;
+                                        }
+                                    });
                                 }
-                            });
-                        }
-                        changed |= ui
-                            .add(egui::Slider::new(&mut dialog.size, 4.0..=256.0).text("Size (px)"))
-                            .changed();
-                        egui::ComboBox::from_label("Alignment")
-                            .selected_text(dialog.layout.alignment.label())
-                            .show_ui(ui, |ui| {
-                                for alignment in [
-                                    paint_rust::text::Alignment::Left,
-                                    paint_rust::text::Alignment::Center,
-                                    paint_rust::text::Alignment::Right,
-                                ] {
-                                    changed |= ui
-                                        .selectable_value(
-                                            &mut dialog.layout.alignment,
-                                            alignment,
-                                            alignment.label(),
+                                changed |= ui
+                                    .add(
+                                        egui::Slider::new(&mut dialog.size, 4.0..=256.0)
+                                            .text("Size (px)"),
+                                    )
+                                    .changed();
+                                egui::ComboBox::from_label("Text paint mode")
+                                    .selected_text(dialog.layout.blend_mode.name())
+                                    .show_ui(ui, |ui| {
+                                        for mode in BlendMode::ALL {
+                                            changed |= ui
+                                                .selectable_value(
+                                                    &mut dialog.layout.blend_mode,
+                                                    mode,
+                                                    mode.name(),
+                                                )
+                                                .changed();
+                                        }
+                                    });
+                                egui::ComboBox::from_label("Alignment")
+                                    .selected_text(dialog.layout.alignment.label())
+                                    .show_ui(ui, |ui| {
+                                        for alignment in [
+                                            paint_rust::text::Alignment::Left,
+                                            paint_rust::text::Alignment::Center,
+                                            paint_rust::text::Alignment::Right,
+                                        ] {
+                                            changed |= ui
+                                                .selectable_value(
+                                                    &mut dialog.layout.alignment,
+                                                    alignment,
+                                                    alignment.label(),
+                                                )
+                                                .changed();
+                                        }
+                                    });
+                                changed |= ui
+                                    .add(
+                                        egui::Slider::new(
+                                            &mut dialog.layout.letter_spacing,
+                                            -32.0..=128.0,
                                         )
-                                        .changed();
+                                        .text("Letter spacing (px)"),
+                                    )
+                                    .changed();
+                                changed |= ui
+                                    .add(
+                                        egui::Slider::new(
+                                            &mut dialog.layout.line_spacing,
+                                            0.5..=3.0,
+                                        )
+                                        .text("Line spacing"),
+                                    )
+                                    .changed();
+                                changed |= ui
+                                    .checkbox(&mut dialog.layout.antialias, "Antialias text")
+                                    .changed();
+                                changed |= ui
+                                    .checkbox(&mut dialog.layout.underline, "Underline")
+                                    .changed();
+                                changed |= ui
+                                    .checkbox(&mut dialog.layout.strikethrough, "Strikethrough")
+                                    .changed();
+                                let label = ui.label("Text color");
+                                changed |= dialog.color.edit(ui).labelled_by(label.id).changed();
+                                if changed {
+                                    dialog.preview.request_text(crate::preview::TextInput {
+                                        layout: dialog.layout,
+                                        font: dialog.font.clone(),
+                                        content: dialog.content.clone(),
+                                        origin: dialog.origin,
+                                        size: dialog.size,
+                                        color: dialog.color.to_srgba_unmultiplied(),
+                                    });
+                                }
+                                if !dialog.preview.ready {
+                                    ui.label("Rendering preview…");
                                 }
                             });
-                        changed |= ui
-                            .add(
-                                egui::Slider::new(&mut dialog.layout.letter_spacing, -32.0..=128.0)
-                                    .text("Letter spacing (px)"),
-                            )
-                            .changed();
-                        changed |= ui
-                            .add(
-                                egui::Slider::new(&mut dialog.layout.line_spacing, 0.5..=3.0)
-                                    .text("Line spacing"),
-                            )
-                            .changed();
-                        changed |= ui
-                            .checkbox(&mut dialog.layout.antialias, "Antialias text")
-                            .changed();
-                        changed |= ui
-                            .checkbox(&mut dialog.layout.underline, "Underline")
-                            .changed();
-                        changed |= ui
-                            .checkbox(&mut dialog.layout.strikethrough, "Strikethrough")
-                            .changed();
-                        let label = ui.label("Text color");
-                        changed |= dialog.color.edit(ui).labelled_by(label.id).changed();
-                        if changed {
-                            dialog.preview.request_text(crate::preview::TextInput {
-                                layout: dialog.layout,
-                                font: dialog.font.clone(),
-                                content: dialog.content.clone(),
-                                origin: dialog.origin,
-                                size: dialog.size,
-                                color: dialog.color.to_srgba_unmultiplied(),
-                            });
-                        }
-                        if !dialog.preview.ready {
-                            ui.label("Rendering preview…");
-                        }
-
+                        ui.separator();
                         ui.horizontal(|ui| {
                             if ui
                                 .add_enabled(
@@ -6063,6 +6117,7 @@ mod tests {
             from: (0.5, 0.5),
             to: (3.5, 0.5),
             style: GradientStyle {
+                blend_mode: Default::default(),
                 start: [255, 0, 0, 255],
                 end: [0, 0, 255, 255],
                 shape: paint_rust::gradient::GradientShape::Linear,

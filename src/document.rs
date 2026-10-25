@@ -76,6 +76,7 @@ impl Shape {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ShapeStyle {
+    pub paint_mode: Option<BlendMode>,
     pub antialias: bool,
     pub outline: Option<Pixel>,
     pub color: Pixel,
@@ -85,6 +86,7 @@ pub struct ShapeStyle {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GradientStyle {
+    pub blend_mode: BlendMode,
     pub start: Pixel,
     pub end: Pixel,
     pub shape: crate::gradient::GradientShape,
@@ -100,9 +102,10 @@ fn selected(selection: Option<&Selection>, x: usize, y: usize) -> bool {
     selection.is_none_or(|rect| rect.contains(x, y))
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[repr(u8)]
 pub enum BlendMode {
+    #[default]
     Normal,
     Multiply,
     Screen,

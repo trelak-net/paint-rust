@@ -1599,3 +1599,14 @@ A reproducible local-font probe compares regular/bold coverage and writes a PNG:
     cargo run --locked --example font_variations -- /path/to/variable.ttf /tmp/weights.png
 The development host's Noto Sans weight range 400..700 produced distinct regular
 and bold outlines, with ink coverage increasing from 1363775 to 2186539 units.
+
+Painting blend modes
+--------------------
+Lines and shapes expose Blend color and fourteen paint modes. Replacement remains
+available when Blend color is disabled; outline/fill coverage is combined before
+compositing once against the original layer. Color gradients use the chosen mode
+only for Blend colors; Replace and Transparency retain their separate behavior.
+Text has its own paint-mode selector, including glyph and decoration coverage.
+All modes are compared against layer compositing with partially transparent
+source/destination colors. Existing preview cancellation and undo still apply.
+Text Apply/Cancel remain outside the scrollable controls on compact windows.

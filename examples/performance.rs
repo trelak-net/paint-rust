@@ -45,6 +45,7 @@ fn main() {
                         from: (0.0, 0.0),
                         to: (size as f32, size as f32),
                         style: paint_rust::document::GradientStyle {
+                            blend_mode: Default::default(),
                             start: [255, 50, 20, 200],
                             end: [20, 50, 255, 100],
                             shape: if radial {

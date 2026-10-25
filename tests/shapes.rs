@@ -2,6 +2,7 @@ use paint_rust::document::{Document, Shape, ShapeStyle};
 
 fn style(filled: bool) -> ShapeStyle {
     ShapeStyle {
+        paint_mode: None,
         antialias: false,
         outline: None,
         color: [25, 70, 160, 255],
@@ -135,6 +136,7 @@ fn catalog_shapes_reverse_drag_and_cancel_without_changing_source() {
     for shape in Shape::ALL.into_iter().filter(|s| *s != Shape::Line) {
         for antialias in [false, true] {
             let style = ShapeStyle {
+                paint_mode: None,
                 antialias,
                 outline: Some([240, 20, 30, 200]),
                 color: [10, 50, 200, 160],
@@ -183,6 +185,7 @@ fn antialias_and_combined_outline_fill_preserve_coverage_and_hollow_pixels() {
         from: (4.25, 4.25),
         to: (27.75, 27.75),
         style: ShapeStyle {
+            paint_mode: None,
             color: [0, 0, 255, 255],
             outline: Some([255, 0, 0, 255]),
             antialias: true,
@@ -202,6 +205,7 @@ fn antialias_and_combined_outline_fill_preserve_coverage_and_hollow_pixels() {
         None,
         paint_rust::shapes::Parameters {
             style: ShapeStyle {
+                paint_mode: None,
                 filled: false,
                 ..params.style
             },

@@ -110,6 +110,8 @@ pub(super) fn render(
                 paint: crate::brush::Paint::Color(style.outline.unwrap_or(style.color)),
                 options: crate::brush::Options {
                     antialias: style.antialias,
+                    blend: style.paint_mode.is_some(),
+                    blend_mode: style.paint_mode.unwrap_or_default(),
                     ..Default::default()
                 },
             },
@@ -189,13 +191,12 @@ pub(super) fn render(
                 (style.color, outline)
             };
             let i = y as usize * width as usize + x as usize;
-            output[i] = crate::brush::composite(
-                source[i],
-                color,
-                (amount * 255.0).round() as u8,
-                false,
-                false,
-            );
+            let amount = (amount * 255.0).round() as u8;
+            output[i] = if let Some(mode) = style.paint_mode {
+                crate::document::blend_layer(source[i], color, amount, mode)
+            } else {
+                crate::brush::composite(source[i], color, amount, false, false)
+            };
         }
     }
     Some(output)

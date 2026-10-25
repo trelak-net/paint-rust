@@ -1,6 +1,6 @@
 pub mod shaping;
 pub mod variations;
-use crate::document::{Pixel, Selection, blend};
+use crate::document::{Pixel, Selection, blend_layer};
 use ab_glyph::{Font, FontArc, ScaleFont, point};
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -22,6 +22,7 @@ impl Alignment {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TextLayout {
+    pub blend_mode: crate::document::BlendMode,
     pub font_index: u32,
     pub font_axes: variations::Settings,
     pub underline: bool,
@@ -34,6 +35,7 @@ pub struct TextLayout {
 impl Default for TextLayout {
     fn default() -> Self {
         Self {
+            blend_mode: Default::default(),
             font_index: 0,
             font_axes: Default::default(),
             underline: false,
@@ -165,7 +167,7 @@ pub fn render_cancellable(
                             return;
                         }
                         let i = y as usize * width as usize + x as usize;
-                        pixels[i] = blend(
+                        pixels[i] = blend_layer(
                             pixels[i],
                             style.color,
                             if style.layout.antialias {
@@ -175,6 +177,7 @@ pub fn render_cancellable(
                             } else {
                                 0
                             },
+                            style.layout.blend_mode,
                         );
                     });
                 }
@@ -249,7 +252,12 @@ pub fn render_cancellable(
                             0
                         };
                         let index = (y * width + x) as usize;
-                        pixels[index] = blend(pixels[index], style.color, opacity);
+                        pixels[index] = blend_layer(
+                            pixels[index],
+                            style.color,
+                            opacity,
+                            style.layout.blend_mode,
+                        );
                     }
                 }
             }

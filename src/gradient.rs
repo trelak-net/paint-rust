@@ -1,4 +1,4 @@
-use crate::document::{GradientStyle, Pixel, Selection, blend};
+use crate::document::{GradientStyle, Pixel, Selection, blend_layer};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -122,7 +122,9 @@ pub fn render(
             }
             let i = y as usize * width as usize + x as usize;
             match style.mode {
-                GradientMode::Blend => output[i] = blend(output[i], color, 255),
+                GradientMode::Blend => {
+                    output[i] = blend_layer(output[i], color, 255, style.blend_mode)
+                }
                 GradientMode::Replace => output[i] = color,
                 GradientMode::Transparency => {
                     output[i][3] =
