@@ -199,6 +199,16 @@ impl Editor {
         }
         if ui
             .add_enabled(
+                self.document.can_merge_down(),
+                egui::Button::new("Merge down"),
+            )
+            .on_hover_text("Merge into the layer below, retaining its properties (Ctrl+M)")
+            .clicked()
+        {
+            self.start_document_edit(DocumentEdit::MergeDown);
+        }
+        if ui
+            .add_enabled(
                 self.document.can_flatten(),
                 egui::Button::new("Flatten image"),
             )

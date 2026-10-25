@@ -690,6 +690,46 @@ impl Document {
         Some(self.commit())
     }
 
+    pub fn can_merge_down(&self) -> bool {
+        !self.editing() && self.active > 0
+    }
+
+    /// Composite the upper layer into the raw lower buffer, retaining lower properties.
+    pub fn merge_down_cancellable(
+        &mut self,
+        cancel: &std::sync::atomic::AtomicBool,
+    ) -> Option<bool> {
+        use std::sync::atomic::Ordering;
+        if cancel.load(Ordering::Relaxed) {
+            return None;
+        }
+        if !self.can_merge_down() {
+            return Some(false);
+        }
+        let top = &self.layers[self.active];
+        let bottom = &self.layers[self.active - 1];
+        let mut pixels = Vec::with_capacity(bottom.pixels.len());
+        for (below, above) in bottom.pixels.chunks(4096).zip(top.pixels.chunks(4096)) {
+            if cancel.load(Ordering::Relaxed) {
+                return None;
+            }
+            pixels.extend(
+                below
+                    .iter()
+                    .zip(above)
+                    .map(|(dst, src)| blend_layer(*dst, *src, top.opacity, top.blend_mode)),
+            );
+        }
+        if cancel.load(Ordering::Relaxed) {
+            return None;
+        }
+        self.begin("Merge layer down");
+        self.layers[self.active - 1].pixels = Arc::new(pixels);
+        self.layers.remove(self.active);
+        self.active -= 1;
+        Some(self.commit())
+    }
+
     pub fn move_layer(&mut self, up: bool) -> bool {
         let next = if up {
             self.active + 1

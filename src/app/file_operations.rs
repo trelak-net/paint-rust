@@ -4,6 +4,7 @@ use std::sync::mpsc::{self, Receiver, TryRecvError};
 #[derive(Clone, Copy, PartialEq)]
 pub(super) enum DocumentEdit {
     Flatten,
+    MergeDown,
     Invert,
     Delete,
 }
@@ -81,12 +82,14 @@ impl Editor {
         document.set_selection(self.document.selection());
         let label = match edit {
             DocumentEdit::Flatten => "Flatten image",
+            DocumentEdit::MergeDown => "Merge layer down",
             DocumentEdit::Invert => "Invert colors",
             DocumentEdit::Delete => "Delete pixels",
         };
         self.start_cancellable_file_job(label, move |cancel| {
             let completed = match edit {
                 DocumentEdit::Flatten => document.flatten_cancellable(cancel).is_some(),
+                DocumentEdit::MergeDown => document.merge_down_cancellable(cancel).is_some(),
                 DocumentEdit::Invert => document.invert_cancellable(cancel),
                 DocumentEdit::Delete => document.clear_pixels_cancellable(cancel),
             };

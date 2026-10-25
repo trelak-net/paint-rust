@@ -814,3 +814,10 @@ The selected layer stays selected, and Undo restores the previous order.
 
 Layer thumbnails show the raw layer content over a transparency checkerboard.
 They retain image proportions and remain visible for hidden layers.
+
+Merge down (Ctrl+M) applies the active layer’s pixels, opacity and blend mode to
+the layer below. The lower layer keeps its name, metadata, visibility, opacity
+and blend mode. This includes hidden source layers and ignores the selection;
+merging can change the overall appearance when lower-layer properties differ
+from normal, fully opaque blending. The background operation supports Cancel
+and records a single undo step.

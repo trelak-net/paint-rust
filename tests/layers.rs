@@ -304,3 +304,66 @@ fn arbitrary_reordering_retains_active_identity_and_is_one_undo_step() {
         }
     }
 }
+
+#[test]
+fn merge_down_bakes_upper_style_and_retains_all_lower_properties() {
+    use paint_rust::document::{BlendMode, Layer};
+    use std::sync::atomic::AtomicBool;
+    for mode in BlendMode::ALL {
+        let mut bottom = Layer::new("Bottom".into(), vec![[20, 70, 120, 140]; 6]);
+        let mut top = Layer::new("Top".into(), vec![[210, 160, 40, 180]; 6]);
+        top.opacity = 173;
+        top.blend_mode = mode;
+        let expected = Document::from_layers(3, 2, vec![bottom.clone(), top.clone()], 1)
+            .unwrap()
+            .composite();
+        bottom.opacity = 100;
+        bottom.visible = false;
+        bottom.blend_mode = BlendMode::Screen;
+        bottom.is_background = true;
+        bottom.metadata.insert("note".into(), "retained".into());
+        top.visible = false;
+        let mut doc = Document::from_layers(3, 2, vec![bottom.clone(), top], 1).unwrap();
+        let original = doc.layers().to_vec();
+        assert_eq!(doc.merge_down_cancellable(&AtomicBool::new(true)), None);
+        assert!(doc.layers() == original);
+        assert!(!doc.dirty());
+        assert_eq!(
+            doc.merge_down_cancellable(&AtomicBool::new(false)),
+            Some(true)
+        );
+        assert_eq!(doc.active_layer(), 0);
+        assert_eq!(doc.pixels(), expected);
+        let merged = &doc.layers()[0];
+        assert_eq!(merged.name, bottom.name);
+        assert_eq!(merged.metadata, bottom.metadata);
+        assert_eq!(
+            (
+                merged.opacity,
+                merged.visible,
+                merged.blend_mode,
+                merged.is_background
+            ),
+            (100, false, BlendMode::Screen, true)
+        );
+        assert_eq!(doc.history().count(), 1);
+        assert!(!doc.can_merge_down());
+        assert!(doc.undo());
+        assert!(doc.layers() == original);
+        assert_eq!(doc.active_layer(), 1);
+        assert!(!doc.dirty());
+        assert!(doc.redo());
+        assert_eq!(doc.pixels(), expected);
+        assert_eq!(
+            doc.merge_down_cancellable(&AtomicBool::new(false)),
+            Some(false)
+        );
+        doc.undo();
+        doc.begin("Preview");
+        assert_eq!(
+            doc.merge_down_cancellable(&AtomicBool::new(false)),
+            Some(false)
+        );
+        assert!(doc.editing());
+    }
+}

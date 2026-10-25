@@ -787,6 +787,8 @@ impl Editor {
                 Some(16)
             } else if i.consume_key(egui::Modifiers::COMMAND, Key::Tab) {
                 Some(15)
+            } else if i.consume_key(egui::Modifiers::COMMAND, Key::M) {
+                Some(17)
             } else if i.consume_key(egui::Modifiers::COMMAND, Key::W) {
                 Some(14)
             } else if i.consume_key(egui::Modifiers::COMMAND, Key::N) {
@@ -853,6 +855,11 @@ impl Editor {
             }
         });
         match command {
+            Some(17) => {
+                if self.document.can_merge_down() {
+                    self.start_document_edit(DocumentEdit::MergeDown);
+                }
+            }
             Some(0) => self.request(Action::New, ctx),
             Some(1) => self.request(Action::Open, ctx),
             Some(2) => {
@@ -2571,12 +2578,13 @@ mod tests {
         for edit in [
             DocumentEdit::Invert,
             DocumentEdit::Flatten,
+            DocumentEdit::MergeDown,
             DocumentEdit::Delete,
         ] {
             let ctx = egui::Context::default();
             let mut editor = Editor::blank(&ctx);
             editor.document = Document::new(8, 8, [10, 20, 30, 255]).unwrap();
-            if edit == DocumentEdit::Flatten {
+            if matches!(edit, DocumentEdit::Flatten | DocumentEdit::MergeDown) {
                 editor.document.add_layer(false);
             }
             let selection = Selection {
@@ -2595,7 +2603,7 @@ mod tests {
             wait_for_files(&mut editor, &ctx);
             assert_eq!(editor.document.selection(), Some(selection.clone()));
             assert_eq!(editor.document.history().count(), count + 1);
-            if edit == DocumentEdit::Flatten {
+            if matches!(edit, DocumentEdit::Flatten | DocumentEdit::MergeDown) {
                 assert_eq!(editor.document.layers().len(), 1);
                 assert_eq!(editor.document.composite(), before.composite());
             } else {
