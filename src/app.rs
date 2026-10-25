@@ -2228,35 +2228,39 @@ impl Editor {
                             ui.disable();
                         }
                         ui.heading("Tools");
-                        for (tool, icon, label, shortcut) in [
-                            (Tool::Select, Icon::Select, "Select area", "S"),
-                            (Tool::Polygon, Icon::Polygon, "Polygon select", "P"),
-                            (Tool::Move, Icon::Move, "Move", "M"),
-                            (Tool::Gradient, Icon::Gradient, "Gradient", "G"),
-                            (Tool::Text, Icon::Text, "Text", "T"),
-                            (Tool::Brush, Icon::Brush, "Brush", "B"),
-                            (Tool::Pencil, Icon::Pencil, "Pencil", "N"),
-                            (Tool::Eraser, Icon::Eraser, "Eraser", "E"),
-                            (Tool::Fill, Icon::Fill, "Flood fill", "F"),
-                            (Tool::Picker, Icon::Picker, "Color picker", "I"),
-                            (Tool::Line, Icon::Line, "Line", "L"),
-                            (Tool::Rectangle, Icon::Rectangle, "Rectangle", "R"),
-                            (Tool::Ellipse, Icon::Ellipse, "Ellipse", "O"),
-                        ] {
-                            let button = icon
-                                .button(label)
-                                .selected(self.tool == tool)
-                                .shortcut_text(egui::RichText::new(shortcut).color(
-                                    if self.tool == tool {
-                                        ui.visuals().selection.stroke.color
-                                    } else {
-                                        ui.visuals().weak_text_color()
-                                    },
-                                ));
-                            if ui.add_sized([ui.available_width(), 26.0], button).clicked() {
-                                self.tool = tool;
+                        ui.scope(|ui| {
+                            ui.spacing_mut().button_padding = egui::vec2(4.0, 2.0);
+                            ui.spacing_mut().item_spacing.y = 3.0;
+                            for (tool, icon, label, shortcut) in [
+                                (Tool::Select, Icon::Select, "Select area", "S"),
+                                (Tool::Polygon, Icon::Polygon, "Polygon select", "P"),
+                                (Tool::Move, Icon::Move, "Move", "M"),
+                                (Tool::Gradient, Icon::Gradient, "Gradient", "G"),
+                                (Tool::Text, Icon::Text, "Text", "T"),
+                                (Tool::Brush, Icon::Brush, "Brush", "B"),
+                                (Tool::Pencil, Icon::Pencil, "Pencil", "N"),
+                                (Tool::Eraser, Icon::Eraser, "Eraser", "E"),
+                                (Tool::Fill, Icon::Fill, "Flood fill", "F"),
+                                (Tool::Picker, Icon::Picker, "Color picker", "I"),
+                                (Tool::Line, Icon::Line, "Line", "L"),
+                                (Tool::Rectangle, Icon::Rectangle, "Rectangle", "R"),
+                                (Tool::Ellipse, Icon::Ellipse, "Ellipse", "O"),
+                            ] {
+                                let button = icon
+                                    .button(label)
+                                    .selected(self.tool == tool)
+                                    .shortcut_text(egui::RichText::new(shortcut).color(
+                                        if self.tool == tool {
+                                            ui.visuals().selection.stroke.color
+                                        } else {
+                                            ui.visuals().weak_text_color()
+                                        },
+                                    ));
+                                if ui.add_sized([ui.available_width(), 26.0], button).clicked() {
+                                    self.tool = tool;
+                                }
                             }
-                        }
+                        });
                         ui.separator();
                         ui.heading("Color");
                         ui.horizontal(|ui| {
