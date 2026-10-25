@@ -1,6 +1,6 @@
 {
   "target": "x86_64-unknown-linux-gnu",
-  "cargo_lock_sha256": "c5f9f9f04d35e955d733bceaa2b1219f84532268ba25a84725f2c9a8f43b742d",
+  "cargo_lock_sha256": "7e113083b18cb2c177a8a74df5249b0e95f94382db21094e3dcb629056dbcdec",
   "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1",
   "rust_library_notice_sha256": "5647be074c8edf7339fd863055923a8fc80bc5610a8d4661ec3b767b9d392c27",
   "packages": [
@@ -4715,6 +4715,24 @@
         "LICENSE-MIT": "d30047bca3b516639339a3c279bb84c3483124fb5a9dafe3c75056a85090e745",
         "LICENSE-ZLIB": "d201d14804d3bcd3b944147173175e4abfbd838b7c8069b6bd3452496bf13e6c",
         "SOURCE-COPYRIGHTS.txt": "84a1d17dcada8f391b6b932563171e95317b1bbc25dc3d75ff0bea1970197bcb"
+      }
+    },
+    {
+      "name": "zune-jpegxl",
+      "version": "0.5.2",
+      "license": "MIT OR Apache-2.0 OR Zlib",
+      "authors": [
+        "caleb <etemesicaleb@gmail.com>"
+      ],
+      "repository": "https://github.com/etemesi254/zune-image/tree/dev/crates/zune-jpegxl",
+      "source": "https://crates.io/crates/zune-jpegxl/0.5.2",
+      "upstream_notices": [],
+      "files": {
+        "LICENSE-APACHE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+        "LICENSE-MIT": "d30047bca3b516639339a3c279bb84c3483124fb5a9dafe3c75056a85090e745",
+        "LICENSE-ZLIB": "d201d14804d3bcd3b944147173175e4abfbd838b7c8069b6bd3452496bf13e6c",
+        "LOCAL-MODIFICATIONS.txt": "e036377d73c568b08e0148866b5b01a6916b3024b8f1bcf52f94478ae524df0a",
+        "SOURCE-COPYRIGHTS.txt": "9e23971bd74fb570775a192004470f6a559d63da885c28e4ec9235acaca85473"
       }
     },
     {

@@ -274,6 +274,7 @@ fn write_atomic(
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RasterFormat {
+    JpegXl,
     Dds,
     Gif,
     Tiff,
@@ -284,7 +285,8 @@ pub enum RasterFormat {
     WebP,
 }
 impl RasterFormat {
-    pub const ALL: [Self; 8] = [
+    pub const ALL: [Self; 9] = [
+        Self::JpegXl,
         Self::Png,
         Self::Jpeg,
         Self::Bmp,
@@ -306,6 +308,7 @@ impl RasterFormat {
 
     pub fn extension(self) -> &'static str {
         match self {
+            Self::JpegXl => "jxl",
             Self::Gif => "gif",
             Self::Dds => "dds",
             Self::Tiff => "tif",
@@ -318,6 +321,7 @@ impl RasterFormat {
     }
     pub fn extensions(self) -> &'static [&'static str] {
         match self {
+            Self::JpegXl => &["jxl"],
             Self::Gif => &["gif"],
             Self::Dds => &["dds"],
             Self::Tiff => &["tif", "tiff"],
@@ -328,8 +332,9 @@ impl RasterFormat {
             Self::WebP => &["webp"],
         }
     }
-    pub fn image_format(self) -> image::ImageFormat {
-        match self {
+    pub fn image_format(self) -> Option<image::ImageFormat> {
+        Some(match self {
+            Self::JpegXl => return None,
             Self::Gif => image::ImageFormat::Gif,
             Self::Dds => image::ImageFormat::Dds,
             Self::Tiff => image::ImageFormat::Tiff,
@@ -338,10 +343,11 @@ impl RasterFormat {
             Self::Bmp => image::ImageFormat::Bmp,
             Self::Png => image::ImageFormat::Png,
             Self::WebP => image::ImageFormat::WebP,
-        }
+        })
     }
     pub fn label(self) -> &'static str {
         match self {
+            Self::JpegXl => "JPEG XL (lossless)",
             Self::Gif => "GIF (single frame)",
             Self::Dds => "DDS (RGBA8)",
             Self::Tiff => "TIFF",
@@ -402,10 +408,16 @@ pub fn decode_raster_bytes(
     cancel: &AtomicBool,
 ) -> Result<Document, String> {
     check_cancel(cancel)?;
+    if format == RasterFormat::JpegXl {
+        return crate::jpeg_xl::decode(Cursor::new(bytes), cancel);
+    }
     if format == RasterFormat::Dds {
         return crate::dds::decode(Cursor::new(bytes), cancel);
     }
-    let mut reader = ImageReader::with_format(Cursor::new(bytes), format.image_format());
+    let mut reader = ImageReader::with_format(
+        Cursor::new(bytes),
+        format.image_format().ok_or("Unsupported raster decoder")?,
+    );
     let mut limits = image::Limits::default();
     limits.max_alloc = Some(256 * 1024 * 1024);
     limits.max_image_width = Some(16384);
@@ -527,11 +539,35 @@ fn encode_raster_options(
         inner: writer,
         cancel,
     };
+    if options.format == RasterFormat::JpegXl {
+        check_cancel(cancel)?;
+        if size.0 > 16384 || size.1 > 16384 {
+            return Err("JPEG XL dimensions exceed 16,384 pixels per side".into());
+        }
+        let settings = zune_core::options::EncoderOptions::new(
+            size.0 as usize,
+            size.1 as usize,
+            zune_core::colorspace::ColorSpace::RGBA,
+            zune_core::bit_depth::BitDepth::Eight,
+        );
+        let encoder = zune_jpegxl::JxlSimpleEncoder::new(&bytes, settings);
+        let mut encoded = Vec::new();
+        encoder
+            .encode(&mut encoded)
+            .map_err(|error| format!("JPEG XL encode failed: {error:?}"))?;
+        check_cancel(cancel)?;
+        writer
+            .write_all(&encoded)
+            .map_err(|error| error.to_string())?;
+        return Ok(());
+    }
     if options.format == RasterFormat::Gif {
         return crate::gif_export::encode(bytes, size, writer, options.gif_dither, cancel);
     }
     match options.format {
-        RasterFormat::Dds | RasterFormat::Gif => unreachable!("Encoded above"),
+        RasterFormat::Dds | RasterFormat::Gif | RasterFormat::JpegXl => {
+            unreachable!("Encoded above")
+        }
         RasterFormat::Tiff => {
             let mut encoded = Cursor::new(Vec::new());
             {

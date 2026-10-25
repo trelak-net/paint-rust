@@ -45,3 +45,10 @@ regeneration with --target and review of that target's native dependencies.
 The installer includes this entire licenses directory. Collection preserves
 upstream notices; it does not certify license compatibility or cover libraries
 added by an external packaging system.
+
+Locally patched encoder
+-----------------------
+zune-jpegxl 0.5.2 is retained under vendor/zune-jpegxl with its original
+MIT OR Apache-2.0 OR Zlib license files. PATCHES.txt records its archive checksum
+and the local single-pixel-dimension validation fix. Distribution notices include
+the original licenses and LOCAL-MODIFICATIONS.txt in licenses/dependencies.

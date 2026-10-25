@@ -1705,7 +1705,10 @@ is checked during input and output conversion, and before/after frame rendering;
 the decoder's internal render call is not interruptible. HDR tone mapping and
 associated-alpha input remain unsupported and produce explicit errors.
 
-JPEG XL export remains pending. Saving an imported JPEG XL opens Save As so that
-a supported project or raster destination can be chosen without overwriting the
-source. The Linux desktop entry includes image/jxl. Decoder documentation:
+JPEG XL lossless RGBA8 export is available through Save As and Export. It declares
+sRGB in its codestream and supports one-pixel dimensions. The preview decodes the
+exact bytes saved; physical resolution currently reopens at 96 DPI. Source metadata
+is omitted. The encoder runs in a background worker; cancellation is checked
+before and after its internal encode call. Lossy encoding remains pending.
+The Linux desktop entry includes image/jxl. Decoder documentation:
 https://docs.rs/jxl-oxide/0.12.6/jxl_oxide/

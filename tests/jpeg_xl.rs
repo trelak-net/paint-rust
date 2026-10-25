@@ -69,14 +69,14 @@ fn signatures_work_without_extensions_and_bad_or_cancelled_inputs_fail() {
 }
 
 #[test]
-fn import_only_formats_require_a_new_save_destination() {
-    for path in ["image.jxl", "image.JXL", "image.unknown"] {
-        assert!(!files::writable_path(Path::new(path)));
-    }
+fn unsupported_output_extensions_require_a_new_save_destination() {
+    assert!(!files::writable_path(Path::new("image.unknown")));
     for path in [
         "image.PDN",
         "image.prust",
         "image.PNG",
+        "image.jxl",
+        "image.JXL",
         "image.gif",
         "image.dds",
     ] {
@@ -116,4 +116,60 @@ fn container_signature_is_detected_and_oversized_dimensions_are_rejected() {
     std::fs::write(&path, include_bytes!("fixtures/jxl/rgba-container.jxl")).unwrap();
     assert_eq!(files::open(&path).unwrap().pixels(), pixels());
     assert!(files::open(Path::new("tests/fixtures/jxl/oversized-width.jxl")).is_err());
+}
+
+#[test]
+fn lossless_export_preserves_straight_rgba_including_hidden_rgb() {
+    use files::{RasterFormat, RasterOptions};
+    let cancel = AtomicBool::new(false);
+    for size in [(1, 1), (1, 257), (257, 1), (4, 3), (37, 19), (257, 257)] {
+        let pixels: Vec<_> = (0..size.0 * size.1)
+            .map(|i| {
+                [
+                    (i * 37) as u8,
+                    (i * 91) as u8,
+                    (i * 17 + 200) as u8,
+                    (i * 51) as u8,
+                ]
+            })
+            .collect();
+        let bytes = files::encode_raster_bytes(
+            &pixels,
+            size,
+            RasterOptions::new(RasterFormat::JpegXl),
+            &cancel,
+        )
+        .unwrap();
+        let decoded = files::decode_raster_bytes(&bytes, RasterFormat::JpegXl, &cancel).unwrap();
+        assert_eq!((decoded.width, decoded.height), size);
+        assert_eq!(decoded.pixels(), pixels);
+        assert!(
+            files::encode_raster_bytes(
+                &pixels,
+                size,
+                RasterOptions::new(RasterFormat::JpegXl),
+                &AtomicBool::new(true)
+            )
+            .is_err()
+        );
+    }
+}
+
+#[test]
+fn independently_decoded_exports_remain_exact() {
+    let document = files::open(Path::new("tests/fixtures/jxl/rgba-export.jxl")).unwrap();
+    assert_eq!(document.pixels(), pixels());
+    let thin = files::open(Path::new("tests/fixtures/jxl/thin-export.jxl")).unwrap();
+    assert_eq!((thin.width, thin.height), (1, 257));
+    for (i, pixel) in thin.pixels().iter().enumerate() {
+        assert_eq!(
+            *pixel,
+            [
+                (i * 37) as u8,
+                (i * 91) as u8,
+                (i * 17 + 200) as u8,
+                (i * 51) as u8
+            ]
+        );
+    }
 }

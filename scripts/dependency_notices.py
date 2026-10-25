@@ -40,9 +40,10 @@ def collect(cargo, rustc, target):
     output, packages = {}, []
     for package in sorted(metadata['packages'], key=lambda p: (p['name'], p['version'])):
         name, version = package['name'], package['version']
-        if not package['source'] or (name, version) not in active:
-            continue
         base = Path(package['manifest_path']).parent
+        vendored = base.is_relative_to(ROOT / 'vendor')
+        if (not package['source'] and not vendored) or (name, version) not in active:
+            continue
         prefix = f'{name}-{version}'
         files, copyrights = {}, []
         for path in sorted(base.rglob('*')):
@@ -64,6 +65,8 @@ def collect(cargo, rustc, target):
             files['upstream/' + Path(record['path']).name] = (ROOT / 'licenses' / record['path']).read_bytes()
         if not files or not package['license']:
             raise ValueError(f'Missing license information for {prefix}')
+        if vendored:
+            files['LOCAL-MODIFICATIONS.txt'] = (base / 'PATCHES.txt').read_bytes()
         if copyrights:
             files['SOURCE-COPYRIGHTS.txt'] = ('\n\n'.join(copyrights) + '\n').encode()
         packages.append({'name': name, 'version': version, 'license': package['license'],

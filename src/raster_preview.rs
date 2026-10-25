@@ -52,20 +52,35 @@ impl RasterPreview {
                     if request.cancel.load(Ordering::Relaxed) {
                         return Err(files::CANCELLED.into());
                     }
-                    let mut reader = image::ImageReader::with_format(
-                        std::io::Cursor::new(&bytes),
-                        request.options.format.image_format(),
-                    );
-                    let mut limits = image::Limits::default();
-                    limits.max_alloc = Some(256 * 1024 * 1024);
-                    limits.max_image_width = Some(document.width);
-                    limits.max_image_height = Some(document.height);
-                    reader.limits(limits);
-                    let decoded = reader.decode().map_err(|error| error.to_string())?;
+                    let decoded = if let Some(format) = request.options.format.image_format() {
+                        let mut reader =
+                            image::ImageReader::with_format(std::io::Cursor::new(&bytes), format);
+                        let mut limits = image::Limits::default();
+                        limits.max_alloc = Some(256 * 1024 * 1024);
+                        limits.max_image_width = Some(document.width);
+                        limits.max_image_height = Some(document.height);
+                        reader.limits(limits);
+                        reader.decode().map_err(|error| error.to_string())?
+                    } else {
+                        let decoded = files::decode_raster_bytes(
+                            &bytes,
+                            request.options.format,
+                            &request.cancel,
+                        )?;
+                        let image = image::RgbaImage::from_raw(
+                            decoded.width,
+                            decoded.height,
+                            decoded.pixels().as_flattened().to_vec(),
+                        )
+                        .ok_or("Invalid raster preview pixels")?;
+                        image::DynamicImage::ImageRgba8(image)
+                    };
                     if request.cancel.load(Ordering::Relaxed) {
                         return Err(files::CANCELLED.into());
                     }
-                    let thumbnail = decoded.thumbnail(512, 320).to_rgba8();
+                    let thumbnail = decoded
+                        .thumbnail(decoded.width().min(512), decoded.height().min(320))
+                        .to_rgba8();
                     let mut rgb = Vec::with_capacity(thumbnail.len() / 4 * 3);
                     for (x, y, pixel) in thumbnail.enumerate_pixels() {
                         let checker = if (x / 8 + y / 8) % 2 == 0 { 224 } else { 176 };
@@ -166,5 +181,43 @@ mod tests {
                 .all(|p| *p == egui::Color32::from_rgb(17, 29, 41))
         );
         assert!(result.image.size[0] <= 512 && result.image.size[1] <= 320);
+    }
+}
+
+#[cfg(test)]
+mod jpeg_xl_tests {
+    use super::*;
+    #[test]
+    fn lossless_custom_codec_preview_decodes_the_saved_bytes() {
+        let ctx = egui::Context::default();
+        let document = Document::new(17, 9, [13, 27, 53, 255]).unwrap();
+        let mut preview = RasterPreview::new(
+            ctx,
+            document,
+            RasterOptions::new(files::RasterFormat::JpegXl),
+        );
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        let result = loop {
+            if let Some(result) = preview.poll() {
+                break result.unwrap();
+            }
+            assert!(std::time::Instant::now() < deadline);
+            std::thread::sleep(std::time::Duration::from_millis(2));
+        };
+        let decoded = files::decode_raster_bytes(
+            &result.bytes,
+            files::RasterFormat::JpegXl,
+            &AtomicBool::new(false),
+        )
+        .unwrap();
+        assert_eq!(decoded.pixels(), vec![[13, 27, 53, 255]; 17 * 9]);
+        assert!(
+            result
+                .image
+                .pixels
+                .iter()
+                .all(|pixel| *pixel == egui::Color32::from_rgb(13, 27, 53))
+        );
+        assert_eq!(result.image.size, [17, 9]);
     }
 }

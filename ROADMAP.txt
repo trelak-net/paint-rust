@@ -204,7 +204,8 @@ independent tasks; do not silently reduce the required scope.
 [x] DDS BC4/BC5 UNORM import through legacy and DX10 headers with partial-block clipping.
 [x] Full RGBA8 DDS mipmap-chain export with alpha-aware linear-light area filtering and decoded base-level preview.
 [x] JPEG XL first-frame import, raw/container sniffing, orientation, RGB/grayscale ICC conversion and independent libjxl fixtures.
-[ ] JPEG XL export, HDR/associated-alpha import, remaining raster codecs, DDS mip-level import selection/additional block formats and advanced export options.
+[x] Lossless JPEG XL RGBA8 export with decoded preview, single-pixel dimensions and independent libjxl checks.
+[ ] JPEG XL lossy export, HDR/associated-alpha import, remaining raster codecs, DDS mip-level import selection/additional block formats and advanced export options.
 [x] Apply all eight EXIF orientations once on raster import.
 [x] Convert embedded raster RGB/grayscale ICC to sRGB and tag supported exports.
 [x] Explicit raster metadata policy: apply orientation, omit source descriptive tags.

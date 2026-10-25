@@ -18,3 +18,11 @@ animation.jxl: two 2x2 frames, red then blue, each with a delay of 10 centisecon
 encoded at quality 100. Both frames have nonzero duration. Import selects the
 first displayed frame; animation editing is not provided.
 oversized-width.jxl: a 17000x1 black image used to verify the import dimension limit.
+
+rgba-export.jxl: the RGBA grid re-encoded by examples/raster_export.rs using the
+locally patched zune-jpegxl 0.5.2. Independent ImageMagick/libjxl decoding matches
+all original RGBA bytes exactly.
+thin-export.jxl: an original 1x257 RGBA ramp with pixel i equal to
+[(37*i)%256, (91*i)%256, (17*i+200)%256, (51*i)%256], exported by the same encoder.
+Independent ImageMagick/libjxl decoding matches all 1028 bytes exactly. These
+checks include fully transparent hidden RGB and a group-boundary transition.

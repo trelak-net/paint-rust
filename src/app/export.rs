@@ -79,10 +79,12 @@ impl Editor {
                 ui.small("Layers and descriptive metadata are not stored in this file. Use PRUST or PDN to keep an editable project. JPEG also loses transparency and image detail.");
                 ui.checkbox(&mut dialog.flatten_confirmed,"Save a flattened raster document");
             }
-            ui.small(if matches!(dialog.options.format,files::RasterFormat::Bmp | files::RasterFormat::Tga | files::RasterFormat::Gif | files::RasterFormat::Dds) {
+            ui.small(if dialog.options.format == files::RasterFormat::JpegXl {
+                "JPEG XL declares sRGB in the codestream. Source EXIF, location and author tags are omitted."
+            } else if matches!(dialog.options.format,files::RasterFormat::Bmp | files::RasterFormat::Tga | files::RasterFormat::Gif | files::RasterFormat::Dds) {
                 "Colors use sRGB; this format is saved without an embedded profile."
             } else { "Colors use sRGB; an ICC profile is embedded. Source EXIF, location and author tags are omitted." });
-            if matches!(dialog.options.format, files::RasterFormat::Dds | files::RasterFormat::Gif | files::RasterFormat::Tga) {
+            if matches!(dialog.options.format, files::RasterFormat::Dds | files::RasterFormat::Gif | files::RasterFormat::Tga | files::RasterFormat::JpegXl) {
                 ui.small("Physical resolution is not stored in this format; reopening uses 96 DPI.");
             } else {
                 ui.small(format!("Physical resolution: {:.2} × {:.2} DPI.", dialog.options.dpi.x, dialog.options.dpi.y));
@@ -156,7 +158,11 @@ mod tests {
     #[test]
     fn raster_save_actions_remain_visible_below_scrolling_preview() {
         for size in [egui::vec2(800.0, 600.0), egui::vec2(640.0, 360.0)] {
-            for format in [files::RasterFormat::Gif, files::RasterFormat::Jpeg] {
+            for format in [
+                files::RasterFormat::Gif,
+                files::RasterFormat::Jpeg,
+                files::RasterFormat::JpegXl,
+            ] {
                 let ctx = egui::Context::default();
                 let mut editor = Editor::blank(&ctx);
                 editor.document = Document::new(512, 320, [40, 80, 120, 255]).unwrap();

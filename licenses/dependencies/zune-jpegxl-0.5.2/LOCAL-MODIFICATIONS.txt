@@ -1,0 +1,12 @@
+Upstream: zune-jpegxl 0.5.2 from https://crates.io/crates/zune-jpegxl/0.5.2
+Archive SHA-256: cba11ecd07cc23351500e840ae03841b7e4997923ec8e4832ee3ae199ea0b6b4
+License: MIT OR Apache-2.0 OR Zlib; original notices retained.
+Local changes:
+- In JxlSimpleEncoder::encode, reject zero dimensions instead of dimensions below two.
+- In the size-header writer, accept size one; its existing size-minus-one encoding supports it.
+- Remove the obsolete crate-level macro_use attribute.
+- Remove trailing whitespace in source comments.
+- Allow the conditional unused mut for ran_runners when threads are disabled.
+The coding algorithm is unchanged. Regression tests cover one-pixel dimensions,
+257-pixel group boundaries and hidden RGB. Independent libjxl decoding checks
+stored fixtures and sample exports. See tests/jpeg_xl.rs and fixture provenance.

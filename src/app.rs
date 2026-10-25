@@ -388,6 +388,7 @@ impl Editor {
                 .add_filter("PDN layered image", &["pdn"])
                 .add_filter("PNG image", &["png"])
                 .add_filter("JPEG image", &["jpg", "jpeg"])
+                .add_filter("JPEG XL image", &["jxl"])
                 .add_filter("BMP image", &["bmp"])
                 .add_filter("WebP image", &["webp"])
                 .add_filter("TIFF image", &["tif", "tiff"])
