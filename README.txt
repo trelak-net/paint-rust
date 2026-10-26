@@ -1512,7 +1512,7 @@ remain unsupported. Channel masks, row pitch, dimensions,
 alpha conventions and input bounds are validated. BC1 transparent indices and
 partial edge blocks are preserved. Cube maps, arrays, volumes, premultiplied alpha
 and other block formats are rejected. Mip-level import selection remains pending.
-DDS Save/Export offers exact RGBA8, BC1/DXT1, BC3/DXT5, BC4/BC5 with explicit DX10 formats,
+DDS Save/Export offers exact RGBA8, BC1/DXT1, BC2/DXT3, BC3/DXT5, BC4/BC5 with explicit DX10 formats,
 with optional mipmaps. BC4/BC5 are lossy UNORM data formats: red and red/green
 respectively. Unstored color channels become zero, and alpha becomes opaque.
 Their mipmaps average stored channel values without sRGB correction or alpha
@@ -1520,7 +1520,8 @@ weighting. Some external viewers display single-channel textures as grayscale.
 The explicit DX10 formats avoid legacy ATI2/3Dc channel-swizzle conventions;
 legacy channel presentation remains an interoperability audit item. All DDS
 export previews use the application decoder, including uncompressed textures.
-BC1 thresholds alpha at 128; BC3 uses an eight-entry alpha palette. Both compressed
+BC1 thresholds alpha at 128; BC2 uses explicit 4-bit alpha with at most eight
+levels of rounding error; BC3 uses an eight-entry alpha palette. These compressed
 choices are lossy and use fast farthest-color endpoint fitting and RGB565 palettes.
 Hidden RGB is not preserved by compression. Inspect the decoded preview for color
 and transparency changes. Partial edge blocks repeat the last image pixel.
@@ -1723,7 +1724,7 @@ is still a single frame with at most 256 colors.
 DDS mipmaps
 -----------
 DDS export can include every mip level down to 1x1. Uncompressed RGBA8 preserves
-base-level bytes exactly; BC1/BC3 compress each level separately. Subsequent levels
+base-level bytes exactly; BC1/BC2/BC3 compress each level separately. Subsequent levels
 use area filtering in linear light
 with premultiplied-alpha averaging. Odd dimensions shrink by floor division,
 with each dimension clamped to one. Levels are generated sequentially, retaining

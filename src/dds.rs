@@ -1,16 +1,24 @@
-//! Bounded DDS import and RGBA8/BC1/BC3/BC4/BC5 export with optional mipmaps.
+//! Bounded DDS import and RGBA8/BC1/BC2/BC3/BC4/BC5 export with optional mipmaps.
 mod compress;
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Compression {
     #[default]
     Rgba8,
     Bc1,
+    Bc2,
     Bc3,
     Bc4,
     Bc5,
 }
 impl Compression {
-    pub const ALL: [Self; 5] = [Self::Rgba8, Self::Bc1, Self::Bc3, Self::Bc4, Self::Bc5];
+    pub const ALL: [Self; 6] = [
+        Self::Rgba8,
+        Self::Bc1,
+        Self::Bc2,
+        Self::Bc3,
+        Self::Bc4,
+        Self::Bc5,
+    ];
     fn data_channels(self) -> bool {
         matches!(self, Self::Bc4 | Self::Bc5)
     }
@@ -24,6 +32,7 @@ impl Compression {
     fn fourcc(self) -> [u8; 4] {
         match self {
             Self::Bc1 => *b"DXT1",
+            Self::Bc2 => *b"DXT3",
             Self::Bc3 => *b"DXT5",
             Self::Bc4 => *b"DX10",
             Self::Bc5 => *b"DX10",
@@ -34,6 +43,7 @@ impl Compression {
         match self {
             Self::Rgba8 => "RGBA8 (uncompressed)",
             Self::Bc1 => "BC1 (DXT1, binary alpha)",
+            Self::Bc2 => "BC2 (DXT3, 4-bit alpha)",
             Self::Bc3 => "BC3 (DXT5, interpolated alpha)",
             Self::Bc4 => "BC4 (red channel)",
             Self::Bc5 => "BC5 (red and green channels)",

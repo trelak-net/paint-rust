@@ -369,7 +369,11 @@ fn externally_opened_mipmap_fixture_retains_its_base_surface() {
 
 #[test]
 fn compressed_export_handles_solid_colors_alpha_and_partial_edge_blocks() {
-    for compression in [dds::Compression::Bc1, dds::Compression::Bc3] {
+    for compression in [
+        dds::Compression::Bc1,
+        dds::Compression::Bc2,
+        dds::Compression::Bc3,
+    ] {
         for size in [(1, 1), (3, 7), (7, 5), (8, 8)] {
             for pixel in [
                 [0, 0, 0, 255],
@@ -402,6 +406,8 @@ fn compressed_export_handles_solid_colors_alpha_and_partial_edge_blocks() {
                 for actual in document.pixels() {
                     let alpha = if compression == dds::Compression::Bc1 {
                         if pixel[3] < 128 { 0 } else { 255 }
+                    } else if compression == dds::Compression::Bc2 {
+                        ((u16::from(pixel[3]) * 15 + 127) / 255 * 17) as u8
                     } else {
                         pixel[3]
                     };
@@ -421,7 +427,11 @@ fn compressed_export_handles_solid_colors_alpha_and_partial_edge_blocks() {
 }
 #[test]
 fn compressed_mipmaps_have_block_aligned_payloads_and_preview_reopens() {
-    for compression in [dds::Compression::Bc1, dds::Compression::Bc3] {
+    for compression in [
+        dds::Compression::Bc1,
+        dds::Compression::Bc2,
+        dds::Compression::Bc3,
+    ] {
         let bytes = files::encode_raster_bytes(
             &[[180, 80, 40, 255]; 35],
             (7, 5),
@@ -453,6 +463,10 @@ fn compressed_exports_match_independent_ffmpeg_decode() {
         (
             include_bytes!("fixtures/dds/export-bc1.dds").as_slice(),
             include_bytes!("fixtures/dds/export-bc1.rgba").as_slice(),
+        ),
+        (
+            include_bytes!("fixtures/dds/export-bc2.dds").as_slice(),
+            include_bytes!("fixtures/dds/export-bc2.rgba").as_slice(),
         ),
         (
             include_bytes!("fixtures/dds/export-bc3.dds").as_slice(),
@@ -586,4 +600,31 @@ fn compressed_data_channels_match_independent_decoder() {
             }
         }
     }
+}
+
+#[test]
+fn bc2_alpha_ramp_uses_all_sixteen_levels_and_bounded_error() {
+    let pixels: Vec<_> = (0..=255).map(|alpha| [255, 0, 0, alpha]).collect();
+    let bytes = files::encode_raster_bytes(
+        &pixels,
+        (16, 16),
+        RasterOptions {
+            dds_compression: dds::Compression::Bc2,
+            ..RasterOptions::new(RasterFormat::Dds)
+        },
+        &cancel(),
+    )
+    .unwrap();
+    assert_eq!(&bytes[84..88], b"DXT3");
+    let decoded = dds::decode(Cursor::new(bytes), &cancel()).unwrap();
+    let mut seen = [false; 16];
+    for (original, actual) in pixels.iter().zip(decoded.pixels()) {
+        assert!(original[3].abs_diff(actual[3]) <= 8);
+        assert_eq!(actual[3] % 17, 0);
+        seen[usize::from(actual[3] / 17)] = true;
+        if actual[3] > 0 {
+            assert_eq!(&actual[..3], &[255, 0, 0]);
+        }
+    }
+    assert!(seen.into_iter().all(|value| value));
 }

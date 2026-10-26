@@ -123,6 +123,14 @@ pub(super) fn write(
                 }
                 continue;
             }
+            if compression == Compression::Bc2 {
+                let alpha = block.iter().enumerate().fold(0_u64, |bits, (i, pixel)| {
+                    bits | (((u64::from(pixel[3]) * 15 + 127) / 255) << (4 * i))
+                });
+                writer
+                    .write_all(&alpha.to_le_bytes())
+                    .map_err(|e| e.to_string())?;
+            }
             if compression == Compression::Bc3 {
                 writer
                     .write_all(&channel(&block, 3))

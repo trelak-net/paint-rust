@@ -21,6 +21,7 @@ fn main() {
         .collect();
     for (name, compression) in [
         ("export-bc1", Compression::Bc1),
+        ("export-bc2", Compression::Bc2),
         ("export-bc3", Compression::Bc3),
         ("export-bc4", Compression::Bc4),
         ("export-bc5", Compression::Bc5),

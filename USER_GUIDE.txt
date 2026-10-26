@@ -141,9 +141,9 @@ to bend the curve. The center handle moves the complete curve. Apply creates one
 undo step; Cancel removes the draft. Curves are stroked rather than filled.
 
 DDS compression
-In DDS export, RGBA8 preserves exact pixel channels. BC1 and BC3 produce smaller,
+In DDS export, RGBA8 preserves exact pixel channels. BC1, BC2 and BC3 produce smaller,
 lossy block-compressed textures. BC1 makes alpha below 128 transparent and other
-pixels opaque; BC3 keeps an interpolated alpha channel. Review the decoded preview
+pixels opaque; BC2 quantizes alpha to 16 evenly spaced levels; BC3 keeps an interpolated alpha channel. Review the decoded preview
 before saving. Generate mipmaps includes every level down to 1x1 in the chosen
 compression format; the preview shows the largest level.
 

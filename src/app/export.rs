@@ -107,7 +107,7 @@ impl Editor {
                     ui.small("BC4 lossily stores red; BC5 lossily stores red and green. Other channels and transparency are discarded. Mipmaps average channel data without sRGB correction or alpha weighting.");
                 }
                 changed |= ui.checkbox(&mut dialog.options.dds_mipmaps, "Generate mipmaps down to 1 × 1").changed();
-                ui.small("RGBA8 is lossless. BC1/BC3 use fast lossy block compression; BC1 makes alpha below 128 transparent and other pixels opaque. Inspect the decoded preview. Color-format mipmaps use alpha-aware, linear-light area filtering. The preview shows the full-size image. Texture arrays and cube maps are not written.");
+                ui.small("RGBA8 is lossless. BC1/BC2/BC3 use fast lossy block compression; BC1 makes alpha below 128 transparent and other pixels opaque. BC2 uses 16 alpha levels. Inspect the decoded preview. Color-format mipmaps use alpha-aware, linear-light area filtering. The preview shows the full-size image. Texture arrays and cube maps are not written.");
             }
             if dialog.options.format==files::RasterFormat::Gif {
                 changed |= ui.checkbox(&mut dialog.options.gif_dither, "Dither colors (Floyd–Steinberg)").changed();

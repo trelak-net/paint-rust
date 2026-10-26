@@ -45,3 +45,10 @@ https://github.com/FFmpeg/FFmpeg/blob/master/libavcodec/dds.c
 DX10 BC4 and BC5 exports also opened in the native Windows editor 5.1.12 on
 2026-10-25. Its BC5 clipboard PNG retained red/green within one level of FFmpeg,
 with blue zero and opaque alpha.
+
+export-bc2.dds: original 64x64 color/alpha grid from
+examples/dds_compression.rs, with BC2/DXT3 explicit 4-bit alpha and a complete
+mip chain. MIT OR Apache-2.0. Independent reference export-bc2.rgba generated
+on 2026-10-26 with FFmpeg 8.1.3:
+ffmpeg -v error -i export-bc2.dds -f rawvideo -pix_fmt rgba export-bc2.rgba
+Native Windows opening and clipboard comparison remain pending for BC2.
