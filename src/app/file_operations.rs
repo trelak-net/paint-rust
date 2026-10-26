@@ -15,7 +15,12 @@ pub(super) enum Outcome {
     ClipboardImage(paste::Image),
     SelectionCopied,
     PastedImage(Box<Document>),
-    TextFont(ab_glyph::FontArc, String, u32),
+    TextFont(
+        ab_glyph::FontArc,
+        String,
+        u32,
+        paint_rust::text::variations::Settings,
+    ),
     FontCatalog(Vec<paint_rust::fonts::InstalledFont>),
     Copied(Option<Box<Document>>),
     Opened(Box<Document>, PathBuf),
@@ -361,9 +366,8 @@ impl Editor {
             return;
         }
         self.start_cancellable_file_job("load installed font", move |cancel| {
-            let font =
-                paint_rust::text::load_font_face_cancellable(&record.path, record.index, cancel)?;
-            Ok(Outcome::TextFont(font, record.label(), record.index))
+            let (font, index, axes) = record.load_cancellable(cancel)?;
+            Ok(Outcome::TextFont(font, record.label(), index, axes))
         });
     }
 
@@ -378,7 +382,7 @@ impl Editor {
                 .unwrap_or_default()
                 .to_string_lossy()
                 .into_owned();
-            Ok(Outcome::TextFont(font, name, 0))
+            Ok(Outcome::TextFont(font, name, 0, Default::default()))
         });
     }
 
@@ -462,11 +466,11 @@ impl Editor {
                 self.status = format!("Found {} installed font faces", fonts.len());
                 self.system_fonts = fonts;
             }
-            Ok(Outcome::TextFont(font, name, index)) => {
+            Ok(Outcome::TextFont(font, name, index, axes)) => {
                 if let Some(dialog) = &mut self.text_dialog {
-                    self.text_font = Some((font.clone(), name.clone(), index));
+                    self.text_font = Some((font.clone(), name.clone(), index, axes));
                     dialog.layout.font_index = index;
-                    dialog.layout.font_axes = Default::default();
+                    dialog.layout.font_axes = axes;
                     dialog.font = font;
                     dialog.font_name = name;
                     dialog.preview.request_text(crate::preview::TextInput {

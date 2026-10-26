@@ -213,3 +213,10 @@ instances returned by Fontconfig are supported, including their axis coordinates
 Primary weight, width, italic, slant and optical-size coordinates propagate to
 matching fallback axes and clamp to their supported ranges. Custom axis tags
 are not copied between families. Weight and slant also inform font discovery.
+
+Named variable font styles
+--------------------------
+The installed-font browser includes named variable styles such as Bold or Light.
+Choosing one loads its base font face and named axis coordinates together; the
+axis controls, preview and subsequent text operations in the session retain
+those coordinates. Loading a plain font file starts at its default coordinates.

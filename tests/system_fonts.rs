@@ -8,7 +8,7 @@ fn discover_and_load_real_system_font_faces() {
     assert!(!fonts.is_empty());
     let mut loaded = 0;
     for font in fonts.iter().take(20) {
-        if paint_rust::text::load_font_face_cancellable(&font.path, font.index, &cancel).is_ok() {
+        if font.load_cancellable(&cancel).is_ok() {
             loaded += 1;
         }
     }
@@ -139,4 +139,24 @@ fn changing_primary_weight_axis_refreshes_and_updates_fallback_coordinates() {
     let mut invalid = Settings::default();
     invalid.set(*b"XXXX", 12.0);
     assert!(!resolver.prepare_with_axes(&primary, 0, "مرحبا", invalid, &cancel));
+}
+
+#[test]
+#[ignore = "Requires Fontconfig and a named Noto Sans Bold instance"]
+fn catalog_named_instance_loads_base_face_and_matching_axis_settings() {
+    let cancel = AtomicBool::new(false);
+    let catalog = paint_rust::fonts::installed_cancellable(&cancel).unwrap();
+    let record = catalog
+        .iter()
+        .find(|record| {
+            record.family == "Noto Sans" && record.style == "Bold" && record.index > 65535
+        })
+        .unwrap();
+    let (_, index, axes) = record.load_cancellable(&cancel).unwrap();
+    assert_eq!(index, record.index & 65535);
+    assert_eq!(axes.get(*b"wght"), Some(700.0));
+    assert!(record.load_cancellable(&AtomicBool::new(true)).is_err());
+    let mut bad = record.clone();
+    bad.index = 0x7fff0000;
+    assert!(bad.load_cancellable(&cancel).is_err());
 }

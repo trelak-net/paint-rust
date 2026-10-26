@@ -12,14 +12,27 @@ pub struct InstalledFont {
     pub index: u32,
 }
 impl InstalledFont {
+    pub fn load_cancellable(
+        &self,
+        cancel: &AtomicBool,
+    ) -> Result<(ab_glyph::FontArc, u32, crate::text::variations::Settings), String> {
+        if self.index > 0x7fff_ffff {
+            return Err("Invalid font catalog face index".into());
+        }
+        let index = self.index & 0xffff;
+        let font = crate::text::load_font_face_cancellable(&self.path, index, cancel)?;
+        let axes = crate::text::variations::named_instance(&font, index, (self.index >> 16) as u16)
+            .ok_or("Invalid named font instance")?;
+        if cancel.load(Ordering::Relaxed) {
+            return Err(crate::files::CANCELLED.into());
+        }
+        Ok((font, index, axes))
+    }
     pub fn label(&self) -> String {
         format!("{} — {}", self.family, self.style)
     }
 }
-fn parse_catalog_ordered(text: &str) -> Result<Vec<InstalledFont>, String> {
-    parse_catalog_instances(text, false)
-}
-fn parse_catalog_instances(text: &str, instances: bool) -> Result<Vec<InstalledFont>, String> {
+fn parse_catalog_instances(text: &str) -> Result<Vec<InstalledFont>, String> {
     if text.len() > 4 * 1024 * 1024 {
         return Err("System font catalog exceeds 4 MiB.".into());
     }
@@ -32,9 +45,7 @@ fn parse_catalog_instances(text: &str, instances: bool) -> Result<Vec<InstalledF
         let Ok(index) = parts[3].parse::<u32>() else {
             continue;
         };
-        // The font browser exposes base faces; fallback resolves named-instance axes.
         if index > 0x7fff_ffff
-            || (!instances && index > 65535)
             || parts[0].is_empty()
             || parts[0].len() > 512
             || parts[1].len() > 512
@@ -67,7 +78,7 @@ fn parse_catalog_instances(text: &str, instances: bool) -> Result<Vec<InstalledF
 }
 
 fn parse_catalog(text: &str) -> Result<Vec<InstalledFont>, String> {
-    let mut fonts = parse_catalog_ordered(text)?;
+    let mut fonts = parse_catalog_instances(text)?;
     fonts.sort_by(|a, b| {
         (&a.family, &a.style, &a.path, a.index).cmp(&(&b.family, &b.style, &b.path, b.index))
     });
@@ -139,7 +150,7 @@ pub(crate) fn fallback_candidates(
     cancel: &AtomicBool,
 ) -> Result<Vec<InstalledFont>, String> {
     let pattern = fallback_pattern(family, style);
-    parse_catalog_instances(&query("fc-match", &["-s", &pattern], cancel)?, true)
+    parse_catalog_instances(&query("fc-match", &["-s", &pattern], cancel)?)
 }
 
 fn query(program: &str, arguments: &[&str], cancel: &AtomicBool) -> Result<String, String> {
@@ -266,10 +277,10 @@ mod tests {
     #[test]
     fn parser_keeps_face_identity_styles_and_paths_with_spaces() {
         let text = "Example\tBold\t/usr/share/fonts/a b.ttc\t2\nExample\tRegular\t/usr/share/fonts/a b.ttc\t0\nExample\tBold\t/usr/share/fonts/a b.ttc\t2\nVariable\tLight\t/usr/share/fonts/v.ttf\t65536\nBitmap\tNormal\t/usr/share/fonts/b.pcf\t0\nRelative\tNormal\tb.ttf\t0\nbroken";
-        let instances = parse_catalog_instances(text, true).unwrap();
+        let instances = parse_catalog_instances(text).unwrap();
         assert!(instances.iter().any(|font| font.index == 65536));
         let fonts = parse_catalog(text).unwrap();
-        assert_eq!(fonts.len(), 2);
+        assert_eq!(fonts.len(), 3);
         assert_eq!(fonts[0].style, "Bold");
         assert_eq!(fonts[0].index, 2);
         assert_eq!(fonts[0].path, PathBuf::from("/usr/share/fonts/a b.ttc"));

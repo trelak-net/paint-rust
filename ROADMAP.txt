@@ -158,6 +158,7 @@ independent tasks; do not silently reduce the required scope.
 [x] Text alignment, letter/line spacing and antialias controls.
 [x] Background loading of local TTF/OTF/TTC fonts with session reuse.
 [x] Searchable installed-font browser with available styles and collection face indices.
+[x] Named variable-font instances in the browser, with axis-aware loading and session reuse.
 [x] Underline and strikethrough with multiline alignment, antialiasing and selection clipping.
 [x] OpenType shaping, Unicode bidirectional/script runs and font-specific underline/strikeout metrics.
 [x] Variable font axis sliders with synchronized shaping/outlines and reset controls.

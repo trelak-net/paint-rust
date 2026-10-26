@@ -190,7 +190,12 @@ pub struct Editor {
     text_dialog: Option<TextDialog>,
     system_fonts: Vec<paint_rust::fonts::InstalledFont>,
     font_search: String,
-    text_font: Option<(ab_glyph::FontArc, String, u32)>,
+    text_font: Option<(
+        ab_glyph::FontArc,
+        String,
+        u32,
+        paint_rust::text::variations::Settings,
+    )>,
     effect_dialog: Option<EffectDialog>,
     selection_transform: Option<selection_transform::Dialog>,
     paste_confirmation: Option<paste::Image>,
@@ -545,11 +550,17 @@ impl Editor {
                 ab_glyph::FontVec::try_from_vec_and_index(data.font.to_vec(), data.index).ok()
             })
             .map(ab_glyph::FontArc::new);
-        let (font, font_name, font_index) = if let Some((font, name, index)) = &self.text_font {
-            (Some(font.clone()), name.clone(), *index)
-        } else {
-            (font, "System UI font".into(), default_index)
-        };
+        let (font, font_name, font_index, font_axes) =
+            if let Some((font, name, index, axes)) = &self.text_font {
+                (Some(font.clone()), name.clone(), *index, *axes)
+            } else {
+                (
+                    font,
+                    "System UI font".into(),
+                    default_index,
+                    Default::default(),
+                )
+            };
         if let Some(font) = font {
             self.document.begin("Text");
             let preview = crate::preview::EffectPreview::new_text(
@@ -561,6 +572,7 @@ impl Editor {
                 crate::preview::TextInput {
                     layout: paint_rust::text::TextLayout {
                         font_index,
+                        font_axes,
                         ..Default::default()
                     },
                     font: font.clone(),
@@ -574,6 +586,7 @@ impl Editor {
                 font_name,
                 layout: paint_rust::text::TextLayout {
                     font_index,
+                    font_axes,
                     ..Default::default()
                 },
                 preview,
@@ -7268,6 +7281,50 @@ mod tests {
         assert!(editor.file_job.is_none());
         assert_eq!(editor.document.selection(), Some(selection));
     }
+    #[test]
+    #[ignore = "Requires Fontconfig and a named Noto Sans Bold instance"]
+    fn named_font_instance_reaches_the_text_draft_and_next_operation() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        frame(&mut editor, &ctx, vec![]);
+        editor.begin_text(&ctx, (10.0, 10.0), Rgba::BLACK);
+        let fonts =
+            paint_rust::fonts::installed_cancellable(&std::sync::atomic::AtomicBool::new(false))
+                .unwrap();
+        let record = fonts
+            .into_iter()
+            .find(|record| {
+                record.family == "Noto Sans" && record.style == "Bold" && record.index > 65535
+            })
+            .unwrap();
+        editor.load_installed_font(record);
+        wait_for_files(&mut editor, &ctx);
+        assert_eq!(
+            editor
+                .text_dialog
+                .as_ref()
+                .unwrap()
+                .layout
+                .font_axes
+                .get(*b"wght"),
+            Some(700.0)
+        );
+        editor.text_dialog = None;
+        editor.document.cancel();
+        editor.begin_text(&ctx, (20.0, 20.0), Rgba::BLACK);
+        assert_eq!(
+            editor
+                .text_dialog
+                .as_ref()
+                .unwrap()
+                .layout
+                .font_axes
+                .get(*b"wght"),
+            Some(700.0)
+        );
+        assert!(editor.document.history().next().is_none());
+    }
+
     #[test]
     fn loading_a_font_updates_only_the_open_text_draft_and_failure_keeps_the_font() {
         let ctx = egui::Context::default();
