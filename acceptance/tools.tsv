@@ -10,7 +10,7 @@ Pan	partial	H	H	Pan tool, middle button and temporary Space	Full Escape/lost-cap
 Brush	partial	B	B	Continuous strokes, hardness, opacity, antialiasing and blend/replace	Spacing, pressure and external coverage comparisons
 Eraser	partial	E	E	Continuous alpha coverage, hardness, opacity and antialiasing	Spacing, pressure and external coverage comparisons
 Pencil	partial	P	N	Single-pixel continuous primary/secondary strokes	Reference raster edge cases and blending options
-Color picker	partial	K	I	Single-pixel color sampling	Sampling radius, scope and post-pick behavior
+Color picker	partial	K	I	Active/merged sampling, alpha-weighted radius 0–15 and optional brush activation on release	Native averaging comparison, previous-tool behavior and shortcut parity
 Fill	partial	F	F	Tolerance, connectivity, sampling and selection barriers	Reference tolerance matching and patterned fill
 Gradient	partial	G	G	Five geometries and blend/replace/transparency modes	Persistent endpoint editing and exact interpolation/color space
 Line/curve	partial	O	L	Straight line with constrained angles	Editable curves, joins, caps, dashes and arrows

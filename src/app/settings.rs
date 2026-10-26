@@ -11,6 +11,9 @@ pub(super) struct General {
     units: usize,
     transparent: bool,
     editable_shapes: bool,
+    pub picker_radius: u8,
+    pub picker_merged: bool,
+    pub picker_to_brush: bool,
 }
 impl Default for General {
     fn default() -> Self {
@@ -23,12 +26,16 @@ impl Default for General {
             units: 0,
             transparent: false,
             editable_shapes: false,
+            picker_radius: 0,
+            picker_merged: true,
+            picker_to_brush: false,
         }
     }
 }
 impl General {
     fn validate(&self) -> Result<(), String> {
-        if self.version != 1
+        if self.picker_radius > 15
+            || self.version != 1
             || !self.ui_scale.is_finite()
             || !(0.75..=2.5).contains(&self.ui_scale)
             || self.width > 16384
@@ -219,6 +226,9 @@ mod tests {
         let dpi = editor.document.resolution();
         let settings = General {
             ui_scale: 1.25,
+            picker_radius: 15,
+            picker_merged: false,
+            picker_to_brush: true,
             width: 1200,
             height: 800,
             dpi: [300.25, 150.5],
@@ -237,7 +247,15 @@ mod tests {
         assert_eq!(editor.document.pixels(), pixels.as_slice());
         assert_eq!(editor.document.resolution(), dpi);
         assert!(!editor.document.dirty());
+        let legacy: General = serde_json::from_str("{}").unwrap();
+        assert_eq!(legacy.picker_radius, 0);
+        assert!(legacy.picker_merged);
+        assert!(!legacy.picker_to_brush);
         for invalid in [
+            General {
+                picker_radius: 16,
+                ..settings.clone()
+            },
             General {
                 ui_scale: f32::NAN,
                 ..settings.clone()

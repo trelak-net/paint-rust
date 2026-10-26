@@ -101,6 +101,7 @@ independent tasks; do not silently reduce the required scope.
 [x] Numeric RGB/HSV/alpha/HEX editing, palette persistence and defaults.
 [x] Exact straight-RGBA storage for tools, text, numeric/HEX editing and palettes.
 [x] Original hue wheel, saturation/value field, alpha slider and retained grayscale hue.
+[x] Active/merged color picking, bounded alpha-weighted sample radius and optional brush activation after release.
 [ ] Full interactive color-picker and reference presentation audit.
 [x] Zoom/Pan tools, temporary spacebar navigation and zoom-to-region.
 [x] Visible-region pixel grid at high zoom.

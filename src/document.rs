@@ -1555,6 +1555,49 @@ impl Document {
         })
     }
 
+    /// Sample a clipped square in encoded sRGB, weighting color by alpha.
+    /// Radius zero preserves the exact stored pixel, including hidden RGB.
+    /// Active-layer sampling ignores layer visibility and opacity.
+    pub fn sample_area(&self, x: i32, y: i32, radius: u8, merged: bool) -> Option<Pixel> {
+        self.index(x, y)?;
+        if radius > 15 {
+            return None;
+        }
+        let sample = |x, y| {
+            if merged {
+                self.sample(x, y).unwrap()
+            } else {
+                self.layers[self.active].pixels[self.index(x, y).unwrap()]
+            }
+        };
+        if radius == 0 {
+            return Some(sample(x, y));
+        }
+        let radius = i32::from(radius);
+        let mut sum = [0_u64; 4];
+        let mut count = 0;
+        for sy in (y - radius).max(0)..=(y + radius).min(self.height as i32 - 1) {
+            for sx in (x - radius).max(0)..=(x + radius).min(self.width as i32 - 1) {
+                let pixel = sample(sx, sy);
+                let alpha = u64::from(pixel[3]);
+                for channel in 0..3 {
+                    sum[channel] += u64::from(pixel[channel]) * alpha;
+                }
+                sum[3] += alpha;
+                count += 1;
+            }
+        }
+        if sum[3] == 0 {
+            return Some([0; 4]);
+        }
+        Some([
+            ((sum[0] + sum[3] / 2) / sum[3]) as u8,
+            ((sum[1] + sum[3] / 2) / sum[3]) as u8,
+            ((sum[2] + sum[3] / 2) / sum[3]) as u8,
+            ((sum[3] + count / 2) / count) as u8,
+        ])
+    }
+
     fn index(&self, x: i32, y: i32) -> Option<usize> {
         (x >= 0 && y >= 0 && x < self.width as i32 && y < self.height as i32)
             .then_some(y.max(0) as usize * self.width as usize + x.max(0) as usize)

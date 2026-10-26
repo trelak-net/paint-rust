@@ -160,6 +160,7 @@ pub struct Editor {
     color_alpha: paint_rust::selection::AlphaMatch,
     color_contiguous: bool,
     color_sample_merged: bool,
+    picker_switch_pending: bool,
     polygon_points: Vec<(f64, f64)>,
     lasso: lasso::Lasso,
     polygon_size: (u32, u32),
@@ -337,6 +338,7 @@ impl Editor {
             color_alpha: Default::default(),
             color_contiguous: true,
             color_sample_merged: false,
+            picker_switch_pending: false,
             polygon_points: Vec::new(),
             lasso: Default::default(),
             polygon_size: (0, 0),
@@ -1770,10 +1772,14 @@ impl Editor {
                             }
                             Tool::Polygon | Tool::Lasso | Tool::Pan | Tool::Zoom => {}
                             Tool::Picker => {
-                                if let Some(pixel) = self
-                                    .document
-                                    .sample(local.x.floor() as i32, local.y.floor() as i32)
-                                {
+                                if let Some(pixel) = self.document.sample_area(
+                                    local.x.floor() as i32,
+                                    local.y.floor() as i32,
+                                    self.general_settings.picker_radius,
+                                    self.general_settings.picker_merged,
+                                ) {
+                                    self.picker_switch_pending =
+                                        self.general_settings.picker_to_brush;
                                     let sampled = Rgba::from_rgba_unmultiplied(
                                         pixel[0], pixel[1], pixel[2], pixel[3],
                                     );
@@ -2034,6 +2040,19 @@ impl Editor {
     }
 
     fn tool_options(&mut self, ui: &mut egui::Ui) {
+        if self.tool == Tool::Picker {
+            ui.checkbox(
+                &mut self.general_settings.picker_merged,
+                "Sample merged image",
+            );
+            ui.add(egui::Slider::new(&mut self.general_settings.picker_radius, 0..=15)
+                .text("Sample radius").suffix(" px"))
+                .on_hover_text("Zero samples one pixel. Larger radii average a clipped square, weighting colors by alpha.");
+            ui.checkbox(
+                &mut self.general_settings.picker_to_brush,
+                "Switch to brush after picking",
+            );
+        }
         if matches!(
             self.tool,
             Tool::Brush
@@ -3884,6 +3903,12 @@ impl Editor {
         self.tick_inactive_recovery(ctx);
         if !ctx.input(|i| i.pointer.button_down(self.stroke_button)) {
             self.finish_stroke();
+            if self.picker_switch_pending {
+                self.picker_switch_pending = false;
+                if self.tool == Tool::Picker {
+                    self.tool = Tool::Brush;
+                }
+            }
             self.suppress_stroke = false;
         }
         if enabled
@@ -4866,6 +4891,45 @@ mod tests {
                 assert_eq!(editor.color, Color32::BLACK);
                 assert_eq!(editor.secondary_color, Color32::RED);
             }
+        }
+    }
+
+    #[test]
+    fn picker_switches_after_release_without_painting() {
+        for button in [egui::PointerButton::Primary, egui::PointerButton::Secondary] {
+            let ctx = egui::Context::default();
+            let mut editor = Editor::blank(&ctx);
+            editor.tool = Tool::Picker;
+            editor.general_settings.picker_to_brush = true;
+            editor.general_settings.picker_radius = 3;
+            frame(&mut editor, &ctx, vec![]);
+            let pos = Pos2::new(350.0, 250.0);
+            for pressed in [true, false] {
+                frame(
+                    &mut editor,
+                    &ctx,
+                    vec![
+                        egui::Event::PointerMoved(pos),
+                        egui::Event::PointerButton {
+                            pos,
+                            pressed,
+                            button,
+                            modifiers: egui::Modifiers::NONE,
+                        },
+                    ],
+                );
+                assert!(editor.tool == if pressed { Tool::Picker } else { Tool::Brush });
+                assert!(!editor.document.editing());
+                assert!(!editor.document.dirty());
+                assert_eq!(editor.document.history().count(), 0);
+            }
+            assert!(
+                editor
+                    .document
+                    .pixels()
+                    .iter()
+                    .all(|pixel| *pixel == [255; 4])
+            );
         }
     }
 
