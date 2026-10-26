@@ -170,6 +170,7 @@ independent tasks; do not silently reduce the required scope.
 [ ] Color-font rendering, first-line overflow and remaining text controls/presentation audit.
 7. Layers and history
 [x] Drag reordering with selected-layer identity and one-step undo.
+[x] Dedicated Move to top/bottom layer actions using the same undoable reordering.
 [x] Cached layer thumbnails with transparency checkerboard.
 [x] Cancellable merge down, retaining lower-layer properties with one-step undo.
 [x] Exact external merge-down pixel/property fixtures for all fourteen blend modes.

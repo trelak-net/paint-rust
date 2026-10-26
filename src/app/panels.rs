@@ -213,6 +213,17 @@ impl Editor {
                 self.texture_dirty = true;
             }
         });
+        ui.horizontal(|ui| {
+            for (label, target) in [("Move to top", last), ("Move to bottom", 0)] {
+                if ui
+                    .add_enabled(active != target, egui::Button::new(label))
+                    .clicked()
+                {
+                    self.texture_dirty |= self.document.reorder_layer(active, target);
+                    ui.close();
+                }
+            }
+        });
         if ui
             .add_enabled(
                 self.document.can_add_layer(),

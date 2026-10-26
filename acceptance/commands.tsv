@@ -64,10 +64,10 @@ Layers.GoToTopLayer	Go to Top Layer	supported	Ctrl+Alt+PageUp	Ctrl+Alt+PageUp	Ke
 Layers.GoToLayerAbove	Go to Layer Above	supported	Alt+PageUp	Alt+PageUp	Keyboard selection with bounds checks; no image edits or history entries
 Layers.GoToLayerBelow	Go to Layer Below	supported	Alt+PageDown	Alt+PageDown	Keyboard selection with bounds checks; no image edits or history entries
 Layers.GoToBottomLayer	Go to Bottom Layer	supported	Ctrl+Alt+PageDown	Ctrl+Alt+PageDown	Keyboard selection with bounds checks; no image edits or history entries
-Layers.MoveLayerToTop	Move Layer to Top	partial	-	-	Drag reordering; dedicated action pending
+Layers.MoveLayerToTop	Move Layer to Top	supported	-	-	Dedicated shared-menu action, selected-layer identity retained and one undo step
 Layers.MoveLayerUp	Move Layer Up	supported	-	-	Available; see workflow cases
 Layers.MoveLayerDown	Move Layer Down	supported	-	-	Available; see workflow cases
-Layers.MoveLayerToBottom	Move Layer to Bottom	partial	-	-	Drag reordering; dedicated action pending
+Layers.MoveLayerToBottom	Move Layer to Bottom	supported	-	-	Dedicated shared-menu action, selected-layer identity retained and one undo step
 Layers.LayerProperties	Layer Properties...	supported	F4	F4	Available; see workflow cases
 Help.HelpTopics	Documentation	supported	F1	F1	Embedded English guide and shortcut reference
 Help.ProjectWebsite	Project website	different	-	-	Project-specific destination or deferred extension integration; external product services are out of scope
