@@ -2923,6 +2923,7 @@ impl Editor {
                                 changed |= ui.checkbox(&mut parameters.smooth, "Smooth sampling").changed();
                                 if whole_layer {
                                     ui.small("Transforms the entire active layer around the canvas center. Pixels outside the canvas are clipped; selection bounds and other layers are preserved.");
+                                    ui.small("Drag inside the box to move, corners to scale, or the blue circle to rotate. Shift constrains the gesture.");
                                 } else {
                                     ui.small("Transforms around the selection center. Pixels outside the canvas are clipped.");
                                     ui.small("Drag the box to move, corners to scale, or the blue circle to rotate. Shift constrains movement, preserves scale ratio, or snaps rotation.");
@@ -7218,6 +7219,50 @@ mod tests {
             assert_eq!(editor.last_effect, Some(Effect::Sepia));
             assert!(!editor.document.dirty());
         }
+    }
+
+    #[test]
+    fn layer_transform_handles_use_canvas_bounds_and_keep_the_layer_operation() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        let selection = Selection::elliptical(0, 0, 1, 1);
+        editor.document.set_selection(Some(selection.clone()));
+        editor.begin_effect(&ctx, Effect::LayerTransform(Default::default()));
+        frame(&mut editor, &ctx, vec![]);
+        frame(&mut editor, &ctx, vec![]);
+        let start = editor.canvas_viewport.min + Vec2::new(60.0, 500.0);
+        frame(
+            &mut editor,
+            &ctx,
+            vec![egui::Event::PointerMoved(start), pointer(start, true)],
+        );
+        assert!(editor.transform_drag.is_some());
+        let end = start + Vec2::new(25.0, 15.0);
+        frame(
+            &mut editor,
+            &ctx,
+            vec![egui::Event::PointerMoved(end), pointer(end, false)],
+        );
+        let Effect::LayerTransform(parameters) = editor.effect_dialog.as_ref().unwrap().effect
+        else {
+            panic!("layer operation changed")
+        };
+        assert_eq!((parameters.offset_x, parameters.offset_y), (25.0, 15.0));
+        assert_eq!(editor.document.selection(), Some(selection.clone()));
+        assert!(!editor.document.can_undo());
+        frame(
+            &mut editor,
+            &ctx,
+            vec![egui::Event::Key {
+                key: Key::Escape,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers::NONE,
+            }],
+        );
+        assert_eq!(editor.document.selection(), Some(selection));
+        assert!(!editor.document.dirty());
     }
 
     #[test]

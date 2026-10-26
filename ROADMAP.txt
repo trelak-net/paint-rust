@@ -177,7 +177,8 @@ independent tasks; do not silently reduce the required scope.
 [x] Exact external merge-down pixel/property fixtures for all fourteen blend modes.
 [x] Exact active-layer horizontal/vertical flips and half-turn with one-step undo.
 [x] Whole-layer numeric rotation, scaling, translation and flips with cancellable preview and selection-preserving apply/undo.
-[ ] Perspective tilt, tiling, layer transform handles and external acceptance comparisons.
+[x] Whole-layer canvas translation, scale and rotation handles with Shift constraints and preserved selection.
+[ ] Perspective tilt, tiling and external layer-transform acceptance comparisons.
 [x] Undoable selection operations with clean saved-image revisions and disk-backed mask restoration.
 [ ] Remaining history action grouping and full state restoration audit.
 8. Adjustments and effects

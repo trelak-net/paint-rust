@@ -91,7 +91,7 @@ impl Editor {
                 self.effect_dialog
                     .as_ref()
                     .and_then(|dialog| match dialog.effect {
-                        Effect::FreeTransform(p) => Some(p),
+                        Effect::FreeTransform(p) | Effect::LayerTransform(p) => Some(p),
                         _ => None,
                     })
             });
@@ -99,10 +99,18 @@ impl Editor {
             self.transform_drag = None;
             return;
         };
-        let selection = boundary
+        let whole_layer = self
+            .effect_dialog
             .as_ref()
-            .map(|(selection, _, _)| selection.clone())
-            .or_else(|| self.document.selection());
+            .is_some_and(|dialog| matches!(dialog.effect, Effect::LayerTransform(_)));
+        let selection = if whole_layer {
+            None
+        } else {
+            boundary
+                .as_ref()
+                .map(|(selection, _, _)| selection.clone())
+                .or_else(|| self.document.selection())
+        };
         let (origin, size) = selection
             .as_ref()
             .map(|s| {
@@ -191,7 +199,11 @@ impl Editor {
                 if let Some(dialog) = &mut self.selection_transform {
                     dialog.update_from_handles(changed);
                 } else if let Some(dialog) = &mut self.effect_dialog {
-                    dialog.effect = Effect::FreeTransform(changed);
+                    dialog.effect = if whole_layer {
+                        Effect::LayerTransform(changed)
+                    } else {
+                        Effect::FreeTransform(changed)
+                    };
                     dialog.preview.request(dialog.effect);
                 }
             }

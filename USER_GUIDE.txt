@@ -228,8 +228,9 @@ flip, sampling and optional source-copy controls for the entire active layer.
 The transform is centered on the canvas and clips pixels outside it. It preserves
 other layers, layer properties and selection bounds. Apply creates one undo step;
 Cancel or Escape restores the original pixels. This operation does not replace
-the last repeatable effect. Perspective tilt, tiling and canvas handles for this
-whole-layer operation remain pending.
+the last repeatable effect. Drag inside the full-canvas box to move, its corners to scale, or the blue
+circle to rotate; Shift constrains movement, locks proportions or snaps rotation.
+Perspective tilt and tiling remain pending.
 
 Importing project layers
 ------------------------
