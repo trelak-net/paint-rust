@@ -51,4 +51,8 @@ examples/dds_compression.rs, with BC2/DXT3 explicit 4-bit alpha and a complete
 mip chain. MIT OR Apache-2.0. Independent reference export-bc2.rgba generated
 on 2026-10-26 with FFmpeg 8.1.3:
 ffmpeg -v error -i export-bc2.dds -f rawvideo -pix_fmt rgba export-bc2.rgba
-Native Windows opening and clipboard comparison remain pending for BC2.
+The native Windows editor 5.1.12 opened this file on CASTOR on 2026-10-26.
+export-bc2-native.rgba was obtained from its clipboard PNG with ImageMagick
+8-bit RGBA conversion. Alpha matches FFmpeg exactly; visible RGB differs by
+at most one level. The application-to-native test allows two levels for combined
+RGB565 expansion/interpolation rounding and requires exact alpha.

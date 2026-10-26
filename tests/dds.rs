@@ -628,3 +628,22 @@ fn bc2_alpha_ramp_uses_all_sixteen_levels_and_bounded_error() {
     }
     assert!(seen.into_iter().all(|value| value));
 }
+
+#[test]
+fn bc2_export_matches_native_windows_alpha_and_visible_colors() {
+    let actual = dds::decode(
+        Cursor::new(include_bytes!("fixtures/dds/export-bc2.dds")),
+        &cancel(),
+    )
+    .unwrap();
+    let expected = include_bytes!("fixtures/dds/export-bc2-native.rgba");
+    assert_eq!(actual.pixels().len() * 4, expected.len());
+    for (actual, expected) in actual.pixels().iter().zip(expected.as_chunks::<4>().0) {
+        assert_eq!(actual[3], expected[3]);
+        if expected[3] > 0 {
+            for c in 0..3 {
+                assert!(actual[c].abs_diff(expected[c]) <= 2);
+            }
+        }
+    }
+}
