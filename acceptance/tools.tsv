@@ -10,7 +10,7 @@ Pan	partial	H	H	Pan tool, middle button and temporary Space	Full Escape/lost-cap
 Brush	partial	B	B	Continuous strokes, hardness, opacity, antialiasing, fourteen blend modes, spacing and stabilization	Tablet pressure and external coverage comparisons
 Eraser	partial	E	E	Continuous alpha coverage, hardness, opacity, antialiasing, spacing and stabilization	Tablet pressure and external coverage comparisons
 Pencil	partial	P	N	Single-pixel primary/secondary strokes with fourteen blend modes and stable stroke coverage	Reference raster edge cases and blend coverage comparisons
-Color picker	partial	K	I	Active/merged sampling, alpha-weighted radius 0–15 and previous/Pencil/Brush activation on release and Ctrl merged override	Native averaging comparison and shortcut parity
+Color picker	partial	K	I	Active/merged sampling, alpha-weighted radius 0–25 and previous/Pencil/Brush activation on release and Ctrl merged override	Native averaging comparison and shortcut parity
 Fill	partial	F	F	Tolerance, connectivity, sampling and selection barriers	Broader reference matching comparisons and patterned fill
 Gradient	partial	G	G	Five geometries and blend/replace/transparency modes	Persistent endpoint editing and exact interpolation/color space
 Line/curve	partial	O	L	Straight lines and editable cubic Bezier curves	Additional spline modes, joins, caps, dashes and arrows

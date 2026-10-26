@@ -16,7 +16,7 @@ Line Curve Shape Type	partial	Straight lines and editable cubic Bezier curves; a
 Pen Dash Style	missing	Dash patterns
 Pen End Cap	missing	End caps and arrows
 Pen Start Cap	missing	Start caps and arrows
-Pixel Sample Mode	partial	Radius 0–15, clipped alpha-weighted sRGB square; native numerical comparison pending
+Pixel Sample Mode	partial	Radius 0–25, clipped alpha-weighted sRGB square; native numerical comparison pending
 Radius	missing	Rounded shape radius
 Recolor Tool Sampling Mode	supported	Explicit replacement color or first-click sampling once per stroke
 Sample Image Or Layer	supported	Active/merged sampling for fill, color selection, picker and clone

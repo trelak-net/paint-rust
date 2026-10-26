@@ -20,6 +20,7 @@ Sample sizes:
 - 51 x 51 pixels
 
 Current implementation retains Brush as an additional post-pick choice and uses
-a radius slider rather than a fixed size menu. Native numerical averaging,
+a bounded radius 0–25 slider rather than a fixed size menu, covering every
+observed native sample size. Native numerical averaging,
 transparent-pixel handling and edge clipping still require pixel comparisons.
 The native inventory is presentation evidence, not numerical equivalence proof.

@@ -2055,7 +2055,7 @@ impl Editor {
                 &mut self.general_settings.picker_merged,
                 "Sample merged image",
             );
-            ui.add(egui::Slider::new(&mut self.general_settings.picker_radius, 0..=15)
+            ui.add(egui::Slider::new(&mut self.general_settings.picker_radius, 0..=paint_rust::document::COLOR_SAMPLE_MAX_RADIUS)
                 .text("Sample radius").suffix(" px"))
                 .on_hover_text("Zero samples one pixel. Larger radii average a clipped square, weighting colors by alpha.");
             let mut behavior = self.general_settings.after_pick();

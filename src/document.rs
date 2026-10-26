@@ -8,6 +8,9 @@ use std::{
 
 pub type Pixel = [u8; 4];
 
+/// At most 51 by 51 pixels are sampled synchronously by the color picker.
+pub const COLOR_SAMPLE_MAX_RADIUS: u8 = 25;
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Shape {
     Line,
@@ -1560,7 +1563,7 @@ impl Document {
     /// Active-layer sampling ignores layer visibility and opacity.
     pub fn sample_area(&self, x: i32, y: i32, radius: u8, merged: bool) -> Option<Pixel> {
         self.index(x, y)?;
-        if radius > 15 {
+        if radius > COLOR_SAMPLE_MAX_RADIUS {
             return None;
         }
         let sample = |x, y| {

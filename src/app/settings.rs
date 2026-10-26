@@ -63,7 +63,7 @@ impl General {
     }
 
     fn validate(&self) -> Result<(), String> {
-        if self.picker_radius > 15
+        if self.picker_radius > paint_rust::document::COLOR_SAMPLE_MAX_RADIUS
             || self.version != 1
             || !self.ui_scale.is_finite()
             || !(0.75..=2.5).contains(&self.ui_scale)
@@ -255,7 +255,7 @@ mod tests {
         let dpi = editor.document.resolution();
         let settings = General {
             ui_scale: 1.25,
-            picker_radius: 15,
+            picker_radius: 25,
             picker_merged: false,
             picker_to_brush: true,
             width: 1200,
@@ -282,7 +282,7 @@ mod tests {
         assert!(!legacy.picker_to_brush);
         for invalid in [
             General {
-                picker_radius: 16,
+                picker_radius: 26,
                 ..settings.clone()
             },
             General {
