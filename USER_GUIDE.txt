@@ -173,3 +173,15 @@ changing the saved scope. “After picking” can keep the picker, return to the
 previous tool, or activate Pencil or Brush. Switching happens on button release
 without painting during the picking gesture. These options are saved with
 general preferences; older brush-switch preferences remain supported.
+
+Constrained rectangle and ellipse selections
+-------------------------------------------
+Choose Free, Fixed ratio or Fixed size in the selection tool's Draw mode.
+Fixed ratio uses the width and height as proportions and shrinks the whole
+rectangle when it reaches a canvas edge; pixel bounds round outward. Fixed size
+uses pixel dimensions, snaps the starting point to a pixel and clips at canvas
+edges. A click places the fixed-size selection, and dragging left/up reverses
+its direction. Swap dimensions exchanges width and height. These settings are
+persistent and work with either selection shape and the existing combination
+modes. Selection changes have one undo step and do not mark image pixels dirty.
+Physical-unit size controls and exact external gesture comparison remain pending.

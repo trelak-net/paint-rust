@@ -16,6 +16,7 @@ mod preferences;
 mod recovery_batch;
 mod render_controls;
 mod rulers;
+mod selection_draw;
 mod selection_transform;
 mod settings;
 mod shape_edit;
@@ -1994,40 +1995,21 @@ impl Editor {
                     }
                     if self.tool == Tool::Select {
                         let origin = self.shape_origin.unwrap_or(point);
-                        let x = origin
-                            .0
-                            .min(point.0)
-                            .floor()
-                            .clamp(0.0, self.document.width as f32)
-                            as u32;
-                        let y = origin
-                            .1
-                            .min(point.1)
-                            .floor()
-                            .clamp(0.0, self.document.height as f32)
-                            as u32;
-                        let right = origin
-                            .0
-                            .max(point.0)
-                            .ceil()
-                            .clamp(0.0, self.document.width as f32)
-                            as u32;
-                        let bottom = origin
-                            .1
-                            .max(point.1)
-                            .ceil()
-                            .clamp(0.0, self.document.height as f32)
-                            as u32;
+                        let (x, y, width, height) = self.general_settings.selection_draw.bounds(
+                            origin,
+                            point,
+                            (self.document.width, self.document.height),
+                        );
                         let selection = if self.ellipse_selection {
-                            Selection::elliptical(x, y, right - x, bottom - y)
+                            Selection::elliptical(x, y, width, height)
                         } else {
                             Selection {
                                 mask: None,
                                 ellipse: None,
                                 x,
                                 y,
-                                width: right - x,
-                                height: bottom - y,
+                                width,
+                                height,
                             }
                         };
                         self.document.set_selection(Some(selection.clone()));
@@ -2238,6 +2220,7 @@ impl Editor {
         ) {
             if self.tool == Tool::Select {
                 ui.checkbox(&mut self.ellipse_selection, "Elliptical selection");
+                self.selection_draw_options(ui);
             } else if self.tool == Tool::Lasso {
                 ui.small("Drag to outline an area. Release closes the outline; Escape cancels.");
             } else if self.tool == Tool::Polygon {
@@ -6258,6 +6241,51 @@ mod tests {
         assert!(editor.document.selection().is_none());
         assert!(!editor.document.dirty());
         assert_eq!(editor.document.pixels(), &[[20, 30, 40, 255]; 48]);
+    }
+
+    #[test]
+    fn constrained_selection_gestures_have_one_clean_undo_step() {
+        for ellipse in [false, true] {
+            for mode in [selection_draw::Mode::Ratio, selection_draw::Mode::Size] {
+                let ctx = egui::Context::default();
+                let mut editor = Editor::blank(&ctx);
+                editor.tool = Tool::Select;
+                editor.ellipse_selection = ellipse;
+                editor.general_settings.selection_draw = selection_draw::Options {
+                    mode,
+                    width: 40,
+                    height: 20,
+                };
+                frame(&mut editor, &ctx, vec![]);
+                frame(&mut editor, &ctx, vec![]);
+                let start = editor.canvas_viewport.min + Vec2::new(130.0, 100.0);
+                let end = start + Vec2::new(80.0, 10.0);
+                frame(
+                    &mut editor,
+                    &ctx,
+                    vec![egui::Event::PointerMoved(start), pointer(start, true)],
+                );
+                frame(
+                    &mut editor,
+                    &ctx,
+                    vec![egui::Event::PointerMoved(end), pointer(end, false)],
+                );
+                let selected = editor.document.selection().unwrap();
+                let expected = if mode == selection_draw::Mode::Ratio {
+                    (80, 40)
+                } else {
+                    (40, 20)
+                };
+                assert_eq!((selected.width, selected.height), expected);
+                assert_eq!(selected.ellipse.is_some(), ellipse);
+                assert_eq!(editor.document.history().count(), 1);
+                assert!(!editor.document.dirty());
+                editor.undo();
+                assert!(editor.document.selection().is_none());
+                assert!(!editor.document.dirty());
+                assert!(editor.document.pixels().iter().all(|p| *p == [255; 4]));
+            }
+        }
     }
 
     #[test]

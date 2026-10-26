@@ -21,7 +21,7 @@ Radius	missing	Rounded shape radius
 Recolor Tool Sampling Mode	supported	Explicit replacement color or first-click sampling once per stroke
 Sample Image Or Layer	supported	Active/merged sampling for fill, color selection, picker and clone
 Selection Combine Mode	supported	Five boolean combination modes
-Selection Draw Mode	partial	Free drawing; fixed ratio/size pending
+Selection Draw Mode	partial	Free, fixed ratio and fixed pixel size with dimension swap; physical units and external gestures pending
 Selection Rendering Quality	missing	Selection-edge quality choice
 Shape Draw Type	partial	Outline, fill or combined primary-outline/secondary-fill
 Shape Type	partial	Thirty-three geometries including all 29 native menu forms; exact contour audit pending

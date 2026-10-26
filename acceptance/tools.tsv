@@ -1,6 +1,6 @@
 Capability	Status	Expected tool key	Current tool key	Current implementation	Remaining work
-Rectangle selection	partial	S	S	Combination and drag bounds	Fixed size/ratio, physical units and edge controls
-Ellipse selection	partial	S	S plus ellipse option	Combination and ellipse mask	Fixed size/ratio, physical units and edge controls
+Rectangle selection	partial	S	S	Combination, free/fixed-ratio/fixed-size drag bounds	Physical units, edge controls and external gesture audit
+Ellipse selection	partial	S	S plus ellipse option	Combination, ellipse mask and free/fixed-ratio/fixed-size bounds	Physical units, edge controls and external gesture audit
 Lasso	partial	S	Q	Freehand outline, combination and cancellation	Edge antialiasing and detailed reference coverage audit
 Color selection	partial	S	W	Tolerance, connected/global, active/merged sampling	Broader tolerance comparisons and antialiased edge behavior
 Move pixels	partial	M	M	Move/copy, affine handles and nudges	Complete interpolation, constraints and keyboard map

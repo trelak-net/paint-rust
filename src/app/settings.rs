@@ -34,6 +34,7 @@ pub(super) struct General {
     pub picker_merged: bool,
     pub picker_to_brush: bool,
     pub picker_behavior: Option<AfterPick>,
+    pub selection_draw: selection_draw::Options,
 }
 impl Default for General {
     fn default() -> Self {
@@ -50,6 +51,7 @@ impl Default for General {
             picker_merged: true,
             picker_to_brush: false,
             picker_behavior: None,
+            selection_draw: Default::default(),
         }
     }
 }
@@ -63,7 +65,8 @@ impl General {
     }
 
     fn validate(&self) -> Result<(), String> {
-        if self.picker_radius > paint_rust::document::COLOR_SAMPLE_MAX_RADIUS
+        if !self.selection_draw.valid()
+            || self.picker_radius > paint_rust::document::COLOR_SAMPLE_MAX_RADIUS
             || self.version != 1
             || !self.ui_scale.is_finite()
             || !(0.75..=2.5).contains(&self.ui_scale)
@@ -254,6 +257,11 @@ mod tests {
         let pixels = editor.document.shared_pixels();
         let dpi = editor.document.resolution();
         let settings = General {
+            selection_draw: selection_draw::Options {
+                mode: selection_draw::Mode::Size,
+                width: 123,
+                height: 45,
+            },
             ui_scale: 1.25,
             picker_radius: 25,
             picker_merged: false,
@@ -281,6 +289,13 @@ mod tests {
         assert!(legacy.picker_merged);
         assert!(!legacy.picker_to_brush);
         for invalid in [
+            General {
+                selection_draw: selection_draw::Options {
+                    width: 0,
+                    ..Default::default()
+                },
+                ..settings.clone()
+            },
             General {
                 picker_radius: 26,
                 ..settings.clone()

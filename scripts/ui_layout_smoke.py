@@ -73,6 +73,7 @@ def main():
     dialogs.add_argument("--show-new", action="store_true")
     dialogs.add_argument("--show-settings", action="store_true")
     dialogs.add_argument("--show-picker", action="store_true")
+    dialogs.add_argument("--show-selection-options", action="store_true")
     dialogs.add_argument("--show-resize", action="store_true")
     dialogs.add_argument("--show-canvas", action="store_true")
     dialogs.add_argument("--show-selection-transform", action="store_true")
@@ -112,6 +113,8 @@ def main():
         preferences = settings.with_name("preferences.txt")
         units = ("pixels", "inches", "centimeters").index(args.units)
         preferences.write_text(f"preferences-v1\n{args.theme} 1 12 1 1 0 0 {int(args.rulers)} 0 {units}\n")
+        if args.show_selection_options:
+            settings.with_name("general.json").write_text(json.dumps({"selection_draw": {"mode": "Ratio", "width": 4, "height": 3}}))
         saved = []
         saved_preferences = []
         saved_general = []
@@ -144,12 +147,14 @@ def main():
                             if size:
                                 subprocess.run(["xdotool", "windowsize", window, str(size[0]), str(size[1])], check=True, timeout=5)
                             time.sleep(2)
-                            if args.show_picker or args.show_settings or args.show_new or args.show_errors or args.show_help or args.show_effect or args.show_selection_transform or args.show_resize or args.show_canvas:
+                            if args.show_selection_options or args.show_picker or args.show_settings or args.show_new or args.show_errors or args.show_help or args.show_effect or args.show_selection_transform or args.show_resize or args.show_canvas:
                                 subprocess.run(["xdotool", "windowactivate", "--sync", window], check=True, timeout=5)
                                 focused = subprocess.check_output(["xdotool", "getactivewindow"], text=True, timeout=5).strip()
                                 if focused != window:
                                     raise RuntimeError("Editor does not own focus; no keyboard input sent")
-                                if args.show_picker:
+                                if args.show_selection_options:
+                                    press_key(window, ord("s"))
+                                elif args.show_picker:
                                     press_key(window, ord("i"))
                                 elif args.show_settings:
                                     press_key(window, ord("x"), 8)
