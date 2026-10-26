@@ -168,6 +168,8 @@ layer; raw sampling ignores layer opacity and visibility. A zero radius samples
 one pixel exactly. Radius 1–15 averages a square clipped to the canvas, weighting
 encoded sRGB colors by alpha and averaging alpha over the included pixels.
 Fully transparent averaged regions return transparent black. Selections do not
-restrict sampling. Enable “Switch to brush after picking” to activate the brush
-on button release without painting during the picking gesture. These options
-are saved with general preferences.
+restrict sampling. Hold Ctrl to sample the merged image temporarily without
+changing the saved scope. “After picking” can keep the picker, return to the
+previous tool, or activate Pencil or Brush. Switching happens on button release
+without painting during the picking gesture. These options are saved with
+general preferences; older brush-switch preferences remain supported.

@@ -160,7 +160,8 @@ pub struct Editor {
     color_alpha: paint_rust::selection::AlphaMatch,
     color_contiguous: bool,
     color_sample_merged: bool,
-    picker_switch_pending: bool,
+    picker_switch_pending: Option<Tool>,
+    picker_previous_tool: Tool,
     polygon_points: Vec<(f64, f64)>,
     lasso: lasso::Lasso,
     polygon_size: (u32, u32),
@@ -338,7 +339,8 @@ impl Editor {
             color_alpha: Default::default(),
             color_contiguous: true,
             color_sample_merged: false,
-            picker_switch_pending: false,
+            picker_switch_pending: None,
+            picker_previous_tool: Tool::Brush,
             polygon_points: Vec::new(),
             lasso: Default::default(),
             polygon_size: (0, 0),
@@ -1776,10 +1778,18 @@ impl Editor {
                                     local.x.floor() as i32,
                                     local.y.floor() as i32,
                                     self.general_settings.picker_radius,
-                                    self.general_settings.picker_merged,
+                                    self.general_settings.picker_merged
+                                        || ui.input(|i| i.modifiers.ctrl),
                                 ) {
                                     self.picker_switch_pending =
-                                        self.general_settings.picker_to_brush;
+                                        match self.general_settings.after_pick() {
+                                            settings::AfterPick::Stay => None,
+                                            settings::AfterPick::Previous => {
+                                                Some(self.picker_previous_tool)
+                                            }
+                                            settings::AfterPick::Pencil => Some(Tool::Pencil),
+                                            settings::AfterPick::Brush => Some(Tool::Brush),
+                                        };
                                     let sampled = Rgba::from_rgba_unmultiplied(
                                         pixel[0], pixel[1], pixel[2], pixel[3],
                                     );
@@ -2048,10 +2058,19 @@ impl Editor {
             ui.add(egui::Slider::new(&mut self.general_settings.picker_radius, 0..=15)
                 .text("Sample radius").suffix(" px"))
                 .on_hover_text("Zero samples one pixel. Larger radii average a clipped square, weighting colors by alpha.");
-            ui.checkbox(
-                &mut self.general_settings.picker_to_brush,
-                "Switch to brush after picking",
-            );
+            let mut behavior = self.general_settings.after_pick();
+            egui::ComboBox::from_label("After picking")
+                .selected_text(behavior.label())
+                .show_ui(ui, |ui| {
+                    for value in settings::AfterPick::ALL {
+                        ui.selectable_value(&mut behavior, value, value.label());
+                    }
+                });
+            if behavior != self.general_settings.after_pick() {
+                self.general_settings.picker_behavior = Some(behavior);
+                self.general_settings.picker_to_brush = false;
+            }
+            ui.small("Ctrl: sample merged image");
         }
         if matches!(
             self.tool,
@@ -3216,6 +3235,9 @@ impl Editor {
 
 impl Editor {
     fn show(&mut self, ctx: &egui::Context) {
+        if self.tool != Tool::Picker {
+            self.picker_previous_tool = self.tool;
+        }
         if let Some(gesture) = &mut self.gesture_preview
             && let Some(pixels) = gesture.preview.poll()
         {
@@ -3903,11 +3925,10 @@ impl Editor {
         self.tick_inactive_recovery(ctx);
         if !ctx.input(|i| i.pointer.button_down(self.stroke_button)) {
             self.finish_stroke();
-            if self.picker_switch_pending {
-                self.picker_switch_pending = false;
-                if self.tool == Tool::Picker {
-                    self.tool = Tool::Brush;
-                }
+            if let Some(tool) = self.picker_switch_pending.take()
+                && self.tool == Tool::Picker
+            {
+                self.tool = tool;
             }
             self.suppress_stroke = false;
         }
@@ -4891,6 +4912,97 @@ mod tests {
                 assert_eq!(editor.color, Color32::BLACK);
                 assert_eq!(editor.secondary_color, Color32::RED);
             }
+        }
+    }
+
+    #[test]
+    fn picker_return_modes_preserve_the_previous_tool_and_do_not_draw() {
+        for (behavior, expected) in [
+            (settings::AfterPick::Stay, Tool::Picker),
+            (settings::AfterPick::Previous, Tool::Eraser),
+            (settings::AfterPick::Pencil, Tool::Pencil),
+            (settings::AfterPick::Brush, Tool::Brush),
+        ] {
+            for button in [egui::PointerButton::Primary, egui::PointerButton::Secondary] {
+                let ctx = egui::Context::default();
+                let mut editor = Editor::blank(&ctx);
+                editor.tool = Tool::Eraser;
+                frame(&mut editor, &ctx, vec![]);
+                editor.general_settings.picker_behavior = Some(behavior);
+                frame(
+                    &mut editor,
+                    &ctx,
+                    vec![egui::Event::Key {
+                        key: Key::I,
+                        physical_key: None,
+                        pressed: true,
+                        repeat: false,
+                        modifiers: egui::Modifiers::NONE,
+                    }],
+                );
+                assert!(editor.tool == Tool::Picker);
+                let pos = Pos2::new(350.0, 250.0);
+                for pressed in [true, false] {
+                    frame(
+                        &mut editor,
+                        &ctx,
+                        vec![
+                            egui::Event::PointerMoved(pos),
+                            egui::Event::PointerButton {
+                                pos,
+                                pressed,
+                                button,
+                                modifiers: egui::Modifiers::NONE,
+                            },
+                        ],
+                    );
+                    assert!(editor.tool == if pressed { Tool::Picker } else { expected });
+                    assert!(!editor.document.editing());
+                    assert!(!editor.document.dirty());
+                    assert_eq!(editor.document.history().count(), 0);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn picker_ctrl_samples_merged_without_changing_the_saved_scope() {
+        for ctrl in [false, true] {
+            let ctx = egui::Context::default();
+            let mut editor = Editor::blank(&ctx);
+            editor.document.add_layer(false);
+            editor.tool = Tool::Picker;
+            editor.general_settings.picker_merged = false;
+            frame(&mut editor, &ctx, vec![]);
+            let pos = Pos2::new(350.0, 250.0);
+            let modifiers = egui::Modifiers {
+                ctrl,
+                ..Default::default()
+            };
+            for pressed in [true, false] {
+                let input = egui::RawInput {
+                    screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1180.0, 800.0))),
+                    modifiers,
+                    focused: true,
+                    events: vec![
+                        egui::Event::PointerMoved(pos),
+                        egui::Event::PointerButton {
+                            pos,
+                            pressed,
+                            button: egui::PointerButton::Primary,
+                            modifiers,
+                        },
+                    ],
+                    ..Default::default()
+                };
+                let _ = ctx.run(input, |ctx| editor.show(ctx));
+            }
+            assert_eq!(
+                editor.color.to_srgba_unmultiplied(),
+                if ctrl { [255; 4] } else { [0; 4] }
+            );
+            assert!(!editor.general_settings.picker_merged);
+            assert_eq!(editor.document.history().count(), 1);
         }
     }
 

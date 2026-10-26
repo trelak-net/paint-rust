@@ -1,0 +1,25 @@
+Color picker native reference inventory (2026-10-26)
+===================================================
+Observed in the native Windows editor 5.1.12 on CASTOR through its interactive
+session and UI Automation. Original artwork and executable code are not included.
+
+Sampling scope: Layer; the status hint explicitly offers Ctrl to sample all
+layers (merged) temporarily.
+
+Post-pick menu:
+- Do not switch tool
+- Switch to previous tool
+- Switch to Pencil tool
+
+Sample sizes:
+- Single Pixel
+- 3 x 3 pixels
+- 5 x 5 pixels
+- 11 x 11 pixels
+- 31 x 31 pixels
+- 51 x 51 pixels
+
+Current implementation retains Brush as an additional post-pick choice and uses
+a radius slider rather than a fixed size menu. Native numerical averaging,
+transparent-pixel handling and edge clipping still require pixel comparisons.
+The native inventory is presentation evidence, not numerical equivalence proof.

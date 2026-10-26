@@ -1,5 +1,24 @@
 use super::*;
 use std::io::{Read, Write};
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub(super) enum AfterPick {
+    #[default]
+    Stay,
+    Previous,
+    Pencil,
+    Brush,
+}
+impl AfterPick {
+    pub const ALL: [Self; 4] = [Self::Stay, Self::Previous, Self::Pencil, Self::Brush];
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Stay => "Keep color picker",
+            Self::Previous => "Previous tool",
+            Self::Pencil => "Pencil",
+            Self::Brush => "Brush",
+        }
+    }
+}
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 pub(super) struct General {
@@ -14,6 +33,7 @@ pub(super) struct General {
     pub picker_radius: u8,
     pub picker_merged: bool,
     pub picker_to_brush: bool,
+    pub picker_behavior: Option<AfterPick>,
 }
 impl Default for General {
     fn default() -> Self {
@@ -29,10 +49,19 @@ impl Default for General {
             picker_radius: 0,
             picker_merged: true,
             picker_to_brush: false,
+            picker_behavior: None,
         }
     }
 }
 impl General {
+    pub fn after_pick(&self) -> AfterPick {
+        self.picker_behavior.unwrap_or(if self.picker_to_brush {
+            AfterPick::Brush
+        } else {
+            AfterPick::Stay
+        })
+    }
+
     fn validate(&self) -> Result<(), String> {
         if self.picker_radius > 15
             || self.version != 1
@@ -285,6 +314,22 @@ mod tests {
         editor.new_height = 16384;
         assert_eq!(editor.current_general_settings(), settings);
     }
+    #[test]
+    fn picker_behavior_preserves_legacy_preferences_and_round_trips_new_modes() {
+        let legacy: General = serde_json::from_str(r#"{"picker_to_brush":true}"#).unwrap();
+        assert_eq!(legacy.after_pick(), AfterPick::Brush);
+        for behavior in AfterPick::ALL {
+            let settings = General {
+                picker_behavior: Some(behavior),
+                ..legacy.clone()
+            };
+            let restored: General =
+                serde_json::from_slice(&serde_json::to_vec(&settings).unwrap()).unwrap();
+            assert_eq!(restored.after_pick(), behavior);
+            restored.validate().unwrap();
+        }
+    }
+
     #[test]
     fn preferences_escape_discards_draft_changes() {
         let ctx = egui::Context::default();

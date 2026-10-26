@@ -7,7 +7,7 @@ Brush Pressure	missing	Tablet pressure mapping
 Brush Size	partial	Diameter control; keyboard increments and exact ranges pending
 Brush Spacing	supported	Diameter-relative spacing with persistent brush/eraser/clone/recolor controls
 Brush Type	missing	Brush type choices
-Color Picker Behavior	partial	Stay in picker or switch to brush after release; previous-tool behavior pending
+Color Picker Behavior	supported	Keep picker, previous tool, Pencil or Brush on release; native menu inventory verified
 Flood Mode	supported	Connected/global matching
 Gamma Mode	missing	Gradient/drawing working-space choice
 Gradient	partial	Five geometries and three modes; endpoint editing pending
