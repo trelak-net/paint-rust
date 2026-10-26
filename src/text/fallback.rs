@@ -67,7 +67,7 @@ impl FontFace {
 
 #[derive(Default)]
 pub struct Resolver {
-    family: Option<String>,
+    family: Option<(String, crate::fonts::FallbackStyle)>,
     candidates: Vec<crate::fonts::InstalledFont>,
     examined: HashSet<(PathBuf, u32)>,
     searched: HashSet<String>,
@@ -120,12 +120,14 @@ impl Resolver {
                     .flatten()
             })
             .unwrap_or_else(|| "sans-serif".into());
-        if self.family.as_ref() != Some(&family) {
-            let candidates = crate::fonts::fallback_candidates(&family, cancel);
+        let style = crate::fonts::FallbackStyle::from_face(&face);
+        let key = (family, style);
+        if self.family.as_ref() != Some(&key) {
+            let candidates = crate::fonts::fallback_candidates(&key.0, style, cancel);
             if cancel.load(Ordering::Relaxed) {
                 return false;
             }
-            self.family = Some(family);
+            self.family = Some(key);
             self.candidates = candidates.unwrap_or_default();
             self.candidates.truncate(128);
             self.examined.clear();

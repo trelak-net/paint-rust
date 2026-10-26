@@ -202,3 +202,11 @@ the primary font anchor; text without fallback characters remains unchanged.
 Unused installed font candidates do not affect spacing. The line-spacing control
 scales the resulting distance; values below 1 can intentionally overlap lines.
 First-line overflow and exact external typography comparisons remain pending.
+
+Fallback font style matching
+----------------------------
+Installed outline fallback requests the primary face's static weight class and
+italic/oblique style from Fontconfig. Changing those properties invalidates the
+resolver cache. Availability and glyph coverage still decide which face can be
+used; a matching style is not guaranteed for every script. Named variable-font
+instances and user-selected axis propagation remain pending.

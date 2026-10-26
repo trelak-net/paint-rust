@@ -70,20 +70,59 @@ pub fn installed_cancellable(cancel: &AtomicBool) -> Result<Vec<InstalledFont>, 
     parse_catalog(&query("fc-list", &[], cancel)?)
 }
 
-pub(crate) fn fallback_candidates(
-    family: &str,
-    cancel: &AtomicBool,
-) -> Result<Vec<InstalledFont>, String> {
-    let mut pattern = String::new();
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct FallbackStyle {
+    pub weight: u16,
+    pub slant: u16,
+}
+impl FallbackStyle {
+    pub fn from_face(face: &rustybuzz::Face<'_>) -> Self {
+        // Fontconfig weight classes differ from OpenType's 100..900 scale.
+        let weight = match face.weight().to_number() {
+            0..=150 => 0,
+            151..=250 => 40,
+            251..=325 => 50,
+            326..=365 => 55,
+            366..=390 => 75,
+            391..=450 => 80,
+            451..=550 => 100,
+            551..=650 => 180,
+            651..=750 => 200,
+            751..=850 => 205,
+            _ => 210,
+        };
+        let slant = if face.is_oblique() {
+            110
+        } else if face.is_italic() {
+            100
+        } else {
+            0
+        };
+        Self { weight, slant }
+    }
+}
+fn fallback_pattern(family: &str, style: FallbackStyle) -> String {
+    let mut escaped = String::new();
     for ch in family.chars().filter(|ch| !ch.is_control()).take(512) {
         if matches!(ch, '\\' | ':' | ',' | '=') {
-            pattern.push('\\');
+            escaped.push('\\');
         }
-        pattern.push(ch);
+        escaped.push(ch);
     }
-    if pattern.is_empty() {
-        pattern.push_str("sans-serif");
+    if escaped.is_empty() {
+        escaped.push_str("sans-serif");
     }
+    format!(
+        ":family={escaped}:weight={}:slant={}",
+        style.weight, style.slant
+    )
+}
+pub(crate) fn fallback_candidates(
+    family: &str,
+    style: FallbackStyle,
+    cancel: &AtomicBool,
+) -> Result<Vec<InstalledFont>, String> {
+    let pattern = fallback_pattern(family, style);
     parse_catalog_ordered(&query("fc-match", &["-s", &pattern], cancel)?)
 }
 
@@ -150,6 +189,64 @@ fn query(program: &str, arguments: &[&str], cancel: &AtomicBool) -> Result<Strin
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn fallback_pattern_keeps_family_data_separate_from_style_properties() {
+        let style = FallbackStyle {
+            weight: 200,
+            slant: 100,
+        };
+        assert_eq!(
+            fallback_pattern("Example", style),
+            ":family=Example:weight=200:slant=100"
+        );
+        assert_eq!(
+            fallback_pattern("", style),
+            ":family=sans-serif:weight=200:slant=100"
+        );
+        assert_eq!(
+            fallback_pattern("-Demo:weight=0,Other\n", style),
+            r":family=-Demo\:weight\=0\,Other:weight=200:slant=100"
+        );
+        assert!(fallback_pattern(&"x".repeat(10000), style).len() < 600);
+    }
+
+    #[test]
+    #[ignore = "requires a host Fontconfig installation with static Open Sans styles"]
+    fn native_fontconfig_honors_regular_and_bold_italic_preferences() {
+        let cancel = AtomicBool::new(false);
+        let regular = fallback_candidates(
+            "Open Sans",
+            FallbackStyle {
+                weight: 80,
+                slant: 0,
+            },
+            &cancel,
+        )
+        .unwrap();
+        let bold = fallback_candidates(
+            "Open Sans",
+            FallbackStyle {
+                weight: 200,
+                slant: 100,
+            },
+            &cancel,
+        )
+        .unwrap();
+        let read = |candidate: &InstalledFont| {
+            let bytes = std::fs::read(&candidate.path).unwrap();
+            let face = rustybuzz::Face::from_slice(&bytes, candidate.index).unwrap();
+            (
+                face.weight().to_number(),
+                face.is_italic() || face.is_oblique(),
+            )
+        };
+        let normal = read(&regular[0]);
+        let heavy = read(&bold[0]);
+        assert!(heavy.0 > normal.0);
+        assert!(!normal.1);
+        assert!(heavy.1);
+    }
+
     #[test]
     fn parser_keeps_face_identity_styles_and_paths_with_spaces() {
         let text = "Example\tBold\t/usr/share/fonts/a b.ttc\t2\nExample\tRegular\t/usr/share/fonts/a b.ttc\t0\nExample\tBold\t/usr/share/fonts/a b.ttc\t2\nVariable\tLight\t/usr/share/fonts/v.ttf\t65536\nBitmap\tNormal\t/usr/share/fonts/b.pcf\t0\nRelative\tNormal\tb.ttf\t0\nbroken";
