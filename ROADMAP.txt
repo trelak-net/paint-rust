@@ -102,6 +102,7 @@ independent tasks; do not silently reduce the required scope.
 [x] Exact straight-RGBA storage for tools, text, numeric/HEX editing and palettes.
 [x] Original hue wheel, saturation/value field, alpha slider and retained grayscale hue.
 [x] Active/merged color picking, bounded alpha-weighted sample radius and previous-tool/Pencil/Brush activation after release and temporary Ctrl merged sampling.
+[x] Native 3x3 picker comparison for alpha-weighted averaging and clipped image edges.
 [ ] Full interactive color-picker and reference presentation audit.
 [x] Zoom/Pan tools, temporary spacebar navigation and zoom-to-region.
 [x] Visible-region pixel grid at high zoom.

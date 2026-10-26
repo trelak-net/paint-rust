@@ -54,3 +54,24 @@ fn largest_sample_includes_the_full_square_and_excludes_outer_pixels() {
         );
     }
 }
+
+#[test]
+fn sample_averaging_matches_native_interior_and_clipped_edge_fixture() {
+    let image = image::load_from_memory(include_bytes!("fixtures/color-picker/alpha-stripes.png"))
+        .unwrap()
+        .to_rgba8();
+    let document = Document::from_pixels(
+        image.width(),
+        image.height(),
+        image.pixels().map(|p| p.0).collect(),
+    )
+    .unwrap();
+    assert_eq!(
+        document.sample_area(49, 49, 1, false),
+        Some([170, 0, 85, 128])
+    );
+    assert_eq!(
+        document.sample_area(0, 49, 1, false),
+        Some([255, 0, 0, 128])
+    );
+}

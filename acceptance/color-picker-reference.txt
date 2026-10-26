@@ -21,6 +21,7 @@ Sample sizes:
 
 Current implementation retains Brush as an additional post-pick choice and uses
 a bounded radius 0–25 slider rather than a fixed size menu, covering every
-observed native sample size. Native numerical averaging,
-transparent-pixel handling and edge clipping still require pixel comparisons.
+observed native sample size. The 3x3 alpha-stripe fixture now matches native interior and left-edge RGBA
+exactly (tests/fixtures/color-picker). Other sizes, alpha rounding cases and
+merged-layer comparisons remain pending.
 The native inventory is presentation evidence, not numerical equivalence proof.

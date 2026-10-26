@@ -1,0 +1,14 @@
+Original 99x99 RGBA fixture, MIT OR Apache-2.0.
+Each row repeats these three pixels 33 times:
+[255,0,0,255], [0,255,0,0], [0,0,255,128].
+Generated from raw RGBA with ImageMagick; no third-party image content.
+
+Native Windows editor 5.1.12, CASTOR, 2026-10-26:
+Layer sampling, 3x3 pixels, image shown at 100%.
+UI Automation values from the expanded Colors panel:
+- Interior at image (49,49): RGB 170,0,85; hex AA0055; alpha 128.
+- Left edge at image (0,49): RGB 255,0,0; hex FF0000; alpha 128.
+The image origin in the 1920x1040 desktop capture was (911,507).
+These cases validate alpha-weighted encoded-color averaging and clipping of
+outside pixels for this footprint. They do not establish every rounding case,
+other sample sizes, hidden RGB preservation or merged-layer equivalence.
