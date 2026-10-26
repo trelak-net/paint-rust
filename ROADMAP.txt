@@ -61,9 +61,9 @@ Next iteration: workspace and tool consistency
 
 Later iterations
 ----------------
-[ ] Antialiased brush and shape rendering, with explicit opacity behavior.
+[x] Antialiased brush and shape rendering, with explicit opacity behavior; exact external coverage audit remains below.
 [x] JPEG export quality controls and EXIF orientation on import.
-[ ] Embedded color profile support.
+[x] Embedded RGB/grayscale raster ICC conversion to sRGB; monitor/CMYK/high-bit-depth work remains below.
 [ ] Tablet pressure and further large-document responsiveness work.
 [ ] Distribution checks on additional Linux environments.
 The full screen-reader audit remains the final task.

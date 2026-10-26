@@ -35,14 +35,14 @@ View.ZoomOut	Zoom Out	partial	Ctrl+Subtract	Ctrl+-	Menu and keyboard discrete st
 View.ZoomToWindow	Zoom to Window	supported	Ctrl+B	Ctrl+B	Fit image in the available canvas viewport
 View.ZoomToSelection	Zoom to Selection	supported	Ctrl+Shift+B	Ctrl+Shift+B	Fit and center the selection bounds without editing pixels
 View.ActualSize	Actual Size	supported	Ctrl+D0	Ctrl+0	Menu, toolbar and shortcut share viewport-center anchoring
-View.Grid	Pixel grid	partial	-	-	Visible-region pixel grid; persistence pending
+View.Grid	Pixel grid	supported	-	-	Visible-region pixel grid with persistent visibility
 View.Rulers	Rulers	supported	-	-	Pixel/inch/centimeter rulers with document X/Y DPI, fractional ticks and saved visibility
 View.Pixels	Pixels	supported	-	-	Persistent measurement unit shared by physical rulers and resize dialog defaults
 View.Inches	Inches	supported	-	-	Persistent measurement unit shared by physical rulers and resize dialog defaults
 View.Centimeters	Centimeters	supported	-	-	Persistent measurement unit shared by physical rulers and resize dialog defaults
 Image.Crop	Crop to Selection	supported	Ctrl+Shift+X	Ctrl+Shift+X	Available; see workflow cases
 Image.Resize	Resize...	partial	Ctrl+R	Ctrl+R	Eight resampling filters, gamma correction, physical units and X/Y DPI; exact external kernel and additional option audit pending
-Image.CanvasSize	Canvas Size...	partial	Ctrl+Shift+R	Ctrl+Shift+R	Anchor-based canvas resize, physical units and X/Y DPI; fill options and external audit pending
+Image.CanvasSize	Canvas Size...	partial	Ctrl+Shift+R	Ctrl+Shift+R	Anchored canvas resize, physical units, X/Y DPI and five background fill choices; external audit pending
 Image.FlipHorizontal	Flip Horizontal	supported	-	-	Available; see workflow cases
 Image.FlipVertical	Flip Vertical	supported	-	-	Available; see workflow cases
 Image.Rotate90CW	Rotate 90° Clockwise	supported	Ctrl+H	Ctrl+H	Available; see workflow cases
@@ -77,7 +77,7 @@ Help.Forum	Forum	different	-	-	Project-specific destination or deferred extensio
 Help.Tutorials	Tutorials	different	-	-	Project-specific destination or deferred extension integration; external product services are out of scope
 Help.Plugins	Plugins	different	-	-	Project-specific destination or deferred extension integration; external product services are out of scope
 Help.SendFeedback	Send feedback or bug report...	missing	-	-	Not implemented
-Help.About	About	partial	-	F1	Application version, package ID and license shown in Help; dedicated About presentation pending
+Help.About	About	supported	-	-	Dedicated version/package/platform dialog, copy action and offline project/third-party license tabs
 Window.Documents	Open documents	supported	Ctrl+Tab / Ctrl+Shift+Tab	Ctrl+Tab / Ctrl+Shift+Tab	Menu follows tab order, marks dirty documents and activates stable document IDs
 Help.Guide	Guide and shortcuts	supported	F1	F1	Scrollable English guide and shortcut reference; Escape closes without editing
 Selection.TransformBoundary	Transform selection boundary	partial	-	Ctrl+Alt+M	Numeric scale, rotation, flips and offsets; latest-generation preview, Apply/Cancel; on-canvas handles pending

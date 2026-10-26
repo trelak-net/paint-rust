@@ -2,19 +2,19 @@ Capability	Status	Expected tool key	Current tool key	Current implementation	Rema
 Rectangle selection	partial	S	S	Combination and drag bounds	Fixed size/ratio, physical units and edge controls
 Ellipse selection	partial	S	S plus ellipse option	Combination and ellipse mask	Fixed size/ratio, physical units and edge controls
 Lasso	partial	S	Q	Freehand outline, combination and cancellation	Edge antialiasing and detailed reference coverage audit
-Color selection	partial	S	W	Tolerance, connected/global, active/merged sampling	Reference tolerance metric and antialiased edge behavior
+Color selection	partial	S	W	Tolerance, connected/global, active/merged sampling	Broader tolerance comparisons and antialiased edge behavior
 Move pixels	partial	M	M	Move/copy, affine handles and nudges	Complete interpolation, constraints and keyboard map
-Move selection	partial	M	M plus selection-only option	Translation plus numeric rotation, scale and flips with cancellable boundary preview	On-canvas boundary handles and antialiased mask edges
+Move selection	partial	M	M plus selection-only option	Translation, numeric rotation/scale/flips and on-canvas boundary handles with cancellable preview	External handle comparison and antialiased mask edges
 Zoom	partial	Z	Z	Anchored clicks, region zoom and Ctrl+wheel	Reference steps, 10000% upper range and full keyboard map
 Pan	partial	H	H	Pan tool, middle button and temporary Space	Full Escape/lost-capture rollback audit
-Brush	partial	B	B	Continuous strokes, hardness, opacity, antialiasing and blend/replace	Spacing, pressure and external coverage comparisons
-Eraser	partial	E	E	Continuous alpha coverage, hardness, opacity and antialiasing	Spacing, pressure and external coverage comparisons
-Pencil	partial	P	N	Single-pixel continuous primary/secondary strokes	Reference raster edge cases and blending options
+Brush	partial	B	B	Continuous strokes, hardness, opacity, antialiasing, fourteen blend modes, spacing and stabilization	Tablet pressure and external coverage comparisons
+Eraser	partial	E	E	Continuous alpha coverage, hardness, opacity, antialiasing, spacing and stabilization	Tablet pressure and external coverage comparisons
+Pencil	partial	P	N	Single-pixel primary/secondary strokes with fourteen blend modes and stable stroke coverage	Reference raster edge cases and blend coverage comparisons
 Color picker	partial	K	I	Active/merged sampling, alpha-weighted radius 0–15 and optional brush activation on release	Native averaging comparison, previous-tool behavior and shortcut parity
-Fill	partial	F	F	Tolerance, connectivity, sampling and selection barriers	Reference tolerance matching and patterned fill
+Fill	partial	F	F	Tolerance, connectivity, sampling and selection barriers	Broader reference matching comparisons and patterned fill
 Gradient	partial	G	G	Five geometries and blend/replace/transparency modes	Persistent endpoint editing and exact interpolation/color space
-Line/curve	partial	O	L	Straight line with constrained angles	Editable curves, joins, caps, dashes and arrows
+Line/curve	partial	O	L	Straight lines and editable cubic Bezier curves	Additional spline modes, joins, caps, dashes and arrows
 Shapes	partial	O	U / R / O	Thirty-three geometries, outline/fill/combined modes, antialiasing and optional persistent resize/move handles	Rotation handles, joined paths and exact reference coverage
 Text	partial	T	T	Installed/file font selection, variable axes, shaping, decorations, outline fallback, alignment, spacing and antialiasing	Fallback style/axis matching, color-font rendering, line-height expansion and external typography audit
 Clone stamp	partial	L	C	Ctrl-click source layer identity, aligned/unaligned cloning, frozen merged sampling and brush controls	External coverage and source-marker behavior audit
-Recolor	partial	R	J	RGB tolerance, primary/secondary replacement, alpha preservation and brush controls	Reference matching, shading preservation and sampling controls
+Recolor	partial	R	J	RGBA shade shifts, once-per-stroke sampling, edge feathering and brush controls	Soft-brush native coverage comparisons

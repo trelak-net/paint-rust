@@ -1,30 +1,30 @@
 Parameter group	Status	Current implementation or gap
 Antialiasing	partial	Text, brush, eraser and shape toggles; selection edges pending
-Blend Mode	partial	Fourteen layer modes; brush source-over/replace; additional drawing modes pending
+Blend Mode	partial	Fourteen layer and drawing blend modes, plus replacement; external coverage audit pending
 Brush Fill	missing	Pattern and fill styles
 Brush Hardness	supported	Soft brush/eraser coverage with stroke opacity
 Brush Pressure	missing	Tablet pressure mapping
 Brush Size	partial	Diameter control; keyboard increments and exact ranges pending
-Brush Spacing	missing	Dab spacing
+Brush Spacing	supported	Diameter-relative spacing with persistent brush/eraser/clone/recolor controls
 Brush Type	missing	Brush type choices
 Color Picker Behavior	partial	Stay in picker or switch to brush after release; previous-tool behavior pending
 Flood Mode	supported	Connected/global matching
 Gamma Mode	missing	Gradient/drawing working-space choice
 Gradient	partial	Five geometries and three modes; endpoint editing pending
-Input Path Smoothing	missing	Input stroke smoothing
-Line Curve Shape Type	partial	Straight line only
+Input Path Smoothing	supported	Persistent distance-based stabilization, bounded curve flattening and release completion
+Line Curve Shape Type	partial	Straight lines and editable cubic Bezier curves; additional spline modes and joined paths pending
 Pen Dash Style	missing	Dash patterns
 Pen End Cap	missing	End caps and arrows
 Pen Start Cap	missing	Start caps and arrows
 Pixel Sample Mode	partial	Radius 0–15, clipped alpha-weighted sRGB square; native numerical comparison pending
 Radius	missing	Rounded shape radius
-Recolor Tool Sampling Mode	missing	Recolor sampling behavior
+Recolor Tool Sampling Mode	supported	Explicit replacement color or first-click sampling once per stroke
 Sample Image Or Layer	supported	Active/merged sampling for fill, color selection, picker and clone
 Selection Combine Mode	supported	Five boolean combination modes
 Selection Draw Mode	partial	Free drawing; fixed ratio/size pending
 Selection Rendering Quality	missing	Selection-edge quality choice
 Shape Draw Type	partial	Outline, fill or combined primary-outline/secondary-fill
-Shape Type	partial	Eighteen geometries including polygons, star, arrows, rounded rectangle and heart
-Resampling	partial	Nearest/bilinear; full interpolation inventory pending
+Shape Type	partial	Thirty-three geometries including all 29 native menu forms; exact contour audit pending
+Resampling	partial	Eight resize filters and linear-light gamma control; external kernels and transform options pending
 Text	partial	Font file, size, alignment, spacing and antialias controls
-Tolerance	partial	Numeric control; exact reference metric pending
+Tolerance	partial	Euclidean RGBA percentage matching with straight/premultiplied alpha; 50% native ramp verified, broader comparisons pending
