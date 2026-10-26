@@ -2877,8 +2877,9 @@ impl Editor {
                     .resizable(false)
                     .show(ctx, |ui| {
                         let mut changed = false;
+                        let whole_layer = matches!(dialog.effect, Effect::LayerTransform(_));
                         match &mut dialog.effect {
-                            Effect::FreeTransform(parameters) => {
+                            Effect::FreeTransform(parameters) | Effect::LayerTransform(parameters) => {
                                 changed |= ui.add(egui::Slider::new(&mut parameters.angle, -180.0..=180.0).text("Angle (degrees)")).changed();
                                 for (label, scale) in [("Horizontal scale", &mut parameters.scale_x), ("Vertical scale", &mut parameters.scale_y)] {
                                     changed |= ui.add(egui::Slider::new(scale, 0.01..=4.0).logarithmic(true)
@@ -2894,8 +2895,12 @@ impl Editor {
                                 changed |= ui.checkbox(&mut parameters.flip_y, "Flip vertically").changed();
                                 changed |= ui.checkbox(&mut parameters.copy, "Keep source pixels").changed();
                                 changed |= ui.checkbox(&mut parameters.smooth, "Smooth sampling").changed();
-                                ui.small("Transforms around the selection center. Pixels outside the canvas are clipped.");
-                                ui.small("Drag the box to move, corners to scale, or the blue circle to rotate. Shift constrains movement, preserves scale ratio, or snaps rotation.");
+                                if whole_layer {
+                                    ui.small("Transforms the entire active layer around the canvas center. Pixels outside the canvas are clipped; selection bounds and other layers are preserved.");
+                                } else {
+                                    ui.small("Transforms around the selection center. Pixels outside the canvas are clipped.");
+                                    ui.small("Drag the box to move, corners to scale, or the blue circle to rotate. Shift constrains movement, preserves scale ratio, or snaps rotation.");
+                                }
                             }
                             Effect::BrightnessContrast {
                                 brightness,
@@ -7123,6 +7128,72 @@ mod tests {
             }
         }
     }
+    #[test]
+    fn whole_layer_transform_ignores_selection_and_preserves_other_layers_on_apply_cancel() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        let source: Vec<_> = (1..=6).map(|value| [value, 0, 0, 255]).collect();
+        editor.document = Document::from_pixels(3, 2, source.clone()).unwrap();
+        editor.document.add_layer(true);
+        editor
+            .document
+            .set_layer_style("Detail".into(), 83, BlendMode::Multiply);
+        let lower = editor.document.layers()[0].clone();
+        let selection = Selection::elliptical(0, 0, 1, 1);
+        editor.document.set_selection(Some(selection.clone()));
+        editor.document.mark_saved();
+        let history = editor.document.history().count();
+        editor.last_effect = Some(Effect::Sepia);
+        let effect = Effect::LayerTransform(paint_rust::affine::FreeTransform {
+            offset_x: 1.0,
+            smooth: false,
+            ..Default::default()
+        });
+        for cancel in [true, false] {
+            editor.begin_effect(&ctx, effect);
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+            loop {
+                frame(&mut editor, &ctx, vec![]);
+                if editor.effect_dialog.as_ref().unwrap().preview.ready {
+                    break;
+                }
+                assert!(std::time::Instant::now() < deadline);
+                std::thread::sleep(std::time::Duration::from_millis(2));
+            }
+            assert_eq!(
+                editor.document.pixels(),
+                &[[0; 4], source[0], source[1], [0; 4], source[3], source[4]]
+            );
+            assert!(editor.document.layers()[0] == lower);
+            assert_eq!(editor.document.selection(), Some(selection.clone()));
+            if cancel {
+                frame(
+                    &mut editor,
+                    &ctx,
+                    vec![egui::Event::Key {
+                        key: Key::Escape,
+                        physical_key: None,
+                        pressed: true,
+                        repeat: false,
+                        modifiers: egui::Modifiers::NONE,
+                    }],
+                );
+                assert_eq!(editor.document.history().count(), history);
+            } else {
+                editor.apply_effect(effect);
+                editor.effect_dialog = None;
+                assert_eq!(editor.document.history().count(), history + 1);
+                assert_eq!(editor.document.selection(), Some(selection.clone()));
+                assert_eq!(editor.document.layers()[1].opacity, 83);
+                assert_eq!(editor.document.layers()[1].blend_mode, BlendMode::Multiply);
+                editor.undo();
+            }
+            assert_eq!(editor.document.pixels(), source);
+            assert_eq!(editor.last_effect, Some(Effect::Sepia));
+            assert!(!editor.document.dirty());
+        }
+    }
+
     #[test]
     fn transform_box_drag_updates_preview_without_drawing_a_brush_stroke() {
         let ctx = egui::Context::default();

@@ -170,6 +170,8 @@ pub enum Effect {
     Gradient(crate::gradient::Gradient),
     #[serde(skip)]
     FreeTransform(crate::affine::FreeTransform),
+    #[serde(skip)]
+    LayerTransform(crate::affine::FreeTransform),
     BrightnessContrast {
         brightness: i16,
         contrast: i16,
@@ -195,7 +197,8 @@ impl Effect {
             | Self::Shape(_)
             | Self::Bezier(_)
             | Self::Gradient(_)
-            | Self::FreeTransform(_) => false,
+            | Self::FreeTransform(_)
+            | Self::LayerTransform(_) => false,
             Self::SketchBlur {
                 radius,
                 percentile,
@@ -364,7 +367,8 @@ impl Effect {
             | Self::Shape(_)
             | Self::Bezier(_)
             | Self::Gradient(_)
-            | Self::FreeTransform(_) => "Geometry",
+            | Self::FreeTransform(_)
+            | Self::LayerTransform(_) => "Geometry",
             _ => "Adjustments",
         }
     }
@@ -377,6 +381,7 @@ impl Effect {
                 | Self::Bezier(_)
                 | Self::Gradient(_)
                 | Self::FreeTransform(_)
+                | Self::LayerTransform(_)
         )
     }
     pub fn name(self) -> &'static str {
@@ -436,6 +441,7 @@ impl Effect {
             Self::Bezier(_) => "Bezier curve",
             Self::Gradient(_) => "Gradient",
             Self::FreeTransform(_) => "Free transform",
+            Self::LayerTransform(_) => "Transform layer",
             Self::BrightnessContrast { .. } => "Brightness / Contrast",
             Self::Saturation(_) => "Saturation",
             Self::HueSaturation { .. } => "Hue / Saturation / Lightness",
@@ -535,6 +541,9 @@ pub fn render(
             parameters,
             cancel,
         );
+    }
+    if let Effect::LayerTransform(parameters) = effect {
+        return crate::affine::render(source, width, height, None, parameters, cancel);
     }
     if let Effect::FreeTransform(parameters) = effect {
         return crate::affine::render(
@@ -884,6 +893,7 @@ pub fn render(
                     | Effect::BoxBlur(_)
                     | Effect::Pixelate(_)
                     | Effect::FreeTransform(_)
+                    | Effect::LayerTransform(_)
                     | Effect::Gradient(_)
                     | Effect::Bezier(_)
                     | Effect::Shape(_)

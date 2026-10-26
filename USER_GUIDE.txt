@@ -220,3 +220,13 @@ The installed-font browser includes named variable styles such as Bold or Light.
 Choosing one loads its base font face and named axis coordinates together; the
 axis controls, preview and subsequent text operations in the session retain
 those coordinates. Loading a plain font file starts at its default coordinates.
+
+Transforming a whole layer
+-------------------------
+Layers > Transform layer opens rotation, horizontal/vertical scale, pixel offset,
+flip, sampling and optional source-copy controls for the entire active layer.
+The transform is centered on the canvas and clips pixels outside it. It preserves
+other layers, layer properties and selection bounds. Apply creates one undo step;
+Cancel or Escape restores the original pixels. This operation does not replace
+the last repeatable effect. Perspective tilt, tiling and canvas handles for this
+whole-layer operation remain pending.

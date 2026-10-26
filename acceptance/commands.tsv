@@ -59,7 +59,7 @@ Layers.ImportFromFile	Import From File...	partial	-	-	Imports flattened composit
 Layers.FlipHorizontal	Flip Horizontal	supported	-	-	Exact active-layer operation in background; fixed canvas/selection, one-step undo
 Layers.FlipVertical	Flip Vertical	supported	-	-	Exact active-layer operation in background; fixed canvas/selection, one-step undo
 Layers.Rotate180	Rotate 180°	supported	-	-	Exact active-layer operation in background; fixed canvas/selection, one-step undo
-Layers.RotateZoom	RotateZoom	partial	-	-	Selection free transform; layer-specific tilt/zoom dialog pending
+Layers.RotateZoom	RotateZoom	partial	-	-	Dedicated whole-layer rotation/scale/offset/flip preview with preserved selection; perspective tilt, tiling and external comparison pending
 Layers.GoToTopLayer	Go to Top Layer	supported	Ctrl+Alt+PageUp	Ctrl+Alt+PageUp	Keyboard selection with bounds checks; no image edits or history entries
 Layers.GoToLayerAbove	Go to Layer Above	supported	Alt+PageUp	Alt+PageUp	Keyboard selection with bounds checks; no image edits or history entries
 Layers.GoToLayerBelow	Go to Layer Below	supported	Alt+PageDown	Alt+PageDown	Keyboard selection with bounds checks; no image edits or history entries

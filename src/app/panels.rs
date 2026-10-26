@@ -269,6 +269,10 @@ impl Editor {
                 ui.close();
             }
         }
+        if ui.button("Transform layer…").clicked() {
+            self.begin_effect(ui.ctx(), Effect::LayerTransform(Default::default()));
+            ui.close();
+        }
         ui.separator();
         if ui.button("Layer properties…    F4").clicked() {
             let layer = &self.document.layers()[self.document.active_layer()];
