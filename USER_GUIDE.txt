@@ -209,4 +209,5 @@ Installed outline fallback requests the primary face's static weight class and
 italic/oblique style from Fontconfig. Changing those properties invalidates the
 resolver cache. Availability and glyph coverage still decide which face can be
 used; a matching style is not guaranteed for every script. Named variable-font
-instances and user-selected axis propagation remain pending.
+instances returned by Fontconfig are supported, including their axis coordinates.
+User-selected primary axis propagation remains pending.

@@ -17,6 +17,9 @@ impl InstalledFont {
     }
 }
 fn parse_catalog_ordered(text: &str) -> Result<Vec<InstalledFont>, String> {
+    parse_catalog_instances(text, false)
+}
+fn parse_catalog_instances(text: &str, instances: bool) -> Result<Vec<InstalledFont>, String> {
     if text.len() > 4 * 1024 * 1024 {
         return Err("System font catalog exceeds 4 MiB.".into());
     }
@@ -29,8 +32,13 @@ fn parse_catalog_ordered(text: &str) -> Result<Vec<InstalledFont>, String> {
         let Ok(index) = parts[3].parse::<u32>() else {
             continue;
         };
-        // Named variable-font instances need axis settings not supported by this renderer.
-        if index > 65535 || parts[0].is_empty() || parts[0].len() > 512 || parts[1].len() > 512 {
+        // The font browser exposes base faces; fallback resolves named-instance axes.
+        if index > 0x7fff_ffff
+            || (!instances && index > 65535)
+            || parts[0].is_empty()
+            || parts[0].len() > 512
+            || parts[1].len() > 512
+        {
             continue;
         }
         let path = PathBuf::from(parts[2]);
@@ -123,7 +131,7 @@ pub(crate) fn fallback_candidates(
     cancel: &AtomicBool,
 ) -> Result<Vec<InstalledFont>, String> {
     let pattern = fallback_pattern(family, style);
-    parse_catalog_ordered(&query("fc-match", &["-s", &pattern], cancel)?)
+    parse_catalog_instances(&query("fc-match", &["-s", &pattern], cancel)?, true)
 }
 
 fn query(program: &str, arguments: &[&str], cancel: &AtomicBool) -> Result<String, String> {
@@ -250,6 +258,8 @@ mod tests {
     #[test]
     fn parser_keeps_face_identity_styles_and_paths_with_spaces() {
         let text = "Example\tBold\t/usr/share/fonts/a b.ttc\t2\nExample\tRegular\t/usr/share/fonts/a b.ttc\t0\nExample\tBold\t/usr/share/fonts/a b.ttc\t2\nVariable\tLight\t/usr/share/fonts/v.ttf\t65536\nBitmap\tNormal\t/usr/share/fonts/b.pcf\t0\nRelative\tNormal\tb.ttf\t0\nbroken";
+        let instances = parse_catalog_instances(text, true).unwrap();
+        assert!(instances.iter().any(|font| font.index == 65536));
         let fonts = parse_catalog(text).unwrap();
         assert_eq!(fonts.len(), 2);
         assert_eq!(fonts[0].style, "Bold");

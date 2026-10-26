@@ -522,6 +522,7 @@ fn outline_fallback_renders_missing_glyphs_and_can_be_disabled() {
     let fallbacks = [FontFace {
         font: emoji,
         index: 0,
+        axes: Default::default(),
     }];
     let cancel = AtomicBool::new(false);
     let render = |fallbacks: &[FontFace], automatic_fallback| {
@@ -580,6 +581,7 @@ fn multiline_fallback_expands_spacing_only_when_the_face_is_used() {
     let fallback = FontFace {
         font: ab_glyph::FontArc::try_from_vec(data).unwrap(),
         index: 0,
+        axes: Default::default(),
     };
     let render = |text: &str, faces: &[FontFace], enabled| {
         let mut pixels = vec![[0; 4]; 128 * 700];

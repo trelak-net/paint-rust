@@ -56,3 +56,56 @@ fn missing_script_resolves_off_thread_and_reuses_loaded_fonts() {
     }
     assert!(!resolver.prepare(&primary, 0, "مرحبا", &AtomicBool::new(true)));
 }
+
+#[test]
+#[ignore = "Requires static Open Sans and Noto Arabic variable fonts via Fontconfig"]
+fn bold_primary_resolves_a_named_variable_fallback_and_renders_its_axes() {
+    use paint_rust::text::{
+        TextLayout, TextStyle, fallback::Resolver, render_with_fallback_cancellable,
+    };
+    let cancel = AtomicBool::new(false);
+    let primary = paint_rust::text::load_font_cancellable(
+        std::path::Path::new("/usr/share/fonts/open-sans/OpenSans-Bold.ttf"),
+        &cancel,
+    )
+    .unwrap();
+    let mut resolver = Resolver::default();
+    assert!(resolver.prepare(&primary, 0, "مرحبا", &cancel));
+    assert!(
+        resolver
+            .fonts()
+            .iter()
+            .any(|font| font.axes.get(*b"wght").is_some_and(|w| w >= 700.0))
+    );
+    let render = |faces| {
+        let mut pixels = vec![[0; 4]; 400 * 120];
+        assert!(render_with_fallback_cancellable(
+            &mut pixels,
+            400,
+            120,
+            None,
+            TextStyle {
+                layout: TextLayout::default(),
+                font: &primary,
+                text: "مرحبا",
+                origin: (10.0, 10.0),
+                size: 60.0,
+                color: [255; 4],
+            },
+            faces,
+            &cancel
+        ));
+        pixels
+    };
+    let heavy = render(resolver.fonts());
+    let mut normal = resolver.fonts().to_vec();
+    for font in &mut normal {
+        font.axes = Default::default();
+    }
+    let normal = render(&normal);
+    assert_ne!(heavy, normal);
+    assert!(
+        heavy.iter().map(|p| u64::from(p[3])).sum::<u64>()
+            > normal.iter().map(|p| u64::from(p[3])).sum::<u64>()
+    );
+}

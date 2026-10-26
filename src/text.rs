@@ -134,16 +134,7 @@ pub fn render_with_fallback_cancellable(
         } else {
             0
         })
-        .filter_map(|font| {
-            Some(fallback::PreparedFont {
-                face: rustybuzz::Face::from_slice(font.font.font_data(), font.index)?,
-                raster: ab_glyph::FontRef::try_from_slice_and_index(
-                    font.font.font_data(),
-                    font.index,
-                )
-                .ok()?,
-            })
-        })
+        .filter_map(fallback::FontFace::prepared)
         .collect();
     let font = raster_font.as_scaled(style.size);
     let mut lines = Vec::new();

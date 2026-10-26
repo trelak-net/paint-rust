@@ -11,6 +11,7 @@ use unicode_segmentation::UnicodeSegmentation;
 pub struct FontFace {
     pub font: FontArc,
     pub index: u32,
+    pub axes: super::variations::Settings,
 }
 
 pub(crate) struct PreparedFont<'a> {
@@ -59,9 +60,17 @@ pub(crate) fn covers(face: &rustybuzz::Face<'_>, font: &dyn Font, text: &str) ->
 }
 
 impl FontFace {
+    pub(crate) fn prepared(&self) -> Option<PreparedFont<'_>> {
+        let mut face = rustybuzz::Face::from_slice(self.font.font_data(), self.index)?;
+        let mut raster =
+            FontRef::try_from_slice_and_index(self.font.font_data(), self.index).ok()?;
+        self.axes
+            .apply(&mut raster, &mut face)
+            .then_some(PreparedFont { face, raster })
+    }
     fn covers(&self, text: &str) -> bool {
-        rustybuzz::Face::from_slice(self.font.font_data(), self.index)
-            .is_some_and(|face| covers(&face, &self.font, text))
+        self.prepared()
+            .is_some_and(|font| covers(&font.face, &font.raster, text))
     }
 }
 
@@ -170,9 +179,11 @@ impl Resolver {
             if metadata.len() > (BUDGET - self.bytes) as u64 {
                 continue;
             }
-            let Ok(font) =
-                super::load_font_face_cancellable(&candidate.path, candidate.index, cancel)
-            else {
+            let Ok(font) = super::load_font_face_cancellable(
+                &candidate.path,
+                candidate.index & 0xffff,
+                cancel,
+            ) else {
                 if cancel.load(Ordering::Relaxed) {
                     self.examined
                         .remove(&(candidate.path.clone(), candidate.index));
@@ -180,24 +191,22 @@ impl Resolver {
                 }
                 continue;
             };
-            let Some(face) = rustybuzz::Face::from_slice(font.font_data(), candidate.index) else {
+            let index = candidate.index & 0xffff;
+            let Some(axes) =
+                super::variations::named_instance(&font, index, (candidate.index >> 16) as u16)
+            else {
                 continue;
             };
-            if !missing
-                .iter()
-                .any(|grapheme| covers(&face, &font, grapheme))
-            {
+            let entry = FontFace { font, index, axes };
+            if !missing.iter().any(|grapheme| entry.covers(grapheme)) {
                 continue;
             }
-            if font.font_data().len() > BUDGET - self.bytes {
+            if entry.font.font_data().len() > BUDGET - self.bytes {
                 break;
             }
-            self.bytes += font.font_data().len();
-            missing.retain(|grapheme| !covers(&face, &font, grapheme));
-            self.fonts.push(FontFace {
-                font,
-                index: candidate.index,
-            });
+            self.bytes += entry.font.font_data().len();
+            missing.retain(|grapheme| !entry.covers(grapheme));
+            self.fonts.push(entry);
         }
         !cancel.load(Ordering::Relaxed)
     }
