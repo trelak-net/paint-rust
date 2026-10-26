@@ -166,7 +166,25 @@ pub fn render_with_fallback_cancellable(
         Alignment::Center => 0.5,
         Alignment::Right => 1.0,
     };
-    let line_height = (font.height() + font.line_gap()) * style.layout.line_spacing;
+    // Keep the primary baseline anchor, but leave room between lines for every
+    // face actually used by shaping. Unused fallback candidates have no effect.
+    let mut ascent = font.ascent();
+    let mut descent = font.descent();
+    let mut gap = font.line_gap();
+    for line in &lines {
+        for (glyph, &index) in line.glyphs.iter().zip(&line.font_indices) {
+            if cancel.load(Ordering::Relaxed) {
+                return false;
+            }
+            if index > 0 {
+                let metrics = prepared[index - 1].raster.as_scaled(glyph.scale);
+                ascent = ascent.max(metrics.ascent() - glyph.position.y);
+                descent = descent.min(metrics.descent() - glyph.position.y);
+                gap = gap.max(metrics.line_gap());
+            }
+        }
+    }
+    let line_height = (ascent - descent + gap) * style.layout.line_spacing;
     for (line_index, line) in lines.iter().enumerate() {
         let origin = point(
             style.origin.0 - line.width * factor,

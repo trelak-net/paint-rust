@@ -193,3 +193,12 @@ Alt with the right button to intersect, or Ctrl with the right button for XOR.
 The combination is captured at the beginning of the gesture and does not change
 the mode selected in the toolbar. Alt takes precedence when Ctrl is also held.
 Escape restores the previous selection without adding a history step.
+
+Mixed-font text spacing
+-----------------------
+Automatic outline fallback expands the multiline baseline distance when a used
+fallback face needs more ascent, descent or line gap. The first baseline keeps
+the primary font anchor; text without fallback characters remains unchanged.
+Unused installed font candidates do not affect spacing. The line-spacing control
+scales the resulting distance; values below 1 can intentionally overlap lines.
+First-line overflow and exact external typography comparisons remain pending.

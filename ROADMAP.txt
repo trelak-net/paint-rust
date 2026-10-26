@@ -162,7 +162,8 @@ independent tasks; do not silently reduce the required scope.
 [x] OpenType shaping, Unicode bidirectional/script runs and font-specific underline/strikeout metrics.
 [x] Variable font axis sliders with synchronized shaping/outlines and reset controls.
 [x] Automatic installed outline-font fallback with a bounded background cache, grapheme preservation and bidi shaping.
-[ ] Fallback style/axis matching, color-font rendering, line-height expansion and remaining text controls.
+[x] Expand multiline spacing using metrics of fallback faces actually used, preserving the primary baseline anchor.
+[ ] Fallback style/axis matching, color-font rendering, first-line overflow and remaining text controls.
 7. Layers and history
 [x] Drag reordering with selected-layer identity and one-step undo.
 [x] Cached layer thumbnails with transparency checkerboard.

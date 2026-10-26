@@ -560,3 +560,71 @@ fn outline_fallback_renders_missing_glyphs_and_can_be_disabled() {
         );
     }
 }
+
+#[test]
+fn multiline_fallback_expands_spacing_only_when_the_face_is_used() {
+    use ab_glyph::{Font, ScaleFont};
+    use paint_rust::text::{TextLayout, fallback::FontFace, render_with_fallback_cancellable};
+    use std::sync::atomic::AtomicBool;
+    let primary = font();
+    let definitions = eframe::egui::FontDefinitions::default();
+    let mut data = definitions.font_data["NotoEmoji-Regular"].font.to_vec();
+    // Enlarge only the test face's line gap, leaving glyph outlines unchanged.
+    let count = u16::from_be_bytes(data[4..6].try_into().unwrap()) as usize;
+    let record = (0..count)
+        .map(|i| 12 + i * 16)
+        .find(|&i| &data[i..i + 4] == b"hhea")
+        .unwrap();
+    let offset = u32::from_be_bytes(data[record + 8..record + 12].try_into().unwrap()) as usize;
+    data[offset + 8..offset + 10].copy_from_slice(&16000_i16.to_be_bytes());
+    let fallback = FontFace {
+        font: ab_glyph::FontArc::try_from_vec(data).unwrap(),
+        index: 0,
+    };
+    let render = |text: &str, faces: &[FontFace], enabled| {
+        let mut pixels = vec![[0; 4]; 128 * 700];
+        assert!(render_with_fallback_cancellable(
+            &mut pixels,
+            128,
+            700,
+            None,
+            TextStyle {
+                layout: TextLayout {
+                    automatic_fallback: enabled,
+                    ..Default::default()
+                },
+                font: &primary,
+                text,
+                origin: (4.0, 8.0),
+                size: 32.0,
+                color: [255; 4],
+            },
+            faces,
+            &AtomicBool::new(false)
+        ));
+        pixels
+    };
+    let faces = [fallback];
+    assert_eq!(render("A\nB", &faces, true), render("A\nB", &[], true));
+    assert_eq!(render("😀\n😀", &faces, false), render("😀\n😀", &[], true));
+    let single = render("😀", &faces, true);
+    let double = render("😀\n😀", &faces, true);
+    let rows = |pixels: &[[u8; 4]]| {
+        pixels
+            .chunks(128)
+            .enumerate()
+            .filter(|(_, row)| row.iter().any(|p| p[3] > 0))
+            .map(|(y, _)| y)
+            .collect::<Vec<_>>()
+    };
+    let first = rows(&single);
+    let both = rows(&double);
+    assert!(!first.is_empty());
+    let last_first = *first.last().unwrap();
+    let second_start = *both.iter().find(|&&y| y > last_first).unwrap();
+    assert!(second_start - first[0] > (primary.as_scaled(32.0).height() * 3.0) as usize);
+    assert_eq!(
+        &single[..(last_first + 1) * 128],
+        &double[..(last_first + 1) * 128]
+    );
+}
