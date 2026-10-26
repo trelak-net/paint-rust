@@ -84,9 +84,13 @@ pub(crate) struct FallbackStyle {
     pub slant: u16,
 }
 impl FallbackStyle {
-    pub fn from_face(face: &rustybuzz::Face<'_>) -> Self {
+    pub fn from_face(face: &rustybuzz::Face<'_>, axes: crate::text::variations::Settings) -> Self {
         // Fontconfig weight classes differ from OpenType's 100..900 scale.
-        let weight = match face.weight().to_number() {
+        let weight = match axes
+            .get(*b"wght")
+            .unwrap_or(f32::from(face.weight().to_number()))
+            .clamp(1.0, 1000.0) as u16
+        {
             0..=150 => 0,
             151..=250 => 40,
             251..=325 => 50,
@@ -99,7 +103,11 @@ impl FallbackStyle {
             751..=850 => 205,
             _ => 210,
         };
-        let slant = if face.is_oblique() {
+        let slant = if let Some(italic) = axes.get(*b"ital") {
+            if italic >= 0.5 { 100 } else { 0 }
+        } else if let Some(slant) = axes.get(*b"slnt") {
+            if slant != 0.0 { 110 } else { 0 }
+        } else if face.is_oblique() {
             110
         } else if face.is_italic() {
             100

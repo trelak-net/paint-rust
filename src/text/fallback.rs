@@ -76,7 +76,11 @@ impl FontFace {
 
 #[derive(Default)]
 pub struct Resolver {
-    family: Option<(String, crate::fonts::FallbackStyle)>,
+    family: Option<(
+        String,
+        crate::fonts::FallbackStyle,
+        super::variations::Settings,
+    )>,
     candidates: Vec<crate::fonts::InstalledFont>,
     examined: HashSet<(PathBuf, u32)>,
     searched: HashSet<String>,
@@ -98,19 +102,39 @@ impl Resolver {
         text: &str,
         cancel: &AtomicBool,
     ) -> bool {
+        self.prepare_with_axes(
+            primary,
+            index,
+            text,
+            super::variations::Settings::default(),
+            cancel,
+        )
+    }
+
+    pub fn prepare_with_axes(
+        &mut self,
+        primary: &FontArc,
+        index: u32,
+        text: &str,
+        axes: super::variations::Settings,
+        cancel: &AtomicBool,
+    ) -> bool {
         if cancel.load(Ordering::Relaxed) {
             return false;
         }
         if text.len() > 16384 {
             return false;
         }
-        let Ok(primary_raster) = FontRef::try_from_slice_and_index(primary.font_data(), index)
+        let Ok(mut primary_raster) = FontRef::try_from_slice_and_index(primary.font_data(), index)
         else {
             return false;
         };
-        let Some(face) = rustybuzz::Face::from_slice(primary.font_data(), index) else {
+        let Some(mut face) = rustybuzz::Face::from_slice(primary.font_data(), index) else {
             return false;
         };
+        if !axes.apply(&mut primary_raster, &mut face) {
+            return false;
+        }
         let missing: HashSet<String> = text
             .graphemes(true)
             .filter(|grapheme| !covers(&face, &primary_raster, grapheme))
@@ -129,8 +153,8 @@ impl Resolver {
                     .flatten()
             })
             .unwrap_or_else(|| "sans-serif".into());
-        let style = crate::fonts::FallbackStyle::from_face(&face);
-        let key = (family, style);
+        let style = crate::fonts::FallbackStyle::from_face(&face, axes);
+        let key = (family, style, axes);
         if self.family.as_ref() != Some(&key) {
             let candidates = crate::fonts::fallback_candidates(&key.0, style, cancel);
             if cancel.load(Ordering::Relaxed) {
@@ -192,12 +216,17 @@ impl Resolver {
                 continue;
             };
             let index = candidate.index & 0xffff;
-            let Some(axes) =
+            let Some(mut instance_axes) =
                 super::variations::named_instance(&font, index, (candidate.index >> 16) as u16)
             else {
                 continue;
             };
-            let entry = FontFace { font, index, axes };
+            instance_axes.overlay_supported(axes, &font, index);
+            let entry = FontFace {
+                font,
+                index,
+                axes: instance_axes,
+            };
             if !missing.iter().any(|grapheme| entry.covers(grapheme)) {
                 continue;
             }

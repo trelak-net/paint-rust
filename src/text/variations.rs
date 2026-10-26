@@ -32,6 +32,20 @@ impl Settings {
             false
         }
     }
+    pub(super) fn overlay_supported(&mut self, requested: Self, font: &FontArc, index: u32) {
+        let Ok(face) = FontRef::try_from_slice_and_index(font.font_data(), index) else {
+            return;
+        };
+        for axis in face.variations() {
+            // Registered design axes have common semantics across families.
+            if !matches!(&axis.tag, b"wght" | b"wdth" | b"ital" | b"slnt" | b"opsz") {
+                continue;
+            }
+            if let Some(value) = requested.get(axis.tag) {
+                self.set(axis.tag, value.clamp(axis.min_value, axis.max_value));
+            }
+        }
+    }
     pub(super) fn apply(&self, font: &mut FontRef<'_>, face: &mut rustybuzz::Face<'_>) -> bool {
         let axes = font.variations();
         let mut coordinates = Vec::new();

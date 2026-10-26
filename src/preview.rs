@@ -89,10 +89,11 @@ impl EffectPreview {
                             continue;
                         }
                         if text.layout.automatic_fallback
-                            && !fallback.prepare(
+                            && !fallback.prepare_with_axes(
                                 &text.font,
                                 text.layout.font_index,
                                 &text.content,
+                                text.layout.font_axes,
                                 &request.cancel,
                             )
                         {

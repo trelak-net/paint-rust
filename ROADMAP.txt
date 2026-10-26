@@ -165,7 +165,8 @@ independent tasks; do not silently reduce the required scope.
 [x] Expand multiline spacing using metrics of fallback faces actually used, preserving the primary baseline anchor.
 [x] Static fallback weight/slant preferences and style-aware resolver cache invalidation, with native Fontconfig checks.
 [x] Resolve named variable-font fallback instances with bounded fvar parsing and synchronized shaping/raster axes.
-[ ] Propagate primary variable axes into fallback matching, color-font rendering, first-line overflow and remaining text controls.
+[x] Propagate registered primary variation axes to supported fallback axes with range clamping and cache refresh.
+[ ] Color-font rendering, first-line overflow and remaining text controls/presentation audit.
 7. Layers and history
 [x] Drag reordering with selected-layer identity and one-step undo.
 [x] Cached layer thumbnails with transparency checkerboard.

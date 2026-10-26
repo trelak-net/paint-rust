@@ -210,4 +210,6 @@ italic/oblique style from Fontconfig. Changing those properties invalidates the
 resolver cache. Availability and glyph coverage still decide which face can be
 used; a matching style is not guaranteed for every script. Named variable-font
 instances returned by Fontconfig are supported, including their axis coordinates.
-User-selected primary axis propagation remains pending.
+Primary weight, width, italic, slant and optical-size coordinates propagate to
+matching fallback axes and clamp to their supported ranges. Custom axis tags
+are not copied between families. Weight and slant also inform font discovery.

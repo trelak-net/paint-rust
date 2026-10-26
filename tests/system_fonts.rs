@@ -109,3 +109,34 @@ fn bold_primary_resolves_a_named_variable_fallback_and_renders_its_axes() {
             > normal.iter().map(|p| u64::from(p[3])).sum::<u64>()
     );
 }
+
+#[test]
+#[ignore = "Requires Noto Sans and Noto Arabic variable fonts via Fontconfig"]
+fn changing_primary_weight_axis_refreshes_and_updates_fallback_coordinates() {
+    use paint_rust::text::{fallback::Resolver, variations::Settings};
+    let cancel = AtomicBool::new(false);
+    let primary = paint_rust::text::load_font_cancellable(
+        std::path::Path::new("/usr/share/fonts/google-noto-vf/NotoSans[wght].ttf"),
+        &cancel,
+    )
+    .unwrap();
+    let mut resolver = Resolver::default();
+    for weight in [700.0, 400.0, 650.0] {
+        let mut axes = Settings::default();
+        assert!(axes.set(*b"wght", weight));
+        assert!(
+            resolver.prepare_with_axes(&primary, 0, "مرحبا", axes, &cancel),
+            "weight {weight}"
+        );
+        assert!(!resolver.fonts().is_empty());
+        assert!(
+            resolver
+                .fonts()
+                .iter()
+                .any(|face| face.axes.get(*b"wght") == Some(weight))
+        );
+    }
+    let mut invalid = Settings::default();
+    invalid.set(*b"XXXX", 12.0);
+    assert!(!resolver.prepare_with_axes(&primary, 0, "مرحبا", invalid, &cancel));
+}
