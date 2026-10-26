@@ -125,6 +125,7 @@ independent tasks; do not silently reduce the required scope.
 [x] Color-based selection with tolerance, connected/global modes and active/merged sampling.
 [x] Freehand lasso with closing preview, selection combination and Escape cancellation.
 [x] Replace/add/subtract/intersect/exclusive-or selection combination and inversion.
+[x] Rectangle/ellipse Ctrl/Alt and left/right-button combination overrides captured per gesture.
 [x] Crop irregular selections with transparent excluded pixels on every layer and one-step undo.
 [x] Cut/Delete deselection with atomic pixel-and-selection undo and clipboard failure guards.
 [x] Explicit primary/secondary selected-area fill with cancellable background publication.

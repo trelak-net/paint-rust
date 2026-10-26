@@ -20,7 +20,7 @@ Pixel Sample Mode	partial	Radius 0–25, clipped alpha-weighted sRGB square; nat
 Radius	missing	Rounded shape radius
 Recolor Tool Sampling Mode	supported	Explicit replacement color or first-click sampling once per stroke
 Sample Image Or Layer	supported	Active/merged sampling for fill, color selection, picker and clone
-Selection Combine Mode	supported	Five boolean combination modes
+Selection Combine Mode	supported	Five boolean combination modes; rectangle/ellipse Ctrl/Alt left/right overrides
 Selection Draw Mode	partial	Free, fixed ratio and fixed pixel size with dimension swap; physical units and external gestures pending
 Selection Rendering Quality	missing	Selection-edge quality choice
 Shape Draw Type	partial	Outline, fill or combined primary-outline/secondary-fill

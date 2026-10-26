@@ -157,6 +157,7 @@ pub struct Editor {
     move_selection_only: bool,
     ellipse_selection: bool,
     selection_mode: CombineMode,
+    selection_gesture_mode: Option<CombineMode>,
     color_tolerance: u8,
     color_alpha: paint_rust::selection::AlphaMatch,
     color_contiguous: bool,
@@ -336,6 +337,7 @@ impl Editor {
             move_selection_only: false,
             ellipse_selection: false,
             selection_mode: CombineMode::Replace,
+            selection_gesture_mode: None,
             color_tolerance: 0,
             color_alpha: Default::default(),
             color_contiguous: true,
@@ -804,7 +806,11 @@ impl Editor {
         {
             let candidate = self.document.selection();
             self.document.set_selection(previous.clone());
-            if self.selection_mode == CombineMode::Replace {
+            let mode = self
+                .selection_gesture_mode
+                .take()
+                .unwrap_or(self.selection_mode);
+            if mode == CombineMode::Replace {
                 self.document.set_selection_with_history(
                     candidate,
                     if self.ellipse_selection {
@@ -814,11 +820,7 @@ impl Editor {
                     },
                 );
             } else if let Some(candidate) = candidate {
-                let (width, height, mode) = (
-                    self.document.width,
-                    self.document.height,
-                    self.selection_mode,
-                );
+                let (width, height, mode) = (self.document.width, self.document.height, mode);
                 self.start_cancellable_file_job("combine selections", move |cancel| {
                     paint_rust::selection::combine_cancellable(
                         width,
@@ -1251,6 +1253,7 @@ impl Editor {
             Some(5) => self.undo(),
             Some(6) => {
                 self.lasso.cancel();
+                self.selection_gesture_mode = None;
                 self.zoom_origin = None;
                 self.suppress_stroke = true;
                 self.gesture_preview = None;
@@ -1673,6 +1676,7 @@ impl Editor {
                         | Tool::Pencil
                         | Tool::Fill
                         | Tool::Picker
+                        | Tool::Select
                         | Tool::Line
                         | Tool::Shapes
                         | Tool::Rectangle
@@ -1772,6 +1776,11 @@ impl Editor {
                             Tool::Text => self.begin_text(ui.ctx(), point, drawing_color),
                             Tool::Select => {
                                 self.selection_before = Some(self.document.selection());
+                                self.selection_gesture_mode = Some(selection_draw::gesture_mode(
+                                    self.selection_mode,
+                                    drawing_button,
+                                    ui.input(|i| i.modifiers),
+                                ));
                             }
                             Tool::Polygon | Tool::Lasso | Tool::Pan | Tool::Zoom => {}
                             Tool::Picker => {
@@ -6764,6 +6773,71 @@ mod tests {
         editor.document.invert();
         assert!(!editor.document.can_redo());
     }
+    #[test]
+    fn selection_modifiers_are_captured_at_press_and_leave_default_mode_unchanged() {
+        for (button, ctrl, alt, count) in [
+            (egui::PointerButton::Primary, true, false, 10000),
+            (egui::PointerButton::Primary, false, true, 9600),
+            (egui::PointerButton::Secondary, false, true, 400),
+            (egui::PointerButton::Secondary, true, false, 9600),
+        ] {
+            let ctx = egui::Context::default();
+            let mut editor = Editor::blank(&ctx);
+            editor.document = Document::new(100, 100, [255; 4]).unwrap();
+            let previous = Selection {
+                mask: None,
+                ellipse: None,
+                x: 0,
+                y: 0,
+                width: 100,
+                height: 100,
+            };
+            editor.document.set_selection(Some(previous.clone()));
+            editor.tool = Tool::Select;
+            frame(&mut editor, &ctx, vec![]);
+            frame(&mut editor, &ctx, vec![]);
+            let start = editor.canvas_viewport.min + Vec2::new(10.0, 10.0);
+            let end = start + Vec2::new(20.0, 20.0);
+            for (pos, pressed) in [(start, true), (end, false)] {
+                let modifiers = if pressed {
+                    egui::Modifiers {
+                        ctrl,
+                        alt,
+                        ..Default::default()
+                    }
+                } else {
+                    egui::Modifiers::NONE
+                };
+                let input = egui::RawInput {
+                    screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1180.0, 800.0))),
+                    focused: true,
+                    modifiers,
+                    events: vec![
+                        egui::Event::PointerMoved(pos),
+                        egui::Event::PointerButton {
+                            pos,
+                            pressed,
+                            button,
+                            modifiers,
+                        },
+                    ],
+                    ..Default::default()
+                };
+                let _ = ctx.run(input, |ctx| editor.show(ctx));
+            }
+            wait_for_files(&mut editor, &ctx);
+            let (_, _, pixels) = editor.document.copy_pixels(false);
+            assert_eq!(pixels.iter().filter(|p| p[3] > 0).count(), count);
+            assert_eq!(editor.selection_mode, CombineMode::Replace);
+            assert!(!editor.document.dirty());
+            if editor.document.can_undo() {
+                assert_eq!(editor.document.history().count(), 1);
+                editor.undo();
+                assert_eq!(editor.document.selection(), Some(previous));
+            }
+        }
+    }
+
     #[test]
     fn additive_selection_gesture_publishes_one_clean_history_step() {
         let ctx = egui::Context::default();

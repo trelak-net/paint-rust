@@ -1,5 +1,28 @@
 use super::*;
 
+pub(super) fn gesture_mode(
+    default: CombineMode,
+    button: egui::PointerButton,
+    modifiers: egui::Modifiers,
+) -> CombineMode {
+    let secondary = button == egui::PointerButton::Secondary;
+    if modifiers.alt {
+        if secondary {
+            CombineMode::Intersect
+        } else {
+            CombineMode::Subtract
+        }
+    } else if modifiers.ctrl {
+        if secondary {
+            CombineMode::Xor
+        } else {
+            CombineMode::Add
+        }
+    } else {
+        default
+    }
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub(super) enum Mode {
     #[default]
@@ -81,6 +104,7 @@ impl Options {
 }
 impl Editor {
     pub(super) fn selection_draw_options(&mut self, ui: &mut egui::Ui) {
+        ui.label("Selection shortcuts").on_hover_text("Ctrl + left: add · Alt + left: subtract · Alt + right: intersect · Ctrl + right: exclusive or. Modifiers are captured when drawing begins.");
         let options = &mut self.general_settings.selection_draw;
         egui::ComboBox::from_label("Draw mode")
             .selected_text(options.mode.label())

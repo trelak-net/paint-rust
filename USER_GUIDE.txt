@@ -185,3 +185,11 @@ its direction. Swap dimensions exchanges width and height. These settings are
 persistent and work with either selection shape and the existing combination
 modes. Selection changes have one undo step and do not mark image pixels dirty.
 Physical-unit size controls and exact external gesture comparison remain pending.
+
+Rectangle and ellipse selection modifiers
+----------------------------------------
+Hold Ctrl with the left button to add, Alt with the left button to subtract,
+Alt with the right button to intersect, or Ctrl with the right button for XOR.
+The combination is captured at the beginning of the gesture and does not change
+the mode selected in the toolbar. Alt takes precedence when Ctrl is also held.
+Escape restores the previous selection without adding a history step.
