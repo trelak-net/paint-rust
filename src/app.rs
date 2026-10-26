@@ -519,6 +519,32 @@ impl Editor {
         self.import_layer_from_path(&path);
     }
 
+    fn import_project_layers(&mut self) {
+        self.finish_stroke();
+        let Some(path) = rfd::FileDialog::new()
+            .set_title("Import project layers")
+            .add_filter("Layered projects", &["pdn", "prust"])
+            .pick_file()
+        else {
+            return;
+        };
+        self.import_project_layers_from_path(path);
+    }
+
+    fn import_project_layers_from_path(&mut self, path: PathBuf) {
+        let mut target = self.document.snapshot();
+        target.set_selection(self.document.selection());
+        self.start_cancellable_file_job("import project layers", move |cancel| {
+            let source = files::open_cancellable(&path, cancel)?;
+            target.import_layers_cancellable(&source, cancel)?;
+            Ok(Outcome::Edited(
+                Box::new(target),
+                "Import project layers".into(),
+                false,
+            ))
+        });
+    }
+
     fn import_layer_from_path(&mut self, path: &std::path::Path) {
         let path = path.to_path_buf();
         self.start_cancellable_file_job("import image", move |cancel| {
@@ -7394,6 +7420,27 @@ mod tests {
             Some(700.0)
         );
         assert!(editor.document.history().next().is_none());
+    }
+
+    #[test]
+    fn layered_pdn_import_publishes_every_layer_with_one_undo_step() {
+        let ctx = egui::Context::default();
+        let mut editor = Editor::blank(&ctx);
+        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/pdn/MetadataNativeResaved.pdn");
+        let source =
+            files::open_cancellable(&path, &std::sync::atomic::AtomicBool::new(false)).unwrap();
+        assert!(source.layers().len() > 1);
+        editor.document = Document::new(source.width, source.height, [255; 4]).unwrap();
+        editor.import_project_layers_from_path(path);
+        assert_eq!(editor.document.layers().len(), 1);
+        wait_for_files(&mut editor, &ctx);
+        assert_eq!(editor.document.layers().len(), source.layers().len() + 1);
+        assert!(editor.document.layers()[1..] == *source.layers());
+        assert_eq!(editor.document.history().count(), 1);
+        editor.undo();
+        assert_eq!(editor.document.layers().len(), 1);
+        assert!(!editor.document.dirty());
     }
 
     #[test]

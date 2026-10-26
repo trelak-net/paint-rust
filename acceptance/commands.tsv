@@ -55,7 +55,7 @@ Layers.DeleteLayer	Delete Layer	supported	Ctrl+Shift+Delete	Ctrl+Shift+Delete	Av
 Layers.DuplicateLayer	Duplicate Layer	supported	Ctrl+Shift+D	Ctrl+Shift+D	Available; see workflow cases
 Layers.MergeLayerDown	Merge Layer Down	supported	Ctrl+M	Ctrl+M	Available; see workflow cases
 Layers.ToggleLayerVisibility	Toggle Layer Visibility	supported	Ctrl+,	Ctrl+,	Available; see workflow cases
-Layers.ImportFromFile	Import From File...	partial	-	-	Imports flattened composite; multi-layer import pending
+Layers.ImportFromFile	Import From File...	partial	-	-	Composite image import plus dedicated project-stack import preserving every layer; external placement comparison pending
 Layers.FlipHorizontal	Flip Horizontal	supported	-	-	Exact active-layer operation in background; fixed canvas/selection, one-step undo
 Layers.FlipVertical	Flip Vertical	supported	-	-	Exact active-layer operation in background; fixed canvas/selection, one-step undo
 Layers.Rotate180	Rotate 180°	supported	-	-	Exact active-layer operation in background; fixed canvas/selection, one-step undo

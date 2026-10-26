@@ -938,6 +938,69 @@ impl Document {
         self.insert_image_layer(width, height, pixels, name, "Import image layer")
     }
 
+    /// Import a complete stack above the active layer as one atomic edit.
+    /// Pixel placement follows image import; destination metadata and selection stay intact.
+    pub fn import_layers_cancellable(
+        &mut self,
+        source: &Document,
+        cancel: &std::sync::atomic::AtomicBool,
+    ) -> Result<bool, String> {
+        use std::sync::atomic::Ordering;
+        let check = || {
+            if cancel.load(Ordering::Relaxed) {
+                Err(crate::files::CANCELLED.to_string())
+            } else {
+                Ok(())
+            }
+        };
+        check()?;
+        if self.editing() {
+            return Err("Finish the current edit first.".into());
+        }
+        let count = self.layers.len() + source.layers.len();
+        if count > 32
+            || u64::from(self.width) * u64::from(self.height) * 4 * count as u64 > 256 * 1024 * 1024
+        {
+            return Err(
+                "Imported layers would exceed the 32-layer or 256 MiB document limit.".into(),
+            );
+        }
+        let (x, y) = self.selection.as_ref().map(|s| (s.x, s.y)).unwrap_or((
+            self.width.saturating_sub(source.width) / 2,
+            self.height.saturating_sub(source.height) / 2,
+        ));
+        let copy_width = source.width.min(self.width - x) as usize;
+        let copy_height = source.height.min(self.height - y) as usize;
+        let mut imported = Vec::with_capacity(source.layers.len());
+        for layer in &source.layers {
+            check()?;
+            let pixels =
+                if x == 0 && y == 0 && self.width == source.width && self.height == source.height {
+                    layer.pixels.clone()
+                } else {
+                    let mut output = vec![[0; 4]; self.width as usize * self.height as usize];
+                    for row in 0..copy_height {
+                        check()?;
+                        let from = row * source.width as usize;
+                        let to = (row + y as usize) * self.width as usize + x as usize;
+                        output[to..to + copy_width]
+                            .copy_from_slice(&layer.pixels[from..from + copy_width]);
+                    }
+                    Arc::new(output)
+                };
+            let mut imported_layer = layer.clone();
+            imported_layer.session_id = next_layer_id();
+            imported_layer.pixels = pixels;
+            imported.push(imported_layer);
+        }
+        check()?;
+        let at = self.active + 1;
+        self.begin("Import project layers");
+        self.layers.splice(at..at, imported);
+        self.active = at + source.active;
+        Ok(self.commit())
+    }
+
     fn insert_image_layer(
         &mut self,
         width: u32,

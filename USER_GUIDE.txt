@@ -230,3 +230,15 @@ other layers, layer properties and selection bounds. Apply creates one undo step
 Cancel or Escape restores the original pixels. This operation does not replace
 the last repeatable effect. Perspective tilt, tiling and canvas handles for this
 whole-layer operation remain pending.
+
+Importing project layers
+------------------------
+Layers > Import project layers accepts PDN and PRUST projects and inserts their
+complete stack above the active layer. Names, visibility, opacity, blend modes
+and layer metadata are preserved. The imported project's active layer becomes
+active in the destination, while existing selection and document resolution stay
+unchanged. Pixels are placed at the selection's top-left corner or centered when
+there is no selection, and clipped to the destination canvas without scaling.
+The import runs in the background and produces one undo step. Cancellation or
+exceeding the 32-layer/256 MiB document limits leaves the destination unchanged.
+Import image remains available when only the source's composite image is wanted.

@@ -237,6 +237,17 @@ impl Editor {
         }
         if ui
             .add_enabled(
+                self.document.can_add_layer(),
+                egui::Button::new("Import project layers…"),
+            )
+            .on_hover_text("Preserve every layer and its properties; clip to the current canvas")
+            .clicked()
+        {
+            ui.close();
+            self.import_project_layers();
+        }
+        if ui
+            .add_enabled(
                 self.document.can_merge_down(),
                 egui::Button::new("Merge down"),
             )
